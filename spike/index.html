@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>도서관 스파이크 — 카메라·PWA 검증</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b3a4b">
+<style>
+  /* 웹폰트를 쓰지 않습니다 — 오프라인 동작을 테스트해야 하므로 */
+  :root{
+    --ink:#16181d; --ink-2:#4a5058; --ink-3:#878f99;
+    --paper:#f2f0ea; --panel:#ffffff; --rule:#ddd9cf;
+    --deep:#1b3a4b; --brass:#d9a441;
+    --pass:#1f7a54; --fail:#b3352c; --wait:#8a7a4a; --idle:#c3c0b8;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--sans); background:var(--paper); color:var(--ink);
+    line-height:1.5; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:20px 16px 64px}
+
+  header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:20px}
+  .eyebrow{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1{font-size:26px;font-weight:680;letter-spacing:-.02em;margin-top:8px}
+  .sub{color:var(--ink-2);font-size:14px;margin-top:6px}
+
+  /* 판정 배너 — 시그니처 요소 */
+  #verdict{
+    margin:18px 0 24px;padding:18px;border-radius:3px;
+    border-left:6px solid var(--idle);background:var(--panel);
+    box-shadow:0 1px 0 var(--rule);
+  }
+  #verdict.pass{border-left-color:var(--pass)}
+  #verdict.fail{border-left-color:var(--fail)}
+  #verdict.wait{border-left-color:var(--wait)}
+  #vTitle{font-size:18px;font-weight:680;letter-spacing:-.01em}
+  #vBody{font-size:14px;color:var(--ink-2);margin-top:6px}
+
+  section{margin-bottom:22px}
+  h2{
+    font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);padding-bottom:7px;border-bottom:1px solid var(--rule);margin-bottom:2px;
+  }
+
+  /* 체크 항목 */
+  .chk{display:flex;gap:11px;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--rule)}
+  .led{
+    flex:none;width:10px;height:10px;border-radius:50%;margin-top:5px;
+    background:var(--idle);box-shadow:0 0 0 3px rgba(0,0,0,.04);
+  }
+  .led.pass{background:var(--pass)} .led.fail{background:var(--fail)} .led.wait{background:var(--wait)}
+  .chk-b{flex:1;min-width:0}
+  .chk-t{font-size:15px;font-weight:560}
+  .chk-d{font:12px/1.45 var(--mono);color:var(--ink-2);margin-top:3px;word-break:break-word}
+
+  /* 카메라 */
+  #camWrap{position:relative;background:var(--deep);border-radius:3px;overflow:hidden;aspect-ratio:4/3;margin-top:10px}
+  video{width:100%;height:100%;object-fit:cover;display:block}
+  #reticle{
+    position:absolute;inset:18% 12%;border:2px solid rgba(255,255,255,.85);border-radius:4px;
+    box-shadow:0 0 0 100vmax rgba(0,0,0,.32);pointer-events:none;
+  }
+  #flash{position:absolute;inset:0;background:#3ddc84;opacity:0;pointer-events:none;transition:opacity .28s}
+  #flash.on{opacity:.55;transition:none}
+
+  button{
+    font:600 15px var(--sans);padding:13px 18px;border-radius:3px;border:none;
+    background:var(--deep);color:#fff;cursor:pointer;width:100%;margin-top:10px;
+  }
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;color:var(--deep);border:1.5px solid var(--deep)}
+  button:disabled{opacity:.4}
+
+  /* 스캔 로그 */
+  #log{margin-top:10px;font:12px/1.6 var(--mono);background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px;max-height:190px;overflow:auto}
+  #log:empty::after{content:"아직 스캔 없음";color:var(--ink-3)}
+  .row{display:flex;gap:8px;padding:3px 0;border-bottom:1px dotted var(--rule)}
+  .row:last-child{border:0}
+  .row b{color:var(--brass);font-weight:600;flex:none}
+  .row span{word-break:break-all}
+
+  .stat{display:flex;gap:18px;margin-top:10px;font:12px var(--mono);color:var(--ink-2)}
+  .stat b{display:block;font-size:21px;color:var(--ink);font-weight:680;letter-spacing:-.01em}
+
+  .targets{display:flex;gap:10px;margin-top:10px}
+  .targets figure{flex:1;background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:9px;text-align:center}
+  .targets img{width:100%;height:auto;display:block}
+  .targets figcaption{font:11px var(--mono);color:var(--ink-3);margin-top:6px}
+  .note{font-size:13px;color:var(--ink-2);margin-top:10px;padding-left:11px;border-left:2px solid var(--brass)}
+
+  pre#env{font:11px/1.6 var(--mono);background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Phase 0 · 위험 검증</div>
+  <h1>카메라 · PWA 스파이크</h1>
+  <p class="sub">이 기기에서 설치형 PWA + 카메라 + QR/ISBN 스캔이 실제로 되는지 확인합니다.</p>
+</header>
+
+<div id="verdict" class="wait">
+  <div id="vTitle">검사 준비 중…</div>
+  <div id="vBody">아래 <b>카메라 시작</b>을 누르세요.</div>
+</div>
+
+<section>
+  <h2>1 · 환경</h2>
+  <div id="envChecks"></div>
+</section>
+
+<section>
+  <h2>2 · 카메라 &amp; 디코더</h2>
+  <div id="camChecks"></div>
+  <div id="camWrap">
+    <video id="v" playsinline muted autoplay></video>
+    <div id="reticle"></div>
+    <div id="flash"></div>
+  </div>
+  <button id="start">카메라 시작</button>
+  <button id="stop" class="ghost" disabled>카메라 정지</button>
+</section>
+
+<section>
+  <h2>3 · 연속 스캔</h2>
+  <div class="stat">
+    <div><b id="cnt">0</b>총 스캔</div>
+    <div><b id="uniq">0</b>고유 값</div>
+    <div><b id="ms">—</b>최근 간격</div>
+  </div>
+  <div id="log"></div>
+  <p class="note"><b>연속으로 여러 번</b> 읽히는지가 핵심입니다. 한 번 읽고 멈추면 실패입니다.</p>
+</section>
+
+<section>
+  <h2>4 · 테스트 대상</h2>
+  <p class="sub">PC 화면에 띄우고 폰으로 찍으세요. 실제 설계와 같은 형식입니다.</p>
+  <div class="targets">
+    <figure><img src="test-qr-book.png" alt="책 QR"><figcaption>책 QR<br>/b/0005001</figcaption></figure>
+    <figure><img src="test-qr-student.png" alt="학생 QR"><figcaption>학생 QR<br>불투명 ID</figcaption></figure>
+  </div>
+  <div class="targets" style="margin-top:10px">
+    <figure><img src="test-isbn.png" alt="ISBN 바코드"><figcaption>ISBN · EAN-13 — 도서등록 자동입력 경로</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>5 · 기기 정보</h2>
+  <pre id="env"></pre>
+  <button class="ghost" id="copy">결과 복사</button>
+</section>
+
+</div>
+
+<script src="zxing.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const R = {};                       // 검사 결과
+const seen = new Set();
+let stream=null, detector=null, zxing=null, loop=null, decoder='—', lastAt=0, count=0;
+
+/* ── 체크 항목 렌더 ─────────────────────────── */
+function check(host, key, title, state, detail){
+  R[key] = {title, state, detail};
+  let el = document.getElementById('c_'+key);
+  if(!el){
+    el = document.createElement('div');
+    el.className='chk'; el.id='c_'+key;
+    el.innerHTML = '<div class="led"></div><div class="chk-b"><div class="chk-t"></div><div class="chk-d"></div></div>';
+    $(host).appendChild(el);
+  }
+  el.querySelector('.led').className = 'led '+state;
+  el.querySelector('.chk-t').textContent = title;
+  el.querySelector('.chk-d').textContent = detail || '';
+  verdict();
+}
+
+/* ── 최종 판정 ─────────────────────────────── */
+function verdict(){
+  const v=$('#verdict'), t=$('#vTitle'), b=$('#vBody');
+  const cam = R.stream?.state, dec = R.decoder?.state, scanned = count>0;
+  if(cam==='fail'){
+    v.className='fail'; t.textContent='🔴 카메라 실패 — 아키텍처 재검토 필요';
+    b.innerHTML='설치형 PWA에서 카메라가 안 열립니다. <b>브라우저 탭에서도 같은지</b> 확인하세요. 탭에서는 되고 설치형에서만 안 되면 → PWA 설치를 포기하거나 Capacitor 래퍼를 검토합니다.';
+  } else if(scanned && R.standalone?.state==='pass'){
+    v.className='pass'; t.textContent='🟢 통과 — 계획대로 진행하세요';
+    b.innerHTML='설치형 PWA에서 카메라와 디코더가 모두 동작합니다. <b>GitHub Pages + React + PWA</b> 아키텍처가 유효합니다.';
+  } else if(scanned){
+    v.className='pass'; t.textContent='🟡 브라우저 탭에서는 통과';
+    b.innerHTML='스캔은 되지만 <b>아직 설치형(홈 화면 추가)이 아닙니다.</b> 홈 화면에 추가한 뒤 이 페이지를 다시 열어 재검사하세요 — 그게 진짜 시험입니다.';
+  } else if(cam==='pass'){
+    v.className='wait'; t.textContent='카메라 켜짐 — 코드를 비춰보세요';
+    b.textContent='아래 테스트 QR을 PC 화면에 띄우고 스캔하세요. 연속으로 여러 번 읽혀야 통과입니다.';
+  } else {
+    v.className='wait'; t.textContent='검사 준비 중…';
+    b.innerHTML='<b>카메라 시작</b>을 누르세요.';
+  }
+}
+
+/* ── 1. 환경 검사 ──────────────────────────── */
+function envAudit(){
+  check('#envChecks','https', 'HTTPS (보안 컨텍스트)',
+    isSecureContext?'pass':'fail',
+    isSecureContext ? location.origin : '카메라는 HTTPS에서만 동작합니다');
+
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  check('#envChecks','standalone', standalone ? 'PWA로 설치되어 실행 중' : 'PWA 미설치 (브라우저 탭)',
+    standalone?'pass':'wait',
+    standalone ? '이게 진짜 시험 조건입니다' : 'iOS: 공유 → 홈 화면에 추가 → 그 아이콘으로 다시 열기');
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js')
+      .then(()=>check('#envChecks','sw','Service Worker 등록','pass','오프라인 캐시 가능'))
+      .catch(e=>check('#envChecks','sw','Service Worker 등록','fail',String(e)));
+  } else {
+    check('#envChecks','sw','Service Worker','fail','미지원 → PWA 불가');
+  }
+
+  check('#envChecks','online', navigator.onLine ? '온라인' : '오프라인 (캐시로 실행 중)',
+    'pass', navigator.onLine ? '비행기 모드로 껐다가 다시 열어 오프라인도 확인하세요' : '✅ 오프라인 동작 확인됨');
+
+  $('#env').textContent = [
+    'UA        ' + navigator.userAgent,
+    'Platform  ' + (navigator.platform||'—'),
+    'Screen    ' + screen.width+'×'+screen.height+' @'+devicePixelRatio+'x',
+    'Standalone' + ' ' + standalone,
+    'Secure    ' + isSecureContext,
+    'Detector  ' + ('BarcodeDetector' in window),
+    'Time      ' + new Date().toISOString()
+  ].join('\n');
+}
+
+/* ── 2. 디코더 준비 ────────────────────────── */
+async function initDecoder(){
+  const native = 'BarcodeDetector' in window;
+  let ok = false;
+  if(native){
+    try{
+      const fmts = await BarcodeDetector.getSupportedFormats();
+      if(fmts.includes('qr_code')){
+        detector = new BarcodeDetector({formats:['qr_code','ean_13'].filter(f=>fmts.includes(f))});
+        decoder='BarcodeDetector (네이티브)'; ok=true;
+        check('#camChecks','native','BarcodeDetector (네이티브)','pass', fmts.join(', '));
+      }
+    }catch(e){}
+  }
+  if(!ok) check('#camChecks','native','BarcodeDetector (네이티브)','fail','미지원 — ZXing 폴백 사용 (iOS Safari에서 정상입니다)');
+
+  if(!ok){
+    if(window.ZXing){
+      zxing = new ZXing.MultiFormatReader();
+      const hints = new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.EAN_13]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      zxing.setHints(hints);
+      decoder='ZXing (폴백)'; ok=true;
+      check('#camChecks','zxing','ZXing 폴백','pass','로컬 번들 — 오프라인에서도 동작');
+    } else {
+      check('#camChecks','zxing','ZXing 폴백','fail','zxing.js 로드 실패');
+    }
+  }
+  check('#camChecks','decoder','사용 중인 디코더', ok?'pass':'fail', decoder);
+  return ok;
+}
+
+/* ── 3. 카메라 ─────────────────────────────── */
+async function start(){
+  $('#start').disabled=true;
+  if(!navigator.mediaDevices?.getUserMedia){
+    check('#camChecks','api','mediaDevices API','fail','미지원 — 이 브라우저에서는 불가');
+    check('#camChecks','stream','카메라 스트림','fail','API 없음'); return;
+  }
+  check('#camChecks','api','mediaDevices API','pass','존재');
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960} }, audio:false
+    });
+  }catch(e){
+    check('#camChecks','stream','카메라 스트림','fail', e.name+': '+e.message);
+    $('#start').disabled=false; return;
+  }
+
+  const v=$('#v'); v.srcObject=stream; await v.play().catch(()=>{});
+  const t = stream.getVideoTracks()[0], s = t.getSettings();
+  check('#camChecks','stream','카메라 스트림 시작','pass',
+    `${s.width}×${s.height} · ${s.facingMode||'?'} · ${t.label||'label 없음'}`);
+
+  await initDecoder();
+  $('#stop').disabled=false;
+  scan();
+}
+
+function stop(){
+  cancelAnimationFrame(loop);
+  stream?.getTracks().forEach(t=>t.stop());
+  stream=null; $('#v').srcObject=null;
+  $('#start').disabled=false; $('#stop').disabled=true;
+}
+
+/* ── 4. 스캔 루프 ──────────────────────────── */
+const cv = document.createElement('canvas');
+async function scan(){
+  const v=$('#v');
+  if(stream && v.readyState===4){
+    let value=null, fmt='';
+    try{
+      if(detector){
+        const [hit] = await detector.detect(v);
+        if(hit){ value=hit.rawValue; fmt=hit.format; }
+      } else if(zxing){
+        cv.width=v.videoWidth; cv.height=v.videoHeight;
+        const ctx=cv.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(v,0,0);
+        const d=ctx.getImageData(0,0,cv.width,cv.height);
+        const lum = new ZXing.RGBLuminanceSource(
+          new Int32Array(new Uint32Array(d.data.buffer)), cv.width, cv.height);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        try{ const r=zxing.decode(bmp); value=r.getText(); fmt=String(r.getBarcodeFormat()); }
+        catch(_){ /* 프레임에 코드 없음 — 정상 */ }
+        finally{ zxing.reset(); }
+      }
+    }catch(e){}
+    if(value) hit(value, fmt);
+  }
+  loop = requestAnimationFrame(scan);
+}
+
+function hit(value, fmt){
+  const now = performance.now();
+  if(now - lastAt < 700) return;           // 같은 코드 연타 방지
+  const gap = lastAt ? Math.round(now-lastAt) : 0;
+  lastAt = now; count++; seen.add(value);
+
+  $('#cnt').textContent = count;
+  $('#uniq').textContent = seen.size;
+  $('#ms').textContent = gap ? gap+'ms' : '—';
+
+  const row=document.createElement('div');
+  row.className='row';
+  row.innerHTML = `<b>${String(count).padStart(2,'0')}</b><span>${value}</span>`;
+  $('#log').prepend(row);
+
+  // 피드백: 소리 + 초록 플래시 (실제 앱에서도 필수)
+  const f=$('#flash'); f.classList.add('on'); setTimeout(()=>f.classList.remove('on'),40);
+  try{
+    const a=new (window.AudioContext||window.webkitAudioContext)();
+    const o=a.createOscillator(), g=a.createGain();
+    o.frequency.value=880; o.connect(g); g.connect(a.destination);
+    g.gain.setValueAtTime(.18,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.1);
+    o.start(); o.stop(a.currentTime+.1);
+  }catch(e){}
+  navigator.vibrate?.(35);
+
+  check('#camChecks','decode','QR/바코드 디코딩','pass', `${count}건 · 최근: ${fmt||'?'}`);
+}
+
+/* ── 부팅 ──────────────────────────────────── */
+$('#start').onclick = start;
+$('#stop').onclick  = stop;
+$('#copy').onclick  = () => {
+  const out = ['# 스파이크 결과', ''].concat(
+    Object.entries(R).map(([k,v]) =>
+      `- ${({pass:'✅',fail:'❌',wait:'⏳'})[v.state]} ${v.title} — ${v.detail||''}`),
+    ['', '스캔 ' + count + '건 / 고유 ' + seen.size + '개', '', '```', $('#env').textContent, '```']
+  ).join('\n');
+  navigator.clipboard.writeText(out).then(()=> $('#copy').textContent='복사됨 ✓');
+};
+envAudit();
+addEventListener('online',  envAudit);
+addEventListener('offline', envAudit);
+</script>
+</body>
+</html>
