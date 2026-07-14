@@ -1,0 +1,230 @@
+/* styles/print.css — DESIGN.md "인쇄" 절의 프로젝트 전역 규칙. boot.tsx가 base.css와 함께
+   한 번만 임포트한다 — 리포트별 CSS가 아니라 "인쇄 가능한 화면이라면 전부 이 규약을 따른다"는
+   전역 계약이다. todo/05(R1 리포트 2종: 미대출 학생 발굴·담임 리포트)가 만들고, todo/09(회수
+   쪽지·기증 감사장 등 R1 나머지 3종)도 그대로 재사용한다.
+
+   [기법 — "오직 리포트만 인쇄"]
+   1) body의 모든 요소를 visibility:hidden으로 숨긴다. display:none을 안 쓰는 이유: 조상에
+      한번 걸면 그 안의 특정 자손만 다시 보이게 할 방법이 없다(display:none은 자손까지 통째로
+      렌더 트리에서 제거). visibility는 자손에서 다시 visible로 개별 취소할 수 있다.
+   2) .print-root(components/PrintDocument.tsx)와 그 자손만 visibility:visible로 되돌린다.
+   3) 데스크톱 창(shells/desktop/Window.tsx, useWindowStore.ts)은 화면 크기의 고정 px +
+      overflow:hidden이다 — 인쇄 버튼을 누른 그 창만 Window.tsx가 붙이는 `.is-print-target`
+      표식으로 골라, 그 조상 체인만 position:static·overflow:visible·크기 auto로 풀어준다.
+      안 풀면 리포트가 창 한 칸 크기(예: 560×520px)로 잘려 A4 여러 장에 걸친 명단이 통째로
+      잘려나간다. 표식이 없는 다른 창은 원래 그대로 absolute + 화면 밖(보이지도 않음)이라
+      인쇄에 아무 영향이 없다 — 별도로 숨길 필요조차 없다.
+   4) 모바일은 화면에 뷰가 한 번에 하나만 마운트된다(StackNav.tsx는 스택 최상단 1개만 렌더,
+      MobileShell.tsx도 활성 탭 컴포넌트 1개만 렌더) — 데스크톱 같은 "여러 화면 중 어느 걸
+      인쇄?" 구분이 필요 없어 표식 없이 셸 조상(.m-shell 등)을 그냥 항상 풀어준다. (주의:
+      이 전제는 "인쇄 가능한 화면 = 탭 매핑이 없는 push 전용 뷰"일 때만 성립한다 — reports
+      뷰는 registry.ts에 mobile.tab이 없으므로 항상 StackNav push로만 열린다. 훗날 인쇄
+      가능한 뷰가 탭에도 매핑되면 이 전제를 다시 검토해야 한다.)
+   5) 인쇄 전용 헤더·푸터(DESIGN.md: 학교명·생성일·"OO학교 도서관 시스템" / 페이지 번호)는
+      실제 페이지 매수 계산(브라우저 간 CSS Paged Media `@page` 여백 상자 지원이 들쭉날쭉 —
+      Firefox·Safari는 사실상 미지원)에 기대지 않고, `position:fixed` 꼬리 엘리먼트로
+      구현한다 — 매 페이지 반복까지는 브라우저마다 보장되지 않지만 최소한 항상 나타난다.
+      Chrome 계열엔 `@page{ @bottom-center }`로 실제 쪽수까지 얹는 점진적 향상만 추가했다
+      (미지원 브라우저는 이 블록을 조용히 무시할 뿐 — 치명적이지 않다). */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm 14mm 16mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+
+  /* ── 데스크톱: 인쇄 대상으로 표식된 창의 조상 체인만 고정 크기·클리핑을 해제 ────────── */
+  .window.is-print-target,
+  .window.is-print-target .window-body,
+  .desktop-workspace,
+  .desktop-shell {
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  .window.is-print-target > .window-titlebar,
+  .window.is-print-target .window-resize {
+    display: none !important;
+  }
+
+  /* ── 모바일: 뷰가 한 번에 하나만 마운트되므로 표식 없이 항상 해제 ─────────────────── */
+  .m-shell,
+  .m-shell-content,
+  .m-shell-main,
+  .m-stack-overlay,
+  .m-stack-body {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+  .m-shell-header,
+  .m-stack-header,
+  .m-tabbar {
+    display: none !important;
+  }
+
+  /* ── 잉크 절약(DESIGN.md) — 배경 제거·테두리 유지, 강조색(--deep 등)은 전부 검정으로 ──── */
+  .print-root,
+  .print-root * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  .print-root table,
+  .print-root th,
+  .print-root td,
+  .print-root hr,
+  .print-root .print-rule {
+    border-color: #000 !important;
+  }
+
+  .print-preview-frame {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+
+  .print-header,
+  .print-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 10.5px;
+  }
+  .print-header {
+    border-bottom: 1px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .print-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-top: 1px solid #000;
+    padding-top: 4px;
+    background: #fff !important;
+  }
+  /* Chrome 계열 전용 점진적 향상(위 문서 주석 5번) — 지원 안 하면 이 블록만 조용히 무시된다. */
+  @page {
+    @bottom-center {
+      content: counter(page);
+      font-size: 10px;
+    }
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ── 화면에서의 인쇄 미리보기 ──────────────────────────────────────────────────────
+   "인쇄하면 이렇게 나온다"를 A4 비율 프레임으로 보여준다(완료 조건: "인쇄 미리보기 A4 정상").
+   실제 인쇄 규칙은 위 @media print 블록 — 여기는 화면 전용이라 DESIGN.md 색상 규칙대로
+   var(--token)만 쓴다. */
+.print-preview-frame {
+  background: var(--panel);
+  color: var(--ink);
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 16px auto;
+  padding: 20mm 14mm 16mm;
+  box-shadow: var(--shadow-window);
+  border: 1px solid var(--rule);
+}
+
+.print-header,
+.print-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.print-header {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+.print-footer {
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+  margin-top: 20px;
+}
+
+.print-root h2 {
+  font-size: var(--fs-md);
+  color: var(--deep);
+  margin: 14px 0 6px;
+}
+.print-root h2:first-child {
+  margin-top: 0;
+}
+
+/* 리포트 표는 todo/08의 상호작용형 공용 DataTable(정렬·페이지네이션)과 다르다 — 인쇄물은
+   "A4 1장"이 우선이라 40px 행높이 대신 내용 밀도를 우선한 컴팩트 표로 둔다. 헤어라인(--rule)·
+   zebra 금지는 DESIGN.md 테이블 규칙과 동일하게 유지. */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  margin-bottom: 12px;
+}
+.print-table th,
+.print-table td {
+  border-bottom: 1px solid var(--rule);
+  padding: 4px 8px;
+  text-align: left;
+}
+.print-table th {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+.print-table td.num,
+.print-table th.num {
+  text-align: right;
+}
+.print-table td.mono {
+  font-family: var(--mono);
+}
+
+.print-class-group {
+  margin-bottom: 12px;
+}
+.print-class-title {
+  font-weight: 700;
+  color: var(--deep);
+  margin-bottom: 4px;
+}
+.print-name-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: var(--fs-sm);
+}
+
+.print-empty {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  margin-bottom: 12px;
+}

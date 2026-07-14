@@ -44,6 +44,7 @@ export function Window({ win }: WindowProps) {
   const resizeRef = useRef<{ dir: ResizeDir; startX: number; startY: number; rect: { x: number; y: number; w: number; h: number } } | null>(
     null
   );
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const isFocused = useMemo(() => {
     const visible = windows.filter((w) => !w.minimized);
@@ -67,7 +68,22 @@ export function Window({ win }: WindowProps) {
       requestClose: () => closeWindow(win.id),
       open: (viewId: ViewId, params?: Record<string, unknown>) => openWindow(viewId, params),
       toast: (message: string, kind) => pushToast(message, kind),
-      platform: 'desktop'
+      platform: 'desktop',
+      print: () => {
+        // FRONTEND.md·types.ts "뷰는 셸을 모른다" — views/**는 window.print()를 직접 못 부르니
+        // ShellContext를 통해서만 연다. 데스크톱은 최대 MAX_WINDOWS(6)개 창이 동시에 열려
+        // 있을 수 있어(useWindowStore.ts), styles/print.css가 "인쇄할 창만" 골라 조상 체인의
+        // 고정 크기·overflow:hidden을 풀어야 한다(안 그러면 리포트가 창 한 칸 크기로 잘림) —
+        // 그 구분자가 이 표식 클래스다. afterprint에서 지워 다음 인쇄와 상태가 섞이지 않게 한다.
+        const node = rootRef.current;
+        node?.classList.add('is-print-target');
+        const cleanup = () => {
+          node?.classList.remove('is-print-target');
+          window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+      }
     }),
     [win.id, closeWindow, openWindow]
   );
@@ -145,6 +161,7 @@ export function Window({ win }: WindowProps) {
 
   return (
     <div
+      ref={rootRef}
       className={`window${isFocused ? ' is-focused' : ''}`}
       style={{
         left: win.x,

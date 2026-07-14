@@ -145,3 +145,63 @@
   나머지 오류는 `error` 필드에 원문 그대로 담아 `dash-error` 배너로 노출한다(마지막으로
   성공했던 데이터는 지우지 않는다). CLAUDE.md 검증 원칙 "가짜 성공 금지(샘플 배지)"를 그대로
   따른 것 — "백엔드가 이 액션을 아직 모름"과 "백엔드가 죽었음"을 같은 화면 신호로 뭉개지 않는다.
+
+## todo/05 · 리포트 R1 (2026-07-15)
+
+- **R1-1 미대출 학생 발굴의 `sinceDate` 기본값 = "최근 3개월"(오늘 - 90일)**로 임의 지정했다
+  (`reportNoLoanFinder_`, Code.gs). FEATURES.md는 "기간 내 대출 0회"라고만 쓰고 정확한 창을
+  못박지 않았다 — 학기 시작일 같은 학사력 개념은 CONFIG 시트에 없어(getConfig_로 조회 가능한
+  키가 없음) 새 설정을 만들려면 CONFIG 스키마를 건드려야 하는데(보호 대상은 아니지만 이번
+  스코프 밖), 대신 호출측이 `payload.sinceDate`로 언제든 덮어쓸 수 있게 열어뒀다. 웹앱 폼도
+  "이 날짜 이후"를 직접 입력하는 선택형 필드로 노출한다(비워두면 서버 기본값 적용).
+
+- **R1-2 담임 리포트의 `grade`/`classNo`/`month`는 전부 사용자가 폼에 입력**한다 — 서버는
+  셋 다 필수로 검증하고(`VALIDATION_ERROR`), "이 사서가 몇 학년 몇 반 담당인지" 같은 매핑은
+  MEMBERS/STAFF 스키마 어디에도 없어 자동 추론할 근거가 없다. 프론트는 `month`만 "이번 달"로
+  기본값을 채우고(화면 진입 시점 로컬 날짜 기준, `new Date()`) `grade`/`classNo`는 1/1로 시작
+  — 실제 의미 없는 placeholder이며 사서가 매번 바꿔 입력해야 한다.
+
+- **인쇄 머리의 "OO학교 도서관 시스템" 셋째 칸을 학교명 반복 없이 고정 브랜드 문구로
+  렌더**했다(`components/PrintDocument.tsx`). DESIGN.md 원문은 "학교명 · 생성일 ·
+  'OO학교 도서관 시스템'" 세 조각을 나열하는데, 첫 칸에 이미 `libraryName`(예:
+  `getConfig_('LIBRARY_NAME', ...)`가 이미 "OO초등학교 도서관"처럼 "도서관"을 포함해 내려올
+  수도 있음)을 보여주므로 셋째 칸에서 또 이어붙이면 "OO초등학교 도서관 OO초등학교 도서관
+  시스템"처럼 중복될 위험이 있었다. 대신 셋째 칸은 `t('print.systemBrand')`(고정 "도서관
+  시스템")만 적어 정보는 그대로 다 나오되 중복은 피했다.
+
+- **인쇄 페이지 번호는 실제 쪽수 계산에 기대지 않고 `position:fixed` 꼬리 + Chrome 전용
+  `@page{@bottom-center}` 점진적 향상으로 절충**했다(`styles/print.css`). CSS Paged Media의
+  `@page` 여백 상자(`counter(page)`)는 브라우저 지원이 들쭉날쭉(Firefox·Safari는 사실상
+  미지원)이라 신뢰할 수 없다 — 대신 항상 나타나는 `<footer>` 엘리먼트(학교명·브랜드 문구)를
+  기본으로 깔고, Chrome 계열에서만 실제 쪽수가 얹히는 방식을 추가 향상으로 얹었다. 매 페이지
+  "반복" 여부까지는 브라우저마다 보장되지 않지만, 리포트가 대부분 A4 1장 전제(R1-2)이거나
+  분량이 예측 가능한 명단(R1-1)이라 치명적이지 않다고 판단했다.
+
+- **`ShellContext`에 `print(): void`를 추가**했다(`types.ts`). views/**는 `window.print()`를
+  직접 부를 수 없다(check-view-boundary.mjs·eslint 규칙) — "함부로 넓히지 않는다"는 이
+  인터페이스의 원칙에 따라 스타일시트 선택 같은 옵션 없이 인자 없는 트리거 한 줄만 추가했다.
+  데스크톱(`Window.tsx`)·모바일(`MobileShell.tsx`의 tabShell, `StackNav.tsx`) 세 곳 모두
+  구현이 필요했다(각자 자기 ShellContext 객체를 따로 만든다, 기존 구조 그대로).
+
+- **"오직 리포트만 인쇄"는 `visibility` 뒤집기 기법 + 데스크톱 전용 표식 클래스로 구현**했다
+  (`styles/print.css`, 상세 사유는 그 파일 맨 위 주석). 요약: (1) `body *`를 전부
+  `visibility:hidden`(display:none이 아님 — 자손만 다시 보이게 할 방법이 없어서), (2)
+  `.print-root`(`PrintDocument.tsx`)와 그 자손만 `visibility:visible`로 복귀, (3) 데스크톱
+  창(`.window`)은 고정 px + `overflow:hidden`이라 인쇄 버튼을 누른 창에만 `Window.tsx`가
+  `.is-print-target` 표식을 붙이고(`afterprint`에서 제거) 그 조상 체인만
+  `position:static`·`overflow:visible`·크기 `auto`로 풀어준다 — 안 그러면 리포트가 창 한
+  칸 크기(예: 560×520px)로 잘린다. 표식 없는 다른 창은 원래 `absolute`+화면 밖이라 손댈
+  필요조차 없다. (4) 모바일은 뷰가 한 번에 하나만 마운트되므로(StackNav 스택 최상단 1개,
+  탭 1개) 표식 없이 셸 조상을 그냥 항상 풀어준다 — 단 이 전제는 "인쇄 가능한 뷰 = 탭 매핑이
+  없는 push 전용 뷰"일 때만 성립한다(`reports`가 그렇다). 훗날 인쇄 가능한 뷰가 탭에도
+  매핑되면 이 전제를 다시 봐야 한다.
+
+- **`views/reports/index.tsx`의 리포트 종류 5개는 todo/04가 잠정 지정한 `reportType` 문자열과
+  라벨 키(`dashboard.quietSignal.*`)를 그대로 재사용**했다(DESIGN.md "같은 행동 같은 이름
+  관통"). 미구현 3종(죽은 장서·회수 쪽지·기증 감사장)은 선택 시 "다음 항목에서 구현됩니다"
+  플레이스홀더만 보여주고 실제 로직은 만들지 않았다(todo/09 몫) — 가짜 리포트를 만들지 않는다.
+
+- **`i18n/{ko,en}.json`의 `views.reports.requestedType` 키를 제거**했다 — todo/04 스텁이
+  디버그 표시용으로 쓰던 키인데, 이번 항목이 스텁을 실제 허브로 교체하면서 더 이상 쓰이지
+  않는다(허브가 `params.type`을 직접 선반영하지, 문자열로 되돌려 보여주지 않는다). `comingSoon`
+  키는 텍스트만 "허브 자체가 미구현"에서 "이 리포트 종류가 미구현"으로 좁혀 재사용했다.

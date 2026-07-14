@@ -65,6 +65,10 @@
       "heading": "Library today"
     }
   },
+  "print": {
+    "generatedAt": "Generated {time}",
+    "systemBrand": "Library System"
+  },
   "camera": {
     "start": "Start camera",
     "stop": "Stop camera",
@@ -200,8 +204,44 @@
       "comingSoon": "Recent activity is coming soon."
     },
     "reports": {
-      "comingSoon": "Report hub — implemented in a later item.",
-      "requestedType": "Requested report: {type}"
+      "comingSoon": "Implemented in a later item.",
+      "comingSoonFor": "{name} — implemented in a later item.",
+      "backToTypes": "Choose a different report",
+      "typeSelectorHeading": "Report type",
+      "previewButton": "Preview",
+      "printButton": "Print",
+      "fetchError": "Couldn't load the report — {message}",
+      "noLoanFinder": {
+        "title": "Find students with no loans",
+        "sinceDateLabel": "No loans since",
+        "sinceDateHint": "Leave blank to use the last 3 months.",
+        "totalCountLine": "{count} enrolled students with no loans since {date}",
+        "classHeading": "Grade {grade}, Class {classNo} ({count})",
+        "empty": "Every enrolled student has at least one loan.",
+        "printTitle": "Students with no loans"
+      },
+      "homeroom": {
+        "title": "Homeroom report",
+        "gradeLabel": "Grade",
+        "classNoLabel": "Class",
+        "monthLabel": "Month",
+        "studentCountLine": "Grade {grade}, Class {classNo} · {count} enrolled students",
+        "loanStatusHeading": "Loan activity",
+        "noLoanHeading": "Students with no loans",
+        "overdueHeading": "Overdue loans",
+        "popularBooksHeading": "Our class's popular books",
+        "colName": "Name",
+        "colSeat": "No.",
+        "colLoanCount": "Loans",
+        "colBookTitle": "Title",
+        "colDueDate": "Due date",
+        "colOverdueDays": "Overdue",
+        "overdueDaysValue": "{days}d",
+        "noLoanEmpty": "No students without a loan this month.",
+        "overdueEmpty": "No loans are currently overdue.",
+        "popularEmpty": "No loans recorded this month.",
+        "printTitle": "Grade {grade}, Class {classNo} homeroom report · {month}"
+      }
     }
   },
   "student": {

@@ -120,7 +120,13 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
       onOpen(viewId, params);
     },
     toast,
-    platform: 'mobile'
+    platform: 'mobile',
+    // StackNav는 스택 최상단 화면 1개만 렌더한다(위 `if (stack.length === 0) return null` +
+    // `top = stack[stack.length - 1]`) — 데스크톱과 달리 "여러 화면 중 어느 걸 인쇄?" 구분이
+    // 필요 없어 표식 클래스 없이 그냥 연다(styles/print.css가 .m-stack-overlay 등을 항상 해제).
+    print() {
+      window.print();
+    }
   };
 
   return (

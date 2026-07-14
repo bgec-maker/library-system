@@ -195,6 +195,10 @@ export default function MobileShell() {
   // 탭 루트에는 "닫을 대상"이 없다 — no-op. (push 화면의 requestClose는 StackNav 안에서 pop으로 구현됨)
   const requestCloseFn = useCallback(() => {}, []);
   const toastFn = useCallback((message: string, kind?: ToastKind) => pushToast(message, kind), []);
+  // 모바일은 활성 탭 화면이 한 번에 하나만 마운트되므로(데스크톱처럼 여러 창이 동시에 있는 경우가
+  // 없다) StackNav.tsx의 print와 달리 표식 클래스가 필요 없다 — styles/print.css가 셸 조상
+  // (.m-shell 등)을 표식 없이 그냥 항상 풀어준다.
+  const printFn = useCallback(() => window.print(), []);
 
   // 탭 화면에 내려주는 ShellContext — 모든 필드가 안정적인 참조라 객체 자체도 앱 수명 동안 하나만 만든다.
   const tabShell: ShellContext = useMemo(
@@ -203,9 +207,10 @@ export default function MobileShell() {
       requestClose: requestCloseFn,
       open: openFn,
       toast: toastFn,
-      platform: 'mobile'
+      platform: 'mobile',
+      print: printFn
     }),
-    [setTitleFn, requestCloseFn, openFn, toastFn]
+    [setTitleFn, requestCloseFn, openFn, toastFn, printFn]
   );
 
   const handleTabSelect = useCallback((id: TabSelection) => selectTab(id), [selectTab]);

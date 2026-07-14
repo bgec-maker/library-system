@@ -65,6 +65,10 @@
       "heading": "오늘의 도서관"
     }
   },
+  "print": {
+    "generatedAt": "생성일 {time}",
+    "systemBrand": "도서관 시스템"
+  },
   "camera": {
     "start": "카메라 시작",
     "stop": "카메라 끄기",
@@ -200,8 +204,44 @@
       "comingSoon": "최근 처리 목록은 곧 제공됩니다."
     },
     "reports": {
-      "comingSoon": "리포트 허브 — 다음 항목에서 구현됩니다.",
-      "requestedType": "요청한 리포트: {type}"
+      "comingSoon": "다음 항목에서 구현됩니다.",
+      "comingSoonFor": "{name} — 다음 항목에서 구현됩니다.",
+      "backToTypes": "다른 리포트 선택",
+      "typeSelectorHeading": "리포트 종류",
+      "previewButton": "미리보기",
+      "printButton": "인쇄",
+      "fetchError": "리포트를 불러오지 못했습니다 — {message}",
+      "noLoanFinder": {
+        "title": "미대출 학생 발굴",
+        "sinceDateLabel": "이 날짜 이후 대출이 없으면",
+        "sinceDateHint": "비워두면 최근 3개월 기준으로 조회합니다.",
+        "totalCountLine": "{date} 이후 대출 이력이 없는 재학생 {count}명",
+        "classHeading": "{grade}학년 {classNo}반 ({count}명)",
+        "empty": "모든 재학생이 대출 이력이 있습니다.",
+        "printTitle": "미대출 학생 명단"
+      },
+      "homeroom": {
+        "title": "담임 리포트",
+        "gradeLabel": "학년",
+        "classNoLabel": "반",
+        "monthLabel": "월",
+        "studentCountLine": "{grade}학년 {classNo}반 · 재학생 {count}명",
+        "loanStatusHeading": "대출 현황",
+        "noLoanHeading": "미대출 명단",
+        "overdueHeading": "연체 목록",
+        "popularBooksHeading": "우리 반 인기책",
+        "colName": "이름",
+        "colSeat": "번호",
+        "colLoanCount": "대출 건수",
+        "colBookTitle": "책 제목",
+        "colDueDate": "반납 예정일",
+        "colOverdueDays": "연체일",
+        "overdueDaysValue": "{days}일",
+        "noLoanEmpty": "이 달 미대출 학생이 없습니다.",
+        "overdueEmpty": "현재 연체 중인 대출이 없습니다.",
+        "popularEmpty": "이 달 대출 기록이 없습니다.",
+        "printTitle": "{grade}학년 {classNo}반 담임 리포트 · {month}"
+      }
     }
   },
   "student": {

@@ -1,0 +1,97 @@
+/* views/reports/reports.css — 리포트 허브 화면 스타일(선택 화면·조건 폼·미리보기 버튼줄).
+   실제 인쇄 서식(.print-root 등)은 styles/print.css 전역 규약 — 여기는 화면 전용, 색상
+   리터럴 금지(전부 var(--token), DESIGN.md). */
+
+.reports-hub {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reports-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reports-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.reports-type-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: left;
+  min-height: 44px;
+}
+.reports-type-card:hover {
+  border-color: var(--deep);
+}
+.reports-type-card svg {
+  flex-shrink: 0;
+  color: var(--deep);
+}
+.reports-type-card-label {
+  flex: 1;
+  font-weight: 600;
+}
+.reports-type-card.is-pending svg {
+  color: var(--ink-3);
+}
+.reports-type-card-hint {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.reports-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.reports-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+.reports-field label {
+  margin: 0 0 4px;
+}
+
+.reports-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reports-error {
+  background: var(--fail);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+}
+
+.reports-placeholder {
+  padding: 16px;
+  color: var(--ink-2);
+}
+
+.reports-summary-line {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}

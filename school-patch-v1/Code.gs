@@ -2297,6 +2297,7 @@ function doPost(e) {
       if (action === 'checkout') return apiWebCheckout_(payload);
       if (action === 'return') return apiWebReturn_(payload);
       if (action === 'dashboard') return apiWebDashboard_(payload);
+      if (action === 'report') return apiWebReport_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2355,6 +2356,143 @@ function apiWebReturn_(payload) {
 // (todo/04 「샘플 폴백」) — 그러니 재배포 전까지 UNKNOWN_ACTION이 뜨는 건 버그가 아니라 정상 상태다.
 function apiWebDashboard_(payload) {
   return getDashboardData_();
+}
+
+// 웹앱 리포트 허브(FEATURES.md R1)용 읽기 액션 — todo/05. type 파라미터로 리포트 종류를
+// 분기한다. 전부 읽기 전용(readTable_ 재사용, 쓰기 없음) — executeWrite_/checkout_/return_ 등
+// 보호 대상 로직은 건드리지 않는다. 배포 전(이 action 자체가 UNKNOWN_ACTION)과 배포 후에
+// type이 잘못된 경우(VALIDATION_ERROR)를 구분한다 — 웹앱은 전자만 샘플 폴백으로 다룬다.
+function apiWebReport_(payload) {
+  var type = cleanText_(payload && payload.type);
+  if (type === 'no-loan-finder') return reportNoLoanFinder_(payload || {});
+  if (type === 'homeroom-report') return reportHomeroomClass_(payload || {});
+  fail_('VALIDATION_ERROR', '지원하지 않는 리포트 종류입니다: ' + type);
+}
+
+// R1-1 미대출 학생 발굴 — FEATURES.md "MEMBERS - LOANS... 반별 이름 목록. '숫자'가 아니라
+// '명단'". 기간(sinceDate) 기본값은 FEATURES.md가 정확한 창을 못박지 않아 "최근 3개월"로
+// 임의 지정했다(docs/ASSUMPTIONS.md todo/05 참고) — payload.sinceDate(yyyy-MM-dd 등 Date
+// 파싱 가능 문자열)로 호출측이 덮어쓸 수 있다.
+function reportNoLoanFinder_(payload) {
+  var now = new Date();
+  var since = payload.sinceDate ? parseOptionalDate_(payload.sinceDate) : addDays_(now, -90);
+  if (!since) fail_('VALIDATION_ERROR', 'sinceDate 형식이 올바르지 않습니다: ' + payload.sinceDate);
+
+  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE';
+  });
+  var loans = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows;
+
+  var loanedMemberIds = {};
+  loans.forEach(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (checkedOut && checkedOut.getTime() >= since.getTime()) loanedMemberIds[loan.member_id] = true;
+  });
+
+  var noLoanMembers = members.filter(function(m) { return !loanedMemberIds[m.member_id]; });
+
+  var classesByKey = {};
+  noLoanMembers.forEach(function(m) {
+    var grade = Number(m.grade) || 0;
+    var classNo = Number(m.class_no) || 0;
+    var key = grade + '-' + classNo;
+    if (!classesByKey[key]) classesByKey[key] = { grade: grade, classNo: classNo, students: [] };
+    classesByKey[key].students.push({
+      memberNo: m.member_no || m.member_id,
+      name: m.name || '',
+      studentNo: Number(m.student_no) || 0
+    });
+  });
+
+  var classes = Object.keys(classesByKey).map(function(key) { return classesByKey[key]; });
+  classes.forEach(function(cls) {
+    cls.students.sort(function(a, b) { return a.studentNo - b.studentNo; });
+  });
+  classes.sort(function(a, b) { return a.grade - b.grade || a.classNo - b.classNo; });
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    sinceDate: formatDate_(since),
+    totalCount: noLoanMembers.length,
+    classes: classes
+  };
+}
+
+// R1-2 담임 리포트(월간·반별) — FEATURES.md "대출 현황, 미대출 명단, 연체, 우리 반 인기책...
+// 인쇄 전제 A4 1장". LOANS -> MEMBERS(반 필터) -> COPIES -> TITLES 조인.
+function reportHomeroomClass_(payload) {
+  var grade = Number(payload.grade);
+  var classNo = Number(payload.classNo);
+  var month = cleanText_(payload.month); // 'yyyy-MM'
+  if (!grade || !classNo) fail_('VALIDATION_ERROR', 'grade·classNo가 필요합니다.');
+  if (!/^\d{4}-\d{2}$/.test(month)) fail_('VALIDATION_ERROR', 'month는 yyyy-MM 형식이어야 합니다: ' + month);
+
+  var now = new Date();
+  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE' &&
+      Number(row.grade) === grade && Number(row.class_no) === classNo;
+  });
+  var memberIds = toSet_(members, 'member_id');
+  var memberById = indexBy_(members, 'member_id');
+
+  var loans = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.filter(function(row) { return memberIds[row.member_id]; });
+  var copyById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.COPIES).rows, 'copy_id');
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+
+  var monthLoans = loans.filter(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    return checkedOut && formatDate_(checkedOut).slice(0, 7) === month;
+  });
+
+  var countByMember = {};
+  monthLoans.forEach(function(loan) { countByMember[loan.member_id] = (countByMember[loan.member_id] || 0) + 1; });
+  var loanStatus = members.map(function(m) {
+    return { memberNo: m.member_no || m.member_id, name: m.name || '', studentNo: Number(m.student_no) || 0, loanCount: countByMember[m.member_id] || 0 };
+  }).sort(function(a, b) { return a.studentNo - b.studentNo; });
+
+  var noLoanList = loanStatus.filter(function(item) { return item.loanCount === 0; });
+
+  var overdueList = loans.filter(function(loan) {
+    return loan.status_code === 'OPEN' && !loan.returned_at;
+  }).map(function(loan) {
+    var copy = copyById[loan.copy_id] || {};
+    var title = titleById[copy.title_id] || {};
+    var member = memberById[loan.member_id] || {};
+    var due = asDate_(loan.due_at);
+    var overdueDays = due && due.getTime() < now.getTime() ? Math.max(1, Math.ceil((now.getTime() - due.getTime()) / 86400000)) : 0;
+    return {
+      memberNo: member.member_no || loan.member_id,
+      name: member.name || '',
+      title: title.title || copy.title_id || '',
+      dueAtText: due ? formatDate_(due) : '',
+      overdueDays: overdueDays
+    };
+  }).filter(function(item) { return item.overdueDays > 0; })
+    .sort(function(a, b) { return b.overdueDays - a.overdueDays; });
+
+  var countByTitle = {};
+  monthLoans.forEach(function(loan) {
+    var copy = copyById[loan.copy_id] || {};
+    if (!copy.title_id) return;
+    countByTitle[copy.title_id] = (countByTitle[copy.title_id] || 0) + 1;
+  });
+  var popularBooks = Object.keys(countByTitle).map(function(titleId) {
+    return { title: (titleById[titleId] || {}).title || titleId, loanCount: countByTitle[titleId] };
+  }).sort(function(a, b) { return b.loanCount - a.loanCount; }).slice(0, 5);
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    grade: grade,
+    classNo: classNo,
+    month: month,
+    studentCount: members.length,
+    loanStatus: loanStatus,
+    noLoanList: noLoanList,
+    overdueList: overdueList,
+    popularBooks: popularBooks
+  };
 }
 
 function normalizeIsbn13Strict_(value) {

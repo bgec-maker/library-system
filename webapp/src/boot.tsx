@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, type ReactNode } from 'react';
 import './tokens/work.css';
 import './styles/base.css';
+import './styles/print.css';
 import { SessionGate } from './components/SessionGate';
 import { ensureLocaleReady } from './i18n';
 

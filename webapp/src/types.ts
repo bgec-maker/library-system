@@ -36,6 +36,14 @@ export interface ShellContext {
   toast(message: string, kind?: ToastKind): void;
   /** 셸 종류 — 반응형 판단(matchMedia/innerWidth)을 뷰가 직접 하지 못하게, 셸이 이미 판정한 값만 내려준다. */
   platform: 'desktop' | 'mobile';
+  /**
+   * 인쇄 트리거 — todo/05(리포트 R1). views/**는 window.*를 직접 부를 수 없으므로(린트로 강제,
+   * check-view-boundary.mjs) 최소 표면만 여기 추가했다. 구현은 두 셸 모두 결국
+   * `window.print()` 한 줄이지만(Window.tsx는 인쇄 대상 창만 구분하는 표식 처리도 함께 한다),
+   * "함부로 넓히지 않는다"는 이 인터페이스의 원칙에 따라 옵션(스타일시트 선택 등)은 추가하지
+   * 않았다 — 인쇄 서식은 styles/print.css의 `.print-root` 규약이 전담한다.
+   */
+  print(): void;
 }
 
 // 모든 뷰 컴포넌트의 표준 시그니처 — 데스크톱 창이든 모바일 탭/스택이든 이 props만 받는다.
