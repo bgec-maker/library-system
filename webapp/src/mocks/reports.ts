@@ -1,4 +1,10 @@
-import type { HomeroomReport, NoLoanFinderReport } from '../services/reportData';
+import type {
+  DonorThanksReport,
+  HomeroomReport,
+  NoLoanFinderReport,
+  RecallNoticeReport,
+  WeedingRecommendReport
+} from '../services/reportData';
 
 // 「샘플 데이터」 폴백 — mocks/dashboard.ts와 같은 규약(todo/04). Code.gs가 아직 report 액션을
 // 모르는 배포(UNKNOWN_ACTION)일 때 services/reportData.ts가 이 객체들을 대신 내려주고, 화면은
@@ -65,4 +71,72 @@ export const mockHomeroomReport: HomeroomReport = {
     { title: '어린 왕자', loanCount: 2 },
     { title: '해리 포터와 마법사의 돌', loanCount: 1 }
   ]
+};
+
+export const mockWeedingRecommendReport: WeedingRecommendReport = {
+  libraryName: 'BGEC 도서관 (샘플)',
+  generatedAt: '2026-07-15 09:00',
+  minAgeYears: 2,
+  weedingCandidates: [
+    { copyId: 'CPY-0142', barcode: '0000142', title: '1998년 컴퓨터 상식', author: '김철수', shelfCode: 'A-3', acquiredAtText: '2019-03-12' },
+    { copyId: 'CPY-0198', barcode: '0000198', title: '오래된 위인전 전집 3권', author: '박영희', shelfCode: 'B-1', acquiredAtText: '2020-09-01' },
+    { copyId: 'CPY-0231', barcode: '0000231', title: '낡은 백과사전', author: '이민호', shelfCode: 'C-2', acquiredAtText: '2021-05-20' }
+  ],
+  purchaseCandidates: [
+    { titleId: 'TTL-2001', title: '아몬드', queueLength: 5, copyCount: 1, ratio: 5 },
+    { titleId: 'TTL-2002', title: '어린 왕자', queueLength: 3, copyCount: 2, ratio: 1.5 },
+    { titleId: 'TTL-2003', title: '해리 포터와 마법사의 돌', queueLength: 4, copyCount: 3, ratio: 1.33 }
+  ]
+};
+
+export const mockRecallNoticeReport: RecallNoticeReport = {
+  libraryName: 'BGEC 도서관 (샘플)',
+  generatedAt: '2026-07-15 09:00',
+  asOfDate: '2026-07-15',
+  totalCount: 5,
+  classes: [
+    {
+      grade: 1,
+      classNo: 2,
+      items: [
+        { studentNo: 3, name: '박지호', title: '아기 돼지 삼형제', dueAtText: '2026-06-20', overdueDays: 25 },
+        { studentNo: 7, name: '이수민', title: '구름빵', dueAtText: '2026-07-01', overdueDays: 14 }
+      ]
+    },
+    {
+      grade: 2,
+      classNo: 1,
+      items: [{ studentNo: 12, name: '최하은', title: '완득이', dueAtText: '2026-07-08', overdueDays: 7 }]
+    },
+    {
+      grade: 3,
+      classNo: 4,
+      items: [
+        { studentNo: 5, name: '오서연', title: '어린 왕자', dueAtText: '2026-06-25', overdueDays: 20 },
+        { studentNo: 9, name: '한지우', title: '해리 포터와 마법사의 돌', dueAtText: '2026-06-30', overdueDays: 15 }
+      ]
+    }
+  ]
+};
+
+export const mockDonorThanksReport: DonorThanksReport = {
+  libraryName: 'BGEC 도서관 (샘플)',
+  generatedAt: '2026-07-15 09:00',
+  donorGroups: [
+    {
+      sourceLabel: '기증-학부모회',
+      totalPrice: 84000,
+      items: [
+        { copyId: 'CPY-0301', title: '아몬드', price: 13000, acquiredAtText: '2026-03-02' },
+        { copyId: 'CPY-0302', title: '어린 왕자', price: 12000, acquiredAtText: '2026-03-02' },
+        { copyId: 'CPY-0303', title: '해리 포터와 마법사의 돌', price: 15800, acquiredAtText: '2026-03-02' }
+      ]
+    },
+    {
+      sourceLabel: '기증-졸업생 홍길동',
+      totalPrice: 27000,
+      items: [{ copyId: 'CPY-0310', title: '구름빵', price: 27000, acquiredAtText: '2026-02-14' }]
+    }
+  ],
+  skippedNoSource: 12
 };

@@ -369,3 +369,84 @@
   뒤 정렬까지 반영된 전체 배열"로 해석했다. 필터를 안 걸었으면 로드된 전체(5,000행급도 포함)가
   그대로 나간다.
   50개만 내려준다(대기 인원 내림차순).
+
+## todo/09 · R1 잔여 + en 완역 (2026-07-15)
+
+- **R1-5 기증 감사장의 "기증자별" 그룹화는 `08_COPIES.acquisition_source` 원문 문자열을 그대로
+  그룹 키로 쓴다**(`reportDonorThanks_`, Code.gs) — 08_COPIES에는 기증자 개인 식별 필드가
+  없고(HEADERS 배열은 절대 규칙상 수정 금지), `acquisition_source`는 `16_CODEBOOK`에 코드군도
+  없는 순수 자유 텍스트다(`registerCopy_`가 `validateCodeInput_` 없이 `safeText_`로만 저장,
+  현재 웹앱 등록 화면도 이 값을 아예 입력받지 않는다). 즉 "기증자별"을 정확히 재현할 스키마
+  근거가 전혀 없다 — todo/04의 KPI 매핑 갭·todo/06의 회전율 버킷 갭과 같은 범주의 "백엔드에
+  필드 X가 없다, 대신 이렇게 근사한다" 판단이다. 실무 입력값이 "기증-홍길동"처럼 사람 이름을
+  담고 있으면 사실상 기증자별 그룹이 되지만 "DONATION" 같은 굵은 코드면 그룹이 하나로 뭉친다
+  — 이걸 감추지 않고 프론트(`views/reports/index.tsx`의 `DonorThanksPanel`)가
+  `views.reports.donor.disclaimer`로 "그룹명은 실제 기증자 이름이 아니라 등록 시 입력한 입수
+  경로 원문"이라는 사실을 화면·인쇄물 양쪽에 그대로 노출한다("OOO님께 감사드립니다" 같은
+  확인되지 않은 인적 문구는 만들지 않았다). `acquisition_source`가 빈 소장본은 그룹화에서
+  제외하고 개수를 `skippedNoSource`로 함께 내려 각주로 보여준다(VIZ.md 턴오버 사분면의
+  `skippedNoAcquiredDate`와 같은 관례).
+
+- **R1-4 회수 쪽지의 "방학 미반납"은 학사력 개념이 없어 "현재 연체 전체"로 단순화**했다
+  (`reportRecallNotice_`, Code.gs) — 방학 시작·종료일 같은 학사력 설정이 `17_CONFIG`
+  스키마 어디에도 없다(`getConfig_`로 조회 가능한 키 없음). 새 설정을 만들려면 CONFIG
+  스키마를 건드려야 해 이번 스코프 밖이라, `LOANS.status_code === 'OPEN' && due_at < now`
+  전체를 대상으로 했다. 또한 회수 쪽지는 담임 학급 배부용이라 `member_type_code === 'STUDENT'`
+  (학급이 있는 재학생)만 포함하고 교직원 등은 제외했다.
+
+- **R1-3 구매 후보(복본)의 "회전율 상위"는 예약 대기열(WAITING/READY) ÷ 현재 복본 수 비율로
+  근사**했다(`reportWeedingRecommend_`, Code.gs) — FEATURES.md가 "예약 누적·회전율 상위"라고만
+  쓰고 정확한 산식을 못박지 않아, "복본 1권에 대기 3명"이 "복본 10권에 대기 3명"보다 훨씬
+  급하다는 직관을 살리는 비율(`ratio = queueLength / max(copyCount,1)`)로 정렬했다(단순 대기
+  인원 내림차순보다 예산 배분 의사결정에 더 직접적이라고 판단). 분모(`copyCount`)는
+  폐기(WITHDRAWN)·분실(LOST)을 뺀 실제 유통 중 복본 수 — 대출 중인 복본도 포함한다(대출
+  중이라 대기가 생기는 것이므로 분모에서 빼면 오히려 왜곡된다). 폐기 후보 판정의 "2년"은
+  FEATURES.md 원문이 그대로 명시한 값(`WEEDING_MIN_AGE_YEARS_ = 2`)이라 임의 지정이 아니다.
+
+- **R1-4 회수 쪽지의 "한 반이 한 열" 절취 인쇄는 한 줄에 3개 열(`.print-recall-slip`
+  `width: 33.333%`)로 고정**했다(`styles/print.css`) — DESIGN.md는 "절취선(dashed) + 한 반이
+  한 열"이라고만 쓰고 한 줄에 몇 개 열을 둘지는 명시하지 않아, A4 세로 여백(14mm) 안에서
+  번호·이름·책 제목·반납일이 한 줄에 읽기 편한 최소 폭 기준으로 임의 결정했다. R1-1/R1-2가
+  쓰는 `.print-table`/`.print-class-group`과는 형태가 완전히 달라(다단 그리드 vs 줄글 표)
+  겹쳐 쓰지 않고 `.print-recall-grid`/`.print-recall-slip` 등 새 클래스를 추가했다(이 파일
+  헤더 주석이 todo/09 몫으로 예고한 그대로 — 기존 규칙은 손대지 않고 순수 추가).
+
+- **5개 리포트 전부 "미리보기" 버튼을 눌러야 조회되는 온디맨드 방식을 유지**했다 — R1-3/4/5는
+  필수 파라미터가 없어(폼 입력 없이 바로 조회 가능) 패널 마운트 시 자동 조회하는 편이 더
+  매끄러울 수도 있었지만, R1-1(미대출 학생 발굴)도 이미 모든 파라미터가 선택값인데 자동
+  조회를 하지 않는다 — 5종 전부 같은 상호작용 패턴을 유지하는 편이 "예상 밖 동작"을 만들지
+  않는다고 판단했다(`services/reportData.ts`의 "종류+조건을 고른 다음 그때 한 번 조회"
+  원칙과도 일치).
+
+- **금액(가격 합계) 표시는 사전에 문자열을 박아 넣지 않고 `Intl.NumberFormat(intlLocaleTag(),
+  { style: 'currency', currency: 'KRW' })`로 로케일에 맞춰 렌더**한다(`views/reports/index.tsx`
+  `formatCurrency`) — ADR-023 "날짜·숫자는 사전에 넣지 않고 Intl.*(locale)" 원칙을 금액에도
+  그대로 적용했다. 통화 코드 `KRW`는 하드코딩이지만 이 프로젝트 전체가 원화 기준 학교 예산을
+  다루고 CONFIG에 통화 설정 개념 자체가 없어(다국어 통화 지원은 범위 밖) 합리적 고정값으로
+  판단했다.
+
+- **R1-3/4/5의 새 DataTable/인쇄 열 라벨은 최대한 기존 키를 재사용**했다(DESIGN.md "같은 행동
+  같은 이름 관통") — 등록번호·서명·저자·서가·입수일은 `views.catalog.col.*`(todo/08 카탈로그
+  열과 동일 개념), 대기 인원은 `viz.reservationPressure.colQueue`(todo/06), 복본수는
+  `views.register.labelCopyCount`, 회수 쪽지의 번호·이름·책 제목·반납 예정일·연체일은 담임
+  리포트(`views.reports.homeroom.*`)의 동일 개념 열을 그대로 재사용했다. 정말 새로운 개념(폐기/
+  구매 후보 비율, 입수 경로, 합계 금액, 절취 안내 문구 등)만 `views.reports.weeding/recall/
+  donor.*` 네임스페이스에 새 키로 추가했다.
+
+- **학생 표면(`src/student/StudentRoot.tsx`) 언어 토글은 셸 컴포넌트가 아니라 `StudentRoot`
+  자신에 직접 구현**했다 — 이 표면엔 `ShellContext`가 없어(todo/02 ASSUMPTIONS 참고) 데스크톱
+  `Dock.tsx`(LocaleSwitch)·모바일 `MobileShell.tsx`(LocaleRow)와 똑같은 컴포넌트를 재사용할
+  통로가 없다. `setLocale`/`getLocale`/`useLocale`은 이미 셸과 무관한 범용 함수/훅이라 여기서
+  바로 호출했다. 버튼 색은 모바일 더보기의 `.m-more-locale-btn`과 같은 토큰 조합(비활성=
+  paper/rule, 활성=deep/#fff)을 그대로 재사용해 표시 방식(ASCII KO/EN 코드)의 일관성을
+  유지했고, 이 표면 고유 표식으로 지구본 아이콘(`lucide-react` `Globe`, size 16 — 인라인 버튼
+  아이콘 관례)만 얹었다(FRONTEND.md "student 표면 상단 지구본" 문구 그대로). `student/**`는
+  뷰 경계 린트 대상은 아니지만 i18n 리터럴 린트 대상이라(FRONTEND.md) 토글의 라벨은 전부
+  `t()`/ASCII 코드로만 구성했다.
+
+- **`check-i18n-completeness.mjs`는 값이 아니라 "키 존재 여부"만 양방향으로 검사**한다 —
+  ko.json에만 있는 키(en 번역 누락)와 en.json에만 있는 키(안 쓰는 잔재 키) 둘 다 실패로
+  잡지만, 번역 품질(예: 영어 값이 사실 한국어를 그대로 베낀 placeholder인지)까지는 기계적으로
+  판별할 수 없어 자동화 범위 밖으로 뒀다 — en.json 전체(330개 키)를 사람이 직접 훑어 실제
+  의미가 통하는 영어로 옮기는 작업은 이번 항목에서 수동으로 수행했다(스크립트는 회귀 방지용
+  이중 방어선).

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, BookX, ChartColumn, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
 import type { ShellContext, ViewProps } from '../../types';
@@ -7,23 +7,34 @@ import { PrintDocument } from '../../components/PrintDocument';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import {
+  fetchDonorThanksReport,
   fetchHomeroomReport,
   fetchNoLoanFinderReport,
+  fetchRecallNoticeReport,
+  fetchWeedingRecommendReport,
+  type DonorThanksGroup,
+  type DonorThanksReport,
   type HomeroomLoanStatusRow,
   type HomeroomOverdueRow,
   type HomeroomPopularBook,
   type HomeroomReport,
-  type NoLoanFinderReport
+  type NoLoanFinderReport,
+  type PurchaseCandidateRow,
+  type RecallNoticeItem,
+  type RecallNoticeReport,
+  type WeedingCandidateRow,
+  type WeedingRecommendReport
 } from '../../services/reportData';
 import { CategoryTreemap, TurnoverQuadrant, VizLazyMount } from '../../viz';
-import { t } from '../../i18n';
+import { intlLocaleTag, t } from '../../i18n';
 import './reports.css';
 
 // 리포트 허브 — FEATURES.md R1 "종류 선택 → 미리보기 → 인쇄". todo/04가 만든 「조용한 신호」
 // 5개 버튼(shells/desktop/DashboardBaseLayer.tsx)이 그대로 여기로 직행한다
-// (`openWindow('reports', { type: <reportType> })`). 이번 항목은 그중 2개(R1-1 미대출 학생
-// 발굴 · R1-2 담임 리포트)를 실제 구현하고, 나머지 3개(죽은 장서·회수 쪽지·기증 감사장)는
-// todo/09가 채울 자리만 남겨 둔다 — 신호 버튼이 죽은 버튼이 되지 않게.
+// (`openWindow('reports', { type: <reportType> })`). todo/05가 먼저 2개(R1-1 미대출 학생 발굴 ·
+// R1-2 담임 리포트)를 구현했고, todo/09가 나머지 3개(R1-3 죽은 장서/구매 추천 · R1-4 회수 쪽지 ·
+// R1-5 기증 감사장)를 마저 채워 5종 전부 실제 구현으로 완성했다 — 더 이상 "다음 항목에서
+// 구현됩니다" 플레이스홀더가 남아 있지 않다.
 //
 // 개인정보(FEATURES.md 원칙): 이 뷰는 registry.ts에 roles:['LIBRARIAN']로만 등록돼 있고,
 // src/student/** 어디서도 이 뷰나 services/reportData.ts를 import하지 않는다 — 학생 표면에는
@@ -50,9 +61,9 @@ interface ReportTypeMeta {
 const REPORT_TYPES: ReportTypeMeta[] = [
   { id: 'no-loan-finder', labelKey: 'dashboard.quietSignal.noLoanFinder', icon: UserSearch, implemented: true },
   { id: 'homeroom-report', labelKey: 'dashboard.quietSignal.homeroomReport', icon: FileText, implemented: true },
-  { id: 'weeding-recommend', labelKey: 'dashboard.quietSignal.weedingRecommend', icon: BookX, implemented: false },
-  { id: 'recall-notice', labelKey: 'dashboard.quietSignal.recallNotice', icon: Megaphone, implemented: false },
-  { id: 'donor-thanks', labelKey: 'dashboard.quietSignal.donorThanks', icon: Gift, implemented: false }
+  { id: 'weeding-recommend', labelKey: 'dashboard.quietSignal.weedingRecommend', icon: BookX, implemented: true },
+  { id: 'recall-notice', labelKey: 'dashboard.quietSignal.recallNotice', icon: Megaphone, implemented: true },
+  { id: 'donor-thanks', labelKey: 'dashboard.quietSignal.donorThanks', icon: Gift, implemented: true }
 ];
 
 function isReportTypeId(value: string): value is ReportTypeId {
@@ -467,6 +478,451 @@ function HomeroomReportPanel({ shell }: HomeroomReportPanelProps) {
   );
 }
 
+// ── R1-3 죽은 장서 / 구매 추천 ──────────────────────────────────────────────────────
+// FEATURES.md "입수 2년↑·대출 0회 = 폐기 후보 / 예약 누적·회전율 상위 = 복본 구매 후보". 열
+// 라벨은 새로 만들지 않고 이미 같은 개념을 가리키는 기존 키를 그대로 재사용한다(DESIGN.md
+// "같은 행동 같은 이름 관통"): barcode/title/author/shelf/acquiredAt은 views.catalog.col.*
+// (todo/08 카탈로그 열과 동일 개념), queueLength는 viz.reservationPressure.colQueue("대기
+// 인원", todo/06), copyCount는 views.register.labelCopyCount("복본수", 등록 폼과 동일 개념).
+const weedingCandidateColumns: DataTableColumn<WeedingCandidateRow>[] = [
+  { key: 'barcode', header: t('views.catalog.col.barcode'), sortable: true, mono: true, mobilePrimary: true },
+  { key: 'title', header: t('views.catalog.col.title'), sortable: true, mobileSecondary: true },
+  { key: 'author', header: t('views.catalog.col.authors'), sortable: true },
+  { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true },
+  { key: 'acquiredAtText', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true }
+];
+
+const purchaseCandidateColumns: DataTableColumn<PurchaseCandidateRow>[] = [
+  { key: 'title', header: t('views.catalog.col.title'), sortable: true, mobilePrimary: true },
+  { key: 'queueLength', header: t('viz.reservationPressure.colQueue'), sortable: true, numeric: true, mobileSecondary: true },
+  { key: 'copyCount', header: t('views.register.labelCopyCount'), sortable: true, numeric: true },
+  {
+    key: 'ratio',
+    header: t('views.reports.weeding.colRatio'),
+    sortable: true,
+    numeric: true,
+    render: (row) => row.ratio.toFixed(2)
+  }
+];
+
+interface WeedingRecommendPanelProps {
+  shell: ShellContext;
+}
+
+function WeedingRecommendPanel({ shell }: WeedingRecommendPanelProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ data: WeedingRecommendReport; sample: boolean } | null>(null);
+
+  async function handlePreview() {
+    setLoading(true);
+    setError(null);
+    const outcome = await fetchWeedingRecommendReport();
+    setLoading(false);
+    if (outcome.ok) setResult({ data: outcome.data, sample: outcome.sample });
+    else {
+      setResult(null);
+      setError(outcome.message);
+    }
+  }
+
+  return (
+    <div>
+      <div className="no-print">
+        <h2>{t('views.reports.weeding.title')}</h2>
+        <div className="reports-form">
+          <div className="reports-actions">
+            <button type="button" onClick={() => void handlePreview()} disabled={loading}>
+              {loading ? t('common.loading') : t('views.reports.previewButton')}
+            </button>
+            {result && (
+              <button type="button" className="ghost" onClick={() => shell.print()}>
+                <Printer size={16} aria-hidden /> {t('views.reports.printButton')}
+              </button>
+            )}
+            {result?.sample && <SampleDataBadge />}
+          </div>
+        </div>
+        {error && (
+          <div className="reports-error" role="alert">
+            {t('views.reports.fetchError', { message: error })}
+          </div>
+        )}
+      </div>
+
+      {result && (
+        <div className="no-print reports-datatable-section">
+          <p className="reports-summary-line">
+            {t('views.reports.weeding.subtitle', { years: result.data.minAgeYears })}
+          </p>
+
+          <h3>{t('views.reports.weeding.weedingHeading')}</h3>
+          <DataTable<WeedingCandidateRow>
+            columns={weedingCandidateColumns}
+            rows={result.data.weedingCandidates}
+            rowKey={(row) => row.copyId}
+            platform={shell.platform}
+            emptyHint={t('views.reports.weeding.weedingEmpty')}
+            csvFileName="weeding-candidates.csv"
+            defaultPageSize={25}
+          />
+
+          <h3>{t('views.reports.weeding.purchaseHeading')}</h3>
+          <DataTable<PurchaseCandidateRow>
+            columns={purchaseCandidateColumns}
+            rows={result.data.purchaseCandidates}
+            rowKey={(row) => row.titleId}
+            platform={shell.platform}
+            emptyHint={t('views.reports.weeding.purchaseEmpty')}
+            csvFileName="purchase-candidates.csv"
+            defaultPageSize={25}
+          />
+        </div>
+      )}
+
+      {result && (
+        <div className="print-preview-frame">
+          <PrintDocument libraryName={result.data.libraryName} generatedAtText={result.data.generatedAt}>
+            <h2>{t('views.reports.weeding.printTitle')}</h2>
+            <p className="reports-summary-line">
+              {t('views.reports.weeding.subtitle', { years: result.data.minAgeYears })}
+            </p>
+
+            <h2>{t('views.reports.weeding.weedingHeading')}</h2>
+            {result.data.weedingCandidates.length === 0 ? (
+              <p className="print-empty">{t('views.reports.weeding.weedingEmpty')}</p>
+            ) : (
+              <table className="print-table">
+                <thead>
+                  <tr>
+                    <th className="mono">{t('views.catalog.col.barcode')}</th>
+                    <th>{t('views.catalog.col.title')}</th>
+                    <th>{t('views.catalog.col.authors')}</th>
+                    <th>{t('views.catalog.col.shelf')}</th>
+                    <th className="mono">{t('views.catalog.col.acquiredAt')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.weedingCandidates.map((row) => (
+                    <tr key={row.copyId}>
+                      <td className="mono">{row.barcode}</td>
+                      <td>{row.title}</td>
+                      <td>{row.author}</td>
+                      <td>{row.shelfCode}</td>
+                      <td className="mono">{row.acquiredAtText}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <h2>{t('views.reports.weeding.purchaseHeading')}</h2>
+            {result.data.purchaseCandidates.length === 0 ? (
+              <p className="print-empty">{t('views.reports.weeding.purchaseEmpty')}</p>
+            ) : (
+              <table className="print-table">
+                <thead>
+                  <tr>
+                    <th>{t('views.catalog.col.title')}</th>
+                    <th className="num">{t('viz.reservationPressure.colQueue')}</th>
+                    <th className="num">{t('views.register.labelCopyCount')}</th>
+                    <th className="num">{t('views.reports.weeding.colRatio')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.purchaseCandidates.map((row) => (
+                    <tr key={row.titleId}>
+                      <td>{row.title}</td>
+                      <td className="num">{row.queueLength}</td>
+                      <td className="num">{row.copyCount}</td>
+                      <td className="num">{row.ratio.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </PrintDocument>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── R1-4 회수 쪽지 ──────────────────────────────────────────────────────────────────
+// FEATURES.md "연체·방학 미반납을 담임별로 쪽지 인쇄... 교실 전달용 절취 쪽지". 인쇄 레이아웃은
+// R1-1/R1-2의 .print-table/.print-class-group과 형태가 달라(DESIGN.md "회수 쪽지: 절취선(dashed)
+// + 한 반이 한 열") styles/print.css에 새 클래스(.print-recall-grid/.print-recall-slip 등)를
+// 추가했다 — 기존 인쇄 클래스는 겹쳐 쓰지 않는다. 온스크린 인터랙티브 미리보기는 서버가 이미
+// 학급별로 그룹화해 내려준 데이터를 평평하게 펼쳐(grade/classNo를 각 행에 얹어) 정렬·필터
+// 가능한 단일 DataTable로 보여준다 — 열 라벨은 담임 리포트(homeroom)의 연체 목록과 같은
+// 개념이라 그 키를 그대로 재사용한다.
+type RecallNoticeFlatRow = RecallNoticeItem & { grade: number; classNo: number };
+
+const recallNoticeColumns: DataTableColumn<RecallNoticeFlatRow>[] = [
+  { key: 'grade', header: t('views.reports.homeroom.gradeLabel'), sortable: true, numeric: true },
+  { key: 'classNo', header: t('views.reports.homeroom.classNoLabel'), sortable: true, numeric: true },
+  { key: 'studentNo', header: t('views.reports.homeroom.colSeat'), sortable: true, numeric: true, mono: true },
+  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, mobilePrimary: true },
+  { key: 'title', header: t('views.reports.homeroom.colBookTitle'), sortable: true, mobileSecondary: true },
+  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true },
+  {
+    key: 'overdueDays',
+    header: t('views.reports.homeroom.colOverdueDays'),
+    sortable: true,
+    numeric: true,
+    render: (row) => t('views.reports.homeroom.overdueDaysValue', { days: row.overdueDays })
+  }
+];
+
+interface RecallNoticePanelProps {
+  shell: ShellContext;
+}
+
+function RecallNoticePanel({ shell }: RecallNoticePanelProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ data: RecallNoticeReport; sample: boolean } | null>(null);
+
+  const flatRows = useMemo<RecallNoticeFlatRow[]>(() => {
+    if (!result) return [];
+    return result.data.classes.flatMap((cls) => cls.items.map((item) => ({ ...item, grade: cls.grade, classNo: cls.classNo })));
+  }, [result]);
+
+  async function handlePreview() {
+    setLoading(true);
+    setError(null);
+    const outcome = await fetchRecallNoticeReport();
+    setLoading(false);
+    if (outcome.ok) setResult({ data: outcome.data, sample: outcome.sample });
+    else {
+      setResult(null);
+      setError(outcome.message);
+    }
+  }
+
+  return (
+    <div>
+      <div className="no-print">
+        <h2>{t('views.reports.recall.title')}</h2>
+        <p className="reports-summary-line">{t('views.reports.recall.subtitle')}</p>
+        <div className="reports-form">
+          <div className="reports-actions">
+            <button type="button" onClick={() => void handlePreview()} disabled={loading}>
+              {loading ? t('common.loading') : t('views.reports.previewButton')}
+            </button>
+            {result && (
+              <button type="button" className="ghost" onClick={() => shell.print()}>
+                <Printer size={16} aria-hidden /> {t('views.reports.printButton')}
+              </button>
+            )}
+            {result?.sample && <SampleDataBadge />}
+          </div>
+        </div>
+        {error && (
+          <div className="reports-error" role="alert">
+            {t('views.reports.fetchError', { message: error })}
+          </div>
+        )}
+      </div>
+
+      {result && (
+        <div className="no-print reports-datatable-section">
+          <p className="reports-summary-line">
+            {t('views.reports.recall.asOfDateLine', { date: result.data.asOfDate, count: result.data.totalCount })}
+          </p>
+          <DataTable<RecallNoticeFlatRow>
+            columns={recallNoticeColumns}
+            rows={flatRows}
+            rowKey={(row) => `${row.grade}-${row.classNo}-${row.studentNo}-${row.title}`}
+            platform={shell.platform}
+            emptyHint={t('views.reports.homeroom.overdueEmpty')}
+            csvFileName="recall-notice.csv"
+            defaultPageSize={25}
+          />
+        </div>
+      )}
+
+      {result && (
+        <div className="print-preview-frame">
+          <PrintDocument libraryName={result.data.libraryName} generatedAtText={result.data.generatedAt}>
+            <h2>{t('views.reports.recall.printTitle')}</h2>
+            <p className="reports-summary-line">
+              {t('views.reports.recall.asOfDateLine', { date: result.data.asOfDate, count: result.data.totalCount })}
+            </p>
+            <p className="reports-summary-line no-print">{t('views.reports.recall.cutLineHint')}</p>
+
+            {result.data.classes.length === 0 ? (
+              <p className="print-empty">{t('views.reports.homeroom.overdueEmpty')}</p>
+            ) : (
+              <div className="print-recall-grid">
+                {result.data.classes.map((cls) => (
+                  <div className="print-recall-slip" key={`${cls.grade}-${cls.classNo}`}>
+                    <div className="print-recall-slip-header">
+                      {t('views.reports.recall.classHeading', { grade: cls.grade, classNo: cls.classNo, count: cls.items.length })}
+                    </div>
+                    {cls.items.map((item, i) => (
+                      <div className="print-recall-item" key={`${item.studentNo}-${i}`}>
+                        <div className="print-recall-item-name">
+                          {item.studentNo}. {item.name}
+                        </div>
+                        <div className="print-recall-item-title">{item.title}</div>
+                        <div className="print-recall-item-due">
+                          {t('views.reports.recall.overdueLine', { date: item.dueAtText, days: item.overdueDays })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </PrintDocument>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── R1-5 기증 감사장 ────────────────────────────────────────────────────────────────
+// FEATURES.md "연말 기증자별 목록·감사장 일괄 생성... 기증 선순환 유도". 08_COPIES에는 기증자
+// 개인 식별 필드가 없어(school-patch-v1/Code.gs reportDonorThanks_ 주석·docs/ASSUMPTIONS.md
+// todo/09 참고) acquisition_source 원문 문자열을 그룹 키로 쓴다 — 화면은 이 그룹이 "기증자
+// 이름"이 아니라 "입수 경로 값"이라는 사실을 disclaimer로 정직하게 밝힌다(임의로 "OOO님께
+// 감사드립니다" 같은 확인되지 않은 인적 문구를 만들지 않는다). 금액은 사전에 문자열로 박아
+// 넣지 않고 Intl.NumberFormat(intlLocaleTag())으로 로케일에 맞춰 표시한다(ADR-023).
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
+}
+
+const donorGroupColumns: DataTableColumn<DonorThanksGroup>[] = [
+  { key: 'sourceLabel', header: t('views.reports.donor.colSource'), sortable: true, mobilePrimary: true },
+  {
+    key: 'itemCount',
+    header: t('views.reports.donor.colItemCount'),
+    sortable: true,
+    numeric: true,
+    sortAccessor: (row) => row.items.length,
+    render: (row) => row.items.length
+  },
+  {
+    key: 'totalPrice',
+    header: t('views.reports.donor.colTotalPrice'),
+    sortable: true,
+    numeric: true,
+    mobileSecondary: true,
+    render: (row) => formatCurrency(row.totalPrice)
+  }
+];
+
+interface DonorThanksPanelProps {
+  shell: ShellContext;
+}
+
+function DonorThanksPanel({ shell }: DonorThanksPanelProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ data: DonorThanksReport; sample: boolean } | null>(null);
+
+  async function handlePreview() {
+    setLoading(true);
+    setError(null);
+    const outcome = await fetchDonorThanksReport();
+    setLoading(false);
+    if (outcome.ok) setResult({ data: outcome.data, sample: outcome.sample });
+    else {
+      setResult(null);
+      setError(outcome.message);
+    }
+  }
+
+  return (
+    <div>
+      <div className="no-print">
+        <h2>{t('views.reports.donor.title')}</h2>
+        <p className="reports-summary-line">{t('views.reports.donor.subtitle')}</p>
+        <p className="reports-notice">{t('views.reports.donor.disclaimer')}</p>
+        <div className="reports-form">
+          <div className="reports-actions">
+            <button type="button" onClick={() => void handlePreview()} disabled={loading}>
+              {loading ? t('common.loading') : t('views.reports.previewButton')}
+            </button>
+            {result && (
+              <button type="button" className="ghost" onClick={() => shell.print()}>
+                <Printer size={16} aria-hidden /> {t('views.reports.printButton')}
+              </button>
+            )}
+            {result?.sample && <SampleDataBadge />}
+          </div>
+        </div>
+        {error && (
+          <div className="reports-error" role="alert">
+            {t('views.reports.fetchError', { message: error })}
+          </div>
+        )}
+      </div>
+
+      {result && (
+        <div className="no-print reports-datatable-section">
+          {result.data.skippedNoSource > 0 && (
+            <p className="reports-summary-line">{t('views.reports.donor.skippedNote', { count: result.data.skippedNoSource })}</p>
+          )}
+          <DataTable<DonorThanksGroup>
+            columns={donorGroupColumns}
+            rows={result.data.donorGroups}
+            rowKey={(row) => row.sourceLabel}
+            platform={shell.platform}
+            emptyHint={t('views.reports.donor.donorEmpty')}
+            csvFileName="donor-thanks.csv"
+            defaultPageSize={25}
+          />
+        </div>
+      )}
+
+      {result && (
+        <div className="print-preview-frame">
+          <PrintDocument libraryName={result.data.libraryName} generatedAtText={result.data.generatedAt}>
+            <h2>{t('views.reports.donor.printTitle')}</h2>
+            <p className="reports-summary-line">{t('views.reports.donor.disclaimer')}</p>
+
+            {result.data.donorGroups.length === 0 ? (
+              <p className="print-empty">{t('views.reports.donor.donorEmpty')}</p>
+            ) : (
+              result.data.donorGroups.map((group) => (
+                <div className="print-class-group" key={group.sourceLabel}>
+                  <div className="print-class-title">
+                    {t('views.reports.donor.groupHeading', {
+                      source: group.sourceLabel,
+                      count: group.items.length,
+                      total: formatCurrency(group.totalPrice)
+                    })}
+                  </div>
+                  <table className="print-table">
+                    <thead>
+                      <tr>
+                        <th>{t('views.catalog.col.title')}</th>
+                        <th className="mono">{t('views.catalog.col.acquiredAt')}</th>
+                        <th className="num">{t('views.reports.donor.colTotalPrice')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map((item) => (
+                        <tr key={item.copyId}>
+                          <td>{item.title}</td>
+                          <td className="mono">{item.acquiredAtText}</td>
+                          <td className="num">{formatCurrency(item.price)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))
+            )}
+          </PrintDocument>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReportsView({ shell, params }: ViewProps) {
   const requestedType = typeof params.type === 'string' && isSelectedPanelId(params.type) ? params.type : null;
   const [selectedType, setSelectedType] = useState<SelectedPanelId | null>(requestedType);
@@ -497,6 +953,9 @@ export default function ReportsView({ shell, params }: ViewProps) {
 
       {selectedType === 'no-loan-finder' && <NoLoanFinderPanel shell={shell} />}
       {selectedType === 'homeroom-report' && <HomeroomReportPanel shell={shell} />}
+      {selectedType === 'weeding-recommend' && <WeedingRecommendPanel shell={shell} />}
+      {selectedType === 'recall-notice' && <RecallNoticePanel shell={shell} />}
+      {selectedType === 'donor-thanks' && <DonorThanksPanel shell={shell} />}
       {selectedType === 'viz-insights' && <VizInsightsPanel shell={shell} />}
     </div>
   );

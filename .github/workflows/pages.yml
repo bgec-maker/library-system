@@ -36,6 +36,7 @@ jobs:
           npm run lint
           npm run check-view-boundary
           npm run check-i18n-literals
+          npm run check-i18n-completeness
       - name: webapp 빌드 (tsc + vite)
         working-directory: webapp
         run: npm run build

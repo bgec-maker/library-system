@@ -312,6 +312,37 @@
         "overdueEmpty": "현재 연체 중인 대출이 없습니다.",
         "popularEmpty": "이 달 대출 기록이 없습니다.",
         "printTitle": "{grade}학년 {classNo}반 담임 리포트 · {month}"
+      },
+      "weeding": {
+        "title": "죽은 장서 / 구매 추천",
+        "subtitle": "입수 {years}년 이상·대출 이력 없음 = 폐기 후보 · 예약 대기가 복본 수 대비 많음 = 구매 후보",
+        "weedingHeading": "폐기 후보",
+        "purchaseHeading": "구매 후보 (복본)",
+        "colRatio": "대기/복본 비율",
+        "weedingEmpty": "폐기 후보가 없습니다.",
+        "purchaseEmpty": "구매 후보가 없습니다.",
+        "printTitle": "죽은 장서 / 구매 추천 리포트"
+      },
+      "recall": {
+        "title": "회수 쪽지",
+        "subtitle": "현재 연체 중인 대출을 학급별로 모아 절취 쪽지로 인쇄합니다.",
+        "asOfDateLine": "{date} 기준 연체 {count}건",
+        "classHeading": "{grade}학년 {classNo}반 · {count}건",
+        "overdueLine": "{date} 반납 · {days}일 연체",
+        "cutLineHint": "점선을 따라 잘라 각 반 담임 선생님께 전달하세요.",
+        "printTitle": "회수 쪽지"
+      },
+      "donor": {
+        "title": "기증 감사장",
+        "subtitle": "연말 기증 목록·감사장 자료 — 입수 경로(acquisition_source) 값을 그대로 그룹화합니다.",
+        "disclaimer": "그룹명은 실제 기증자 이름이 아니라 소장본 등록 시 입력한 입수 경로 원문입니다 — 감사장을 발급하기 전에 이 그룹이 실제로 기증자를 가리키는지 직접 확인하세요.",
+        "colSource": "입수 경로",
+        "colItemCount": "권수",
+        "colTotalPrice": "합계 금액",
+        "skippedNote": "입수 경로가 입력되지 않은 소장본 {count}권은 집계에서 제외했습니다.",
+        "groupHeading": "{source} · {count}권 · {total}",
+        "donorEmpty": "그룹화할 수 있는 소장본이 없습니다(입수 경로 입력 필요).",
+        "printTitle": "기증 감사장"
       }
     },
     "vizInsights": {

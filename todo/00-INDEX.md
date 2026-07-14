@@ -23,7 +23,7 @@
 - [x] 06 viz-v1
 - [x] 07 integration-checkpoint
 - [x] 08 catalog + DataTable
-- [ ] 09 r1-remaining + en 완역
+- [x] 09 r1-remaining + en 완역
 
 ## waiting/ (게이트 열리면 큐로 승격 — 사용자만 승격 가능)
 field-verify-stub(🅿 현장) · repo-rename(도메인 후) · student-surface(🟡 로그인) · admin-automation · viz-v2v3 · locales(🟡 언어 목록)

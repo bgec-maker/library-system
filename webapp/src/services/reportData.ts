@@ -1,5 +1,11 @@
 import { apiCall } from './api';
-import { mockHomeroomReport, mockNoLoanFinderReport } from '../mocks/reports';
+import {
+  mockDonorThanksReport,
+  mockHomeroomReport,
+  mockNoLoanFinderReport,
+  mockRecallNoticeReport,
+  mockWeedingRecommendReport
+} from '../mocks/reports';
 
 // FEATURES.md R1 리포트 허브 데이터 계층 — services/dashboardData.ts와 같은 UNKNOWN_ACTION→샘플
 // 폴백 규약을 재사용하지만(SampleDataBadge.tsx 그대로 씀), 대시보드처럼 진입 시 자동 갱신되는
@@ -64,6 +70,81 @@ export interface HomeroomReport {
   popularBooks: HomeroomPopularBook[];
 }
 
+// R1-3 죽은 장서 / 구매 추천 — reportWeedingRecommend_(Code.gs)의 반환 모양 그대로.
+export interface WeedingCandidateRow {
+  copyId: string;
+  barcode: string;
+  title: string;
+  author: string;
+  shelfCode: string;
+  acquiredAtText: string;
+}
+
+export interface PurchaseCandidateRow {
+  titleId: string;
+  title: string;
+  queueLength: number;
+  copyCount: number;
+  ratio: number;
+}
+
+export interface WeedingRecommendReport {
+  libraryName: string;
+  generatedAt: string;
+  minAgeYears: number;
+  weedingCandidates: WeedingCandidateRow[];
+  purchaseCandidates: PurchaseCandidateRow[];
+}
+
+// R1-4 회수 쪽지 — reportRecallNotice_(Code.gs)의 반환 모양 그대로. 학급별로 이미 그룹화돼
+// 내려온다(프론트가 "한 반 = 한 열" 절취 인쇄 레이아웃을 그대로 그릴 수 있도록).
+export interface RecallNoticeItem {
+  studentNo: number;
+  name: string;
+  title: string;
+  dueAtText: string;
+  overdueDays: number;
+}
+
+export interface RecallNoticeClassGroup {
+  grade: number;
+  classNo: number;
+  items: RecallNoticeItem[];
+}
+
+export interface RecallNoticeReport {
+  libraryName: string;
+  generatedAt: string;
+  /** yyyy-MM-dd — 이 시각 기준 연체 스냅샷(방학 미반납 개념은 단순화, docs/ASSUMPTIONS.md todo/09). */
+  asOfDate: string;
+  totalCount: number;
+  classes: RecallNoticeClassGroup[];
+}
+
+// R1-5 기증 감사장 — reportDonorThanks_(Code.gs)의 반환 모양 그대로. sourceLabel은 실제
+// 기증자 이름이 아니라 08_COPIES.acquisition_source 원문 문자열이다(스키마에 기증자 식별
+// 필드가 없음 — docs/ASSUMPTIONS.md todo/09 참고).
+export interface DonorThanksItem {
+  copyId: string;
+  title: string;
+  price: number;
+  acquiredAtText: string;
+}
+
+export interface DonorThanksGroup {
+  sourceLabel: string;
+  items: DonorThanksItem[];
+  totalPrice: number;
+}
+
+export interface DonorThanksReport {
+  libraryName: string;
+  generatedAt: string;
+  donorGroups: DonorThanksGroup[];
+  /** acquisition_source가 비어 있어 어느 그룹에도 넣지 못한 소장본 수(집계에서 제외됨). */
+  skippedNoSource: number;
+}
+
 export type ReportFetchOutcome<T> = { ok: true; data: T; sample: boolean } | { ok: false; message: string };
 
 async function fetchReport<T>(type: string, params: Record<string, unknown>, sampleData: T): Promise<ReportFetchOutcome<T>> {
@@ -85,4 +166,19 @@ export function fetchNoLoanFinderReport(sinceDate?: string): Promise<ReportFetch
 /** R1-2 담임 리포트(월간·반별). month는 'yyyy-MM'. */
 export function fetchHomeroomReport(grade: number, classNo: number, month: string): Promise<ReportFetchOutcome<HomeroomReport>> {
   return fetchReport('homeroom-report', { grade, classNo, month }, mockHomeroomReport);
+}
+
+/** R1-3 죽은 장서 / 구매 추천 — 파라미터 없음(전체 장서 대상 1회 조회). */
+export function fetchWeedingRecommendReport(): Promise<ReportFetchOutcome<WeedingRecommendReport>> {
+  return fetchReport('weeding-recommend', {}, mockWeedingRecommendReport);
+}
+
+/** R1-4 회수 쪽지 — 파라미터 없음(전교 연체 전체를 학급별로 그룹화해 받는다). */
+export function fetchRecallNoticeReport(): Promise<ReportFetchOutcome<RecallNoticeReport>> {
+  return fetchReport('recall-notice', {}, mockRecallNoticeReport);
+}
+
+/** R1-5 기증 감사장 — 파라미터 없음(acquisition_source별 그룹 전체를 받는다). */
+export function fetchDonorThanksReport(): Promise<ReportFetchOutcome<DonorThanksReport>> {
+  return fetchReport('donor-thanks', {}, mockDonorThanksReport);
 }

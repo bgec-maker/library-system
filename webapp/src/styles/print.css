@@ -93,6 +93,18 @@
   .print-root .print-rule {
     border-color: #000 !important;
   }
+  /* 회수 쪽지(R1-4) 전용 절취선 — 잉크 절약 규칙과 같은 이유로 실제 인쇄에서는 톤 다운된
+     var(--rule) 대신 검정으로 강제한다(아래 화면 미리보기 절의 .print-recall-slip/-item 참고). */
+  .print-root .print-recall-slip,
+  .print-root .print-recall-item {
+    border-color: #000 !important;
+  }
+  /* 절취 쪽지 한 장이 페이지 경계에서 잘려 이름·책 제목·반납일이 서로 다른 장으로 쪼개지면
+     "잘라서 담임에게 전달"이 불가능해진다 — 슬립 하나는 항상 통째로 한 페이지 안에 있어야 한다. */
+  .print-recall-slip {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 
   .print-preview-frame {
     width: auto;
@@ -227,4 +239,51 @@
   color: var(--ink-3);
   font-size: var(--fs-sm);
   margin-bottom: 12px;
+}
+
+/* ── 회수 쪽지(R1-4) 전용 레이아웃 — DESIGN.md "인쇄" 절: "회수 쪽지: 절취선(dashed) + 한 반이
+   한 열". R1-1/R1-2가 쓰는 .print-table/.print-class-group과는 형태가 완전히 다르다(줄글 표가
+   아니라 "한 반 = 한 열"인 다단 그리드) — 그래서 그 클래스를 덧씌우지 않고 이 리포트 전용으로
+   새 클래스를 추가한다(todo/09, 이 파일 맨 위 주석이 예고한 그대로). 여러 반이 있으면 자동으로
+   다음 줄로 넘어가며(flex-wrap), 각 열(슬립) 사이에만 점선을 그어 "잘라서 반별로 배부"하는
+   절취선처럼 보이게 한다 — 실제 잉크 색(검정 강제)은 위 @media print 블록에서 처리한다. */
+.print-recall-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.print-recall-slip {
+  width: 33.333%;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-right: 1px dashed var(--rule);
+  margin-bottom: 16px;
+}
+.print-recall-slip:nth-child(3n) {
+  border-right: none;
+}
+
+.print-recall-slip-header {
+  font-weight: 700;
+  color: var(--deep);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  font-size: var(--fs-sm);
+}
+
+.print-recall-item {
+  font-size: var(--fs-xs);
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--rule);
+}
+.print-recall-item-name {
+  font-weight: 700;
+}
+.print-recall-item-title {
+  color: var(--ink-2);
+}
+.print-recall-item-due {
+  color: var(--ink-3);
 }

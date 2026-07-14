@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0",
     "check-view-boundary": "node scripts/check-view-boundary.mjs",
     "check-i18n-literals": "node scripts/check-i18n-literals.mjs",
-    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && tsc -b --noEmit",
+    "check-i18n-completeness": "node scripts/check-i18n-completeness.mjs",
+    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && tsc -b --noEmit",
     "size": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {

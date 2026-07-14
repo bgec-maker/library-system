@@ -2572,6 +2572,9 @@ function apiWebReport_(payload) {
   var type = cleanText_(payload && payload.type);
   if (type === 'no-loan-finder') return reportNoLoanFinder_(payload || {});
   if (type === 'homeroom-report') return reportHomeroomClass_(payload || {});
+  if (type === 'weeding-recommend') return reportWeedingRecommend_(payload || {});
+  if (type === 'recall-notice') return reportRecallNotice_(payload || {});
+  if (type === 'donor-thanks') return reportDonorThanks_(payload || {});
   fail_('VALIDATION_ERROR', '지원하지 않는 리포트 종류입니다: ' + type);
 }
 
@@ -2698,6 +2701,186 @@ function reportHomeroomClass_(payload) {
     noLoanList: noLoanList,
     overdueList: overdueList,
     popularBooks: popularBooks
+  };
+}
+
+// R1-3 죽은 장서 / 구매 추천 — FEATURES.md "입수 2년↑·대출 0회 = 폐기 후보 / 예약 누적·회전율
+// 상위 = 복본 구매 후보... 예산이 적을수록 '뭘 살지'가 데이터여야 함". "2년"은 FEATURES.md 원문이
+// 그대로 명시한 값이라 todo/05의 sinceDate(90일)와 달리 임의 지정이 아니다.
+var WEEDING_MIN_AGE_YEARS_ = 2;
+
+function reportWeedingRecommend_(payload) {
+  var now = new Date();
+  var cutoff = new Date(now.getTime());
+  cutoff.setFullYear(cutoff.getFullYear() - WEEDING_MIN_AGE_YEARS_);
+
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows;
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var authorById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.AUTHORS).rows, 'author_id');
+  // title_id -> 저자 표시명 배열(sort_order 순) — apiWebCatalogSync_와 동일한 조인 패턴(중복
+  // 로직이지만 두 함수 다 이미 존재하는 조회 전용 함수라 공유 헬퍼로 뽑지 않아도 위험이 없다).
+  var authorNamesByTitle = {};
+  readTable_(LIBRARY_MVP.SHEETS.TITLE_AUTHORS).rows
+    .slice()
+    .sort(function(a, b) { return Number(a.sort_order || 0) - Number(b.sort_order || 0); })
+    .forEach(function(ta) {
+      var author = authorById[ta.author_id];
+      if (!author) return;
+      (authorNamesByTitle[ta.title_id] || (authorNamesByTitle[ta.title_id] = [])).push(author.display_name || '');
+    });
+
+  var loanCountByCopy = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    loanCountByCopy[loan.copy_id] = (loanCountByCopy[loan.copy_id] || 0) + 1;
+  });
+
+  // 폐기 후보 — 이미 폐기(WITHDRAWN)·분실(LOST) 처리된 소장본은 제외(이미 결론 난 항목).
+  // 정상 유통 상태(AVAILABLE/ON_LOAN/HOLD_READY/REPAIR)면서 입수 2년 이상 + 대출 이력 0회
+  // (10_LOANS에 해당 copy_id 행이 하나도 없음 — 반납 여부와 무관하게 "한 번이라도 나간 적"을 본다).
+  var weedingCandidates = copies.filter(function(copy) {
+    if (copy.status_code === 'WITHDRAWN' || copy.status_code === 'LOST') return false;
+    var acquired = asDate_(copy.acquired_at);
+    if (!acquired || acquired.getTime() > cutoff.getTime()) return false;
+    return !loanCountByCopy[copy.copy_id];
+  }).map(function(copy) {
+    var title = titleById[copy.title_id] || {};
+    return {
+      copyId: copy.copy_id,
+      barcode: copy.barcode || '',
+      title: title.title || copy.title_id || '',
+      author: (authorNamesByTitle[copy.title_id] || []).join(' · '),
+      shelfCode: copy.shelf_code || '',
+      acquiredAtText: formatDate_(copy.acquired_at)
+    };
+  }).sort(function(a, b) { return a.acquiredAtText.localeCompare(b.acquiredAtText); });
+
+  // 구매 후보(복본) — "회전율 상위"를 예약 대기열(WAITING/READY) ÷ 현재 복본 수 비율로
+  // 근사한다(복본 1권에 대기 3명이 복본 10권에 대기 3명보다 훨씬 급하다). 분모(copyCount)는
+  // 폐기·분실을 뺀 "실제 서가/유통 중 복본 수"다 — 대출 중인 복본도 유통 재고로 셈한다(그게
+  // 대기가 생기는 이유이므로 분모에서 빼면 안 된다). 대기열이 있는 서명만 포함한다.
+  var copyCountByTitle = {};
+  copies.forEach(function(copy) {
+    if (copy.status_code === 'WITHDRAWN' || copy.status_code === 'LOST') return;
+    copyCountByTitle[copy.title_id] = (copyCountByTitle[copy.title_id] || 0) + 1;
+  });
+  var queueLengthByTitle = {};
+  readTable_(LIBRARY_MVP.SHEETS.RESERVATIONS).rows.forEach(function(row) {
+    if (row.status_code !== 'WAITING' && row.status_code !== 'READY') return;
+    queueLengthByTitle[row.title_id] = (queueLengthByTitle[row.title_id] || 0) + 1;
+  });
+
+  var purchaseCandidates = Object.keys(queueLengthByTitle).map(function(titleId) {
+    var title = titleById[titleId] || {};
+    var queueLength = queueLengthByTitle[titleId];
+    var copyCount = copyCountByTitle[titleId] || 0;
+    return {
+      titleId: titleId,
+      title: title.title || titleId,
+      queueLength: queueLength,
+      copyCount: copyCount,
+      ratio: queueLength / Math.max(copyCount, 1)
+    };
+  }).sort(function(a, b) { return b.ratio - a.ratio || b.queueLength - a.queueLength || a.title.localeCompare(b.title); });
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    minAgeYears: WEEDING_MIN_AGE_YEARS_,
+    weedingCandidates: weedingCandidates,
+    purchaseCandidates: purchaseCandidates
+  };
+}
+
+// R1-4 회수 쪽지 — FEATURES.md "연체·방학 미반납을 담임별로 쪽지 인쇄... 교실 전달용 절취 쪽지".
+// "방학 미반납"은 학사력(방학 시작·종료일) 개념이 CONFIG/스키마 어디에도 없어(getConfig_로 조회
+// 가능한 키가 없음, 새로 만들려면 CONFIG 스키마를 건드려야 해 이번 스코프 밖) "현재 연체 전체"로
+// 단순화했다(docs/ASSUMPTIONS.md todo/09 참고). 담임(학급)별로 그룹화해서 반환한다 — 프론트가
+// "한 반 = 한 열" 절취 인쇄 레이아웃을 그대로 그릴 수 있도록.
+function reportRecallNotice_(payload) {
+  var now = new Date();
+  var memberById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows, 'member_id');
+  var copyById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.COPIES).rows, 'copy_id');
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+
+  var groupsByKey = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    if (loan.status_code !== 'OPEN' || loan.returned_at) return;
+    var due = asDate_(loan.due_at);
+    if (!due || due.getTime() >= now.getTime()) return;
+    var member = memberById[loan.member_id];
+    // 회수 쪽지는 담임 학급 배부용 — 학급이 있는 재학생 회원만 대상으로 한다(교직원 등은 제외).
+    if (!member || member.member_type_code !== 'STUDENT') return;
+    var copy = copyById[loan.copy_id] || {};
+    var title = titleById[copy.title_id] || {};
+    var overdueDays = Math.max(1, Math.ceil((now.getTime() - due.getTime()) / 86400000));
+    var grade = Number(member.grade) || 0;
+    var classNo = Number(member.class_no) || 0;
+    var key = grade + '-' + classNo;
+    if (!groupsByKey[key]) groupsByKey[key] = { grade: grade, classNo: classNo, items: [] };
+    groupsByKey[key].items.push({
+      studentNo: Number(member.student_no) || 0,
+      name: member.name || '',
+      title: title.title || copy.title_id || '',
+      dueAtText: formatDate_(due),
+      overdueDays: overdueDays
+    });
+  });
+
+  var classes = Object.keys(groupsByKey).map(function(key) { return groupsByKey[key]; });
+  classes.forEach(function(cls) {
+    cls.items.sort(function(a, b) { return a.studentNo - b.studentNo || a.name.localeCompare(b.name); });
+  });
+  classes.sort(function(a, b) { return a.grade - b.grade || a.classNo - b.classNo; });
+  var totalCount = classes.reduce(function(sum, cls) { return sum + cls.items.length; }, 0);
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    asOfDate: formatDate_(now),
+    totalCount: totalCount,
+    classes: classes
+  };
+}
+
+// R1-5 기증 감사장 — FEATURES.md "연말 기증자별 목록·감사장 일괄 생성... 기증 선순환 유도".
+// 08_COPIES에는 기증자 개인 식별 필드가 없다(HEADERS 배열은 절대 규칙상 수정 금지 — barcode·
+// title_id·...·acquisition_source·price·...만 존재). acquisition_source는 CODEBOOK 코드군도
+// 없는 순수 자유 텍스트다(registerCopy_가 validateCodeInput_ 없이 safeText_로만 저장, 현재
+// 웹앱 등록 화면도 이 값을 아예 입력받지 않는다) — "기증자별"을 정확히 재현할 근거가 없어
+// acquisition_source 문자열 자체를 그룹 키로 쓴다(입력값이 "기증-홍길동"처럼 사람 이름을
+// 담고 있으면 사실상 기증자별 그룹이 되고, "DONATION" 같은 굵은 코드면 그룹이 하나로 뭉친다) —
+// docs/ASSUMPTIONS.md todo/09 참고. acquisition_source가 빈 소장본은 그룹화 대상에서 빼고
+// 개수만 skippedNoSource로 함께 내려 화면에 각주로 표시한다(VIZ.md 턴오버 사분면의
+// skippedNoAcquiredDate와 같은 관례).
+function reportDonorThanks_(payload) {
+  var now = new Date();
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+
+  var groupsBySource = {};
+  var skippedNoSource = 0;
+  readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.forEach(function(copy) {
+    var source = cleanText_(copy.acquisition_source);
+    if (!source) { skippedNoSource++; return; }
+    if (!groupsBySource[source]) groupsBySource[source] = { sourceLabel: source, items: [], totalPrice: 0 };
+    var title = titleById[copy.title_id] || {};
+    var price = Number(copy.price) || 0;
+    groupsBySource[source].items.push({
+      copyId: copy.copy_id,
+      title: title.title || copy.title_id || '',
+      price: price,
+      acquiredAtText: copy.acquired_at ? formatDate_(copy.acquired_at) : ''
+    });
+    groupsBySource[source].totalPrice += price;
+  });
+
+  var donorGroups = Object.keys(groupsBySource).map(function(key) { return groupsBySource[key]; })
+    .sort(function(a, b) { return b.totalPrice - a.totalPrice || a.sourceLabel.localeCompare(b.sourceLabel); });
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    donorGroups: donorGroups,
+    skippedNoSource: skippedNoSource
   };
 }
 

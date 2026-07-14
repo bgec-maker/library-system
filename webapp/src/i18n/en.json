@@ -312,6 +312,37 @@
         "overdueEmpty": "No loans are currently overdue.",
         "popularEmpty": "No loans recorded this month.",
         "printTitle": "Grade {grade}, Class {classNo} homeroom report · {month}"
+      },
+      "weeding": {
+        "title": "Dead stock / purchase picks",
+        "subtitle": "Acquired {years}+ years ago with no loan history = weeding candidate · titles with a reservation queue large relative to their copy count = duplicate-purchase candidate",
+        "weedingHeading": "Weeding candidates",
+        "purchaseHeading": "Purchase candidates (duplicates)",
+        "colRatio": "Queue/copies ratio",
+        "weedingEmpty": "No weeding candidates.",
+        "purchaseEmpty": "No purchase candidates.",
+        "printTitle": "Dead stock / purchase picks report"
+      },
+      "recall": {
+        "title": "Recall notices",
+        "subtitle": "Groups all currently overdue loans by homeroom class into perforated slips for printing.",
+        "asOfDateLine": "{count} overdue as of {date}",
+        "classHeading": "Grade {grade}, Class {classNo} · {count}",
+        "overdueLine": "Due {date} · {days}d overdue",
+        "cutLineHint": "Cut along the dashed lines and hand each strip to the matching homeroom teacher.",
+        "printTitle": "Recall notices"
+      },
+      "donor": {
+        "title": "Donor thank-you letters",
+        "subtitle": "Year-end donor list / thank-you letter material — grouped as-is by acquisition source (acquisition_source).",
+        "disclaimer": "Group names are not verified donor names — they are the raw acquisition-source text entered when each copy was registered. Confirm a group actually refers to a donor before issuing a thank-you letter for it.",
+        "colSource": "Acquisition source",
+        "colItemCount": "Copies",
+        "colTotalPrice": "Total value",
+        "skippedNote": "{count} copies with no acquisition source were excluded from the totals.",
+        "groupHeading": "{source} · {count} copies · {total}",
+        "donorEmpty": "No copies could be grouped (acquisition source is required).",
+        "printTitle": "Donor thank-you letters"
       }
     },
     "vizInsights": {
