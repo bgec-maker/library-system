@@ -18,7 +18,7 @@
 - [x] 01 repo-cleanup
 - [x] 02 perf-ci + i18n 기반
 - [x] 03 camera-on-demand
-- [ ] 04 dashboard-baselayer
+- [x] 04 dashboard-baselayer
 - [ ] 05 reports-r1
 - [ ] 06 viz-v1
 - [ ] 07 integration-checkpoint

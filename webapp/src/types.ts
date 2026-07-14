@@ -10,7 +10,8 @@ export type ViewId =
   | 'search'
   | 'book-detail'
   | 'inventory'
-  | 'recent-ops';
+  | 'recent-ops'
+  | 'reports';
 
 export type ScanInterest = 'focus' | 'none';
 

@@ -4,6 +4,7 @@ import type { ScanTarget, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/scanBus';
 import { apiCall, newRequestId } from '../../services/api';
+import { publishDataChange } from '../../services/dataChangeBus';
 import { useSession } from '../../services/session';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { intlLocaleTag, t } from '../../i18n';
@@ -214,6 +215,8 @@ export default function LoanReturnView({ shell }: ViewProps) {
         shell.toast(message, 'success');
         startUndo(requestId, 'checkout', info.barcode, memberKey);
         resetSlots();
+        // FRONTEND.md 대시보드 갱신 트리거 "트랜잭션 후" — dashboardData가 구독해 재조회한다.
+        publishDataChange();
       } else {
         const message = actionErrorMessage('checkout', res.error.code, res.error.message);
         console.error('[loan-return] checkout 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, memberKey, requestId });
@@ -246,6 +249,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
         // 반납 실행취소(=재대출)에 memberNo가 필요 — copyStatus에서 받아둔 값을 넘긴다.
         startUndo(requestId, 'return', info.barcode, info.memberNo || undefined);
         resetSlots();
+        publishDataChange();
       } else {
         const message = actionErrorMessage('return', res.error.code, res.error.message);
         console.error('[loan-return] return 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, requestId });

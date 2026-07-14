@@ -7,8 +7,10 @@ import { useSession } from '../../services/session';
 import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
 import { setScanRoute, subscribeScan } from '../../services/scanBus';
 import { pushToast } from '../../services/toastBus';
+import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
+import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
 import { setLocale, t, useLocale, type Locale } from '../../i18n';
 import TabBar, { type TabSelection } from './TabBar';
@@ -74,9 +76,47 @@ function CameraContinuousRow() {
   );
 }
 
+// ADR-021 데스크톱 기저층의 모바일 대응 — FRONTEND.md "모바일 셸엔 기저층 없음 — 카드 요약은
+// 「더보기」 상단에 축약 배치". 데스크톱 6칸 전부가 아니라 가장 실무적인 3개(대출중·연체·예약
+// 대기)만 압축 표시한다 — 이 화면은 진입할 때마다 새로 마운트되므로(MobileShell의 탭 전환은
+// 조건부 렌더) ensureAutoRefresh() 호출이 곧 "더보기 진입 = 갱신"을 만족시킨다.
+function DashboardSummaryStrip() {
+  const { data, sample } = useDashboardData();
+
+  useEffect(() => {
+    dashboardData.ensureAutoRefresh();
+  }, []);
+
+  const stats = data?.stats;
+
+  return (
+    <div className="m-dash-summary">
+      <div className="m-dash-summary-head">
+        <span className="m-dash-summary-title">{t('dashboard.mobileSummary.heading')}</span>
+        {sample && <SampleDataBadge />}
+      </div>
+      <div className="m-dash-summary-grid">
+        <div className="m-dash-summary-item">
+          <span className="m-dash-summary-value">{stats?.openLoans ?? 0}</span>
+          <span className="m-dash-summary-label">{t('dashboard.kpi.openLoans')}</span>
+        </div>
+        <div className="m-dash-summary-item is-alert">
+          <span className="m-dash-summary-value">{stats?.overdue ?? 0}</span>
+          <span className="m-dash-summary-label">{t('dashboard.kpi.overdue')}</span>
+        </div>
+        <div className="m-dash-summary-item">
+          <span className="m-dash-summary-value">{stats?.activeReservations ?? 0}</span>
+          <span className="m-dash-summary-label">{t('dashboard.kpi.activeReservations')}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
   return (
     <>
+      <DashboardSummaryStrip />
       <LocaleRow />
       <CameraContinuousRow />
       {items.length === 0 ? (

@@ -2296,6 +2296,7 @@ function doPost(e) {
       if (action === 'copyStatus') return apiCopyStatus_(payload);
       if (action === 'checkout') return apiWebCheckout_(payload);
       if (action === 'return') return apiWebReturn_(payload);
+      if (action === 'dashboard') return apiWebDashboard_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2346,6 +2347,14 @@ function apiWebReturn_(payload) {
   return executeWrite_('RETURN', payload || {}, function(actor, requestId, transaction) {
     return return_(payload || {}, actor, requestId, transaction);
   });
+}
+
+// 웹앱 데스크톱 대시보드 기저층(ADR-021)용 읽기 액션 — ROADMAP.md "백엔드 접점" dashboard.
+// 사이드바 apiBootstrap()이 이미 쓰는 getDashboardData_()를 그대로 재사용한다(수정 없음, 순수 읽기).
+// 웹앱은 이 액션이 아직 없는 배포(재배포 전)에서 UNKNOWN_ACTION을 받으면 샘플 데이터로 폴백한다
+// (todo/04 「샘플 폴백」) — 그러니 재배포 전까지 UNKNOWN_ACTION이 뜨는 건 버그가 아니라 정상 상태다.
+function apiWebDashboard_(payload) {
+  return getDashboardData_();
 }
 
 function normalizeIsbn13Strict_(value) {

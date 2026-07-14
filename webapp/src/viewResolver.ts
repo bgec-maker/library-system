@@ -10,5 +10,6 @@ export const VIEW_COMPONENTS: Record<ViewId, LazyExoticComponent<ComponentType<V
   search: lazy(() => import('./views/search')),
   inventory: lazy(() => import('./views/inventory')),
   'book-detail': lazy(() => import('./views/book-detail')),
-  'recent-ops': lazy(() => import('./views/recent-ops'))
+  'recent-ops': lazy(() => import('./views/recent-ops')),
+  reports: lazy(() => import('./views/reports'))
 };

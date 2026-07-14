@@ -13,7 +13,8 @@
     "hide": "숨기기",
     "show": "보기",
     "none": "(없음)",
-    "unknownError": "알 수 없는 오류"
+    "unknownError": "알 수 없는 오류",
+    "sampleDataBadge": "샘플 데이터"
   },
   "registry": {
     "loanReturn": { "title": "대출·반납" },
@@ -21,7 +22,48 @@
     "search": { "title": "통합 검색" },
     "inventory": { "title": "장서 점검" },
     "bookDetail": { "title": "도서 상세" },
-    "recentOps": { "title": "최근 처리" }
+    "recentOps": { "title": "최근 처리" },
+    "reports": { "title": "리포트" }
+  },
+  "dashboard": {
+    "title": "대시보드",
+    "refreshButton": "새로고침",
+    "lastRefreshed": "최근 갱신 {time}",
+    "errorBanner": "갱신 실패 — {message}",
+    "kpi": {
+      "openLoans": "대출중",
+      "dueToday": "오늘 반납 예정",
+      "availableCopies": "가용 소장본",
+      "activeReservations": "예약 대기",
+      "activeMembers": "활성 회원",
+      "overdue": "연체"
+    },
+    "quietSignal": {
+      "title": "조용한 신호",
+      "noLoanFinder": "미대출 학생 발굴",
+      "homeroomReport": "담임 리포트",
+      "weedingRecommend": "죽은 장서 / 구매 추천",
+      "recallNotice": "회수 쪽지",
+      "donorThanks": "기증 감사장"
+    },
+    "overdueTop": {
+      "title": "연체 상위",
+      "empty": "연체·오늘 반납 예정 항목이 없습니다.",
+      "overdueDays": "{days}일 연체",
+      "dueTodayLabel": "오늘 반납 예정"
+    },
+    "recentOps": {
+      "title": "최근 처리",
+      "hint": "최근 대출·반납 내역은 최근 처리 화면에서 확인하세요.",
+      "openButton": "최근 처리 더 보기"
+    },
+    "lastBackup": {
+      "label": "마지막 백업",
+      "unavailable": "데이터 없음 — 백업 정보는 아직 제공되지 않습니다."
+    },
+    "mobileSummary": {
+      "heading": "오늘의 도서관"
+    }
   },
   "camera": {
     "start": "카메라 시작",
@@ -156,6 +198,10 @@
     },
     "recentOps": {
       "comingSoon": "최근 처리 목록은 곧 제공됩니다."
+    },
+    "reports": {
+      "comingSoon": "리포트 허브 — 다음 항목에서 구현됩니다.",
+      "requestedType": "요청한 리포트: {type}"
     }
   },
   "student": {

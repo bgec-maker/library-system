@@ -1,0 +1,211 @@
+/* dashboard.css — ADR-021 데스크톱 기저층. desktop.css와 같은 규칙: 색상 리터럴 금지,
+   tokens/work.css의 var(--token)만 참조. 창이 전부 닫히면 이 레이어만 남는다. */
+
+.dashboard-base {
+  position: absolute;
+  inset: 0;
+  z-index: 0; /* 창(.window)은 z:2 이상 — 항상 이 레이어 위에 뜬다(useWindowStore.ts zCounter). */
+  overflow: auto;
+  padding: 24px 28px 32px;
+  background: var(--paper);
+}
+
+.dash-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dash-header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dash-header-main h1 {
+  font-size: var(--fs-2xl);
+  color: var(--deep);
+}
+
+.dash-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
+.dash-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+}
+
+.dash-error {
+  background: var(--fail);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: var(--fs-sm);
+}
+
+/* ── KPI 카드 6종 ─────────────────────────────────────────────────── */
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dash-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--idle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.dash-kpi svg {
+  color: var(--ink-3);
+}
+
+/* DESIGN.md 범주(≤6) 색 고정 순서: deep · brass · pass · wait · ink-2 · fail */
+.dash-kpi--deep { border-left-color: var(--deep); }
+.dash-kpi--brass { border-left-color: var(--brass); }
+.dash-kpi--pass { border-left-color: var(--pass); }
+.dash-kpi--wait { border-left-color: var(--wait); }
+.dash-kpi--ink-2 { border-left-color: var(--ink-2); }
+.dash-kpi--fail { border-left-color: var(--fail); }
+
+.dash-kpi-value {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dash-kpi-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* ── 3열: 조용한 신호 · 연체 상위 · 최근 처리 ────────────────────────── */
+.dash-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.dash-panel {
+  padding: 16px;
+}
+
+.dash-panel h2 {
+  font-size: var(--fs-md);
+  color: var(--deep);
+  margin-bottom: 10px;
+}
+
+.dash-empty {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+/* 조용한 신호 — FEATURES.md R1 리포트로 직행하는 버튼 목록 */
+.dash-signal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash-signal-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: var(--ink);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  font: 600 var(--fs-sm) var(--sans);
+  text-align: left;
+  min-height: 44px;
+}
+
+.dash-signal-btn:hover {
+  background: var(--paper);
+}
+
+.dash-signal-btn span:first-of-type {
+  flex: 1;
+}
+
+.dash-signal-chevron {
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+/* 연체 상위 */
+.dash-due-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-due-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--fs-sm);
+}
+
+.dash-due-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-due-member {
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+.dash-due-status {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.dash-due-item.is-overdue .dash-due-status {
+  color: var(--fail);
+}
+
+/* 최근 처리 */
+.dash-recent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 마지막 백업 */
+.dash-footer {
+  margin-top: 20px;
+  display: flex;
+  gap: 8px;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}

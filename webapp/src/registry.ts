@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, History, Search } from 'lucide-react';
+import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, FileText, History, Search } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -16,7 +16,8 @@ const TITLE_KEYS: Record<ViewId, string> = {
   search: 'registry.search.title',
   inventory: 'registry.inventory.title',
   'book-detail': 'registry.bookDetail.title',
-  'recent-ops': 'registry.recentOps.title'
+  'recent-ops': 'registry.recentOps.title',
+  reports: 'registry.reports.title'
 };
 
 export const VIEW_REGISTRY: ViewMeta[] = [
@@ -72,6 +73,18 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [460, 420] },
+    mobile: {}
+  },
+  {
+    // FEATURES.md R1 "리포트 허브" — 대시보드 「조용한 신호」의 각 줄이 여기로 직행한다
+    // (params.type으로 어떤 리포트인지 전달). todo/05가 실제 종류 선택→미리보기→인쇄를 채운다 —
+    // 지금은 레지스트리/라우팅만 마련해 신호 버튼이 죽은 버튼이 되지 않게 한다.
+    id: 'reports',
+    title: t(TITLE_KEYS.reports),
+    icon: FileText,
+    roles: ['LIBRARIAN'],
+    scan: 'none',
+    desktop: { min: [560, 520] },
     mobile: {}
   }
 ];

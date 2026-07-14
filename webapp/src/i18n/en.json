@@ -13,7 +13,8 @@
     "hide": "Hide",
     "show": "Show",
     "none": "(none)",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "sampleDataBadge": "Sample data"
   },
   "registry": {
     "loanReturn": { "title": "Checkout / Return" },
@@ -21,7 +22,48 @@
     "search": { "title": "Search" },
     "inventory": { "title": "Inventory Check" },
     "bookDetail": { "title": "Book Detail" },
-    "recentOps": { "title": "Recent Activity" }
+    "recentOps": { "title": "Recent Activity" },
+    "reports": { "title": "Reports" }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "refreshButton": "Refresh",
+    "lastRefreshed": "Last refreshed {time}",
+    "errorBanner": "Refresh failed — {message}",
+    "kpi": {
+      "openLoans": "On loan",
+      "dueToday": "Due today",
+      "availableCopies": "Available copies",
+      "activeReservations": "Reservations waiting",
+      "activeMembers": "Active members",
+      "overdue": "Overdue"
+    },
+    "quietSignal": {
+      "title": "Quiet signals",
+      "noLoanFinder": "Find students with no loans",
+      "homeroomReport": "Homeroom report",
+      "weedingRecommend": "Dead stock / purchase picks",
+      "recallNotice": "Recall notices",
+      "donorThanks": "Donor thank-you letters"
+    },
+    "overdueTop": {
+      "title": "Top overdue",
+      "empty": "No overdue or due-today items.",
+      "overdueDays": "{days}d overdue",
+      "dueTodayLabel": "Due today"
+    },
+    "recentOps": {
+      "title": "Recent activity",
+      "hint": "See recent checkouts and returns in the Recent Activity view.",
+      "openButton": "Open recent activity"
+    },
+    "lastBackup": {
+      "label": "Last backup",
+      "unavailable": "No data — backup info isn't available yet."
+    },
+    "mobileSummary": {
+      "heading": "Library today"
+    }
   },
   "camera": {
     "start": "Start camera",
@@ -156,6 +198,10 @@
     },
     "recentOps": {
       "comingSoon": "Recent activity is coming soon."
+    },
+    "reports": {
+      "comingSoon": "Report hub — implemented in a later item.",
+      "requestedType": "Requested report: {type}"
     }
   },
   "student": {

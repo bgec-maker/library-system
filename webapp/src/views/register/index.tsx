@@ -4,6 +4,7 @@ import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { useSession } from '../../services/session';
 import { apiCall, newRequestId, onApiLog, getRecentApiLog, type ApiCallLogEntry } from '../../services/api';
+import { publishDataChange } from '../../services/dataChangeBus';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { intlLocaleTag, t } from '../../i18n';
@@ -303,6 +304,8 @@ export default function RegisterView({ shell }: ViewProps) {
     });
     setResult({ ...res.data, requestId });
     setScreen('result');
+    // FRONTEND.md 대시보드 갱신 트리거 "트랜잭션 후" — dashboardData가 구독해 재조회한다.
+    publishDataChange();
   }, []);
 
   const handleSave = useCallback(async () => {

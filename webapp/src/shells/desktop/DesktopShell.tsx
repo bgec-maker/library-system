@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { subscribeScan } from '../../services/scanBus';
 import { cameraSession } from '../../services/cameraSession';
 import { useLocale } from '../../i18n';
+import DashboardBaseLayer from './DashboardBaseLayer';
 import { Dock } from './Dock';
 import { Window } from './Window';
 import { ScannerDockWidget } from './ScannerDockWidget';
@@ -50,6 +51,9 @@ export default function DesktopShell() {
     <div className="desktop-shell">
       <Dock />
       <div className="desktop-workspace" style={{ marginLeft: DOCK_WIDTH }}>
+        {/* ADR-021: 대시보드는 창이 아니라 기저층 — windows.map보다 먼저 마운트해 항상 바닥에
+            깔아 둔다. 조건부 렌더 없음(창을 다 닫아도 언마운트되지 않고 그냥 드러날 뿐). */}
+        <DashboardBaseLayer />
         {windows.map((w) => (
           <Window key={w.id} win={w} />
         ))}
