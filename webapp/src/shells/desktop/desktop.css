@@ -74,6 +74,34 @@
   opacity: 0.85;
 }
 
+/* ── 언어 토글(ADR-023) — 도크 하단, 설정 버튼 바로 위 ─────────────────── */
+.dock-locale {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dock-locale-btn {
+  width: 48px;
+  height: 22px;
+  border-radius: var(--radius);
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font: 700 var(--fs-xs) var(--sans);
+  cursor: pointer;
+}
+
+.dock-locale-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dock-locale-btn.is-active {
+  background: var(--brass);
+  color: #fff;
+}
+
 /* ── 창 ───────────────────────────────────────────────────────────── */
 .window {
   position: absolute;

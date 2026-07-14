@@ -1,5 +1,6 @@
 import { Ellipsis } from 'lucide-react';
 import type { ViewId, ViewMeta } from '../../types';
+import { t } from '../../i18n';
 
 const TAB_ICON_SIZE = 20;
 
@@ -17,13 +18,13 @@ interface TabBarProps {
 function labelFor(meta: ViewMeta): string {
   // tab 0(loan-return)은 registry 타이틀("대출·반납") 대신 "스캔"으로 표시(작업 지시 그대로) —
   // 스캔이 이 셸의 기본 진입 화면이라는 걸 탭 라벨에서부터 드러낸다.
-  return meta.id === 'loan-return' ? '스캔' : meta.title;
+  return meta.id === 'loan-return' ? t('shell.mobile.scanTabLabel') : meta.title;
 }
 
 /** 하단 탭바 — 터치 타깃 44px 이상(.m-tab min-height 52px, mobile.css). */
 export default function TabBar({ tabs, activeId, onSelect }: TabBarProps) {
   return (
-    <nav className="m-tabbar" aria-label="주요 화면">
+    <nav className="m-tabbar" aria-label={t('shell.mobile.tabBarLabel')}>
       {tabs.map((meta) => {
         const Icon = meta.icon;
         return (
@@ -50,7 +51,7 @@ export default function TabBar({ tabs, activeId, onSelect }: TabBarProps) {
         <span className="m-tab-icon" aria-hidden="true">
           <Ellipsis size={TAB_ICON_SIZE} />
         </span>
-        <span className="m-tab-label">더보기</span>
+        <span className="m-tab-label">{t('common.more')}</span>
       </button>
     </nav>
   );

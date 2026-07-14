@@ -5,6 +5,7 @@ import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
 import { pushToast } from '../../services/toastBus';
+import { t } from '../../i18n';
 import {
   getEffectiveScanRoute,
   isScanRoutePinned,
@@ -160,29 +161,29 @@ export function Window({ win }: WindowProps) {
           <button
             type="button"
             className={`window-pin${isPinned ? ' is-pinned' : ''}`}
-            title={isPinned ? '스캔 고정 해제' : '이 창에 스캔 고정 (전역 1개만 가능)'}
+            title={isPinned ? t('shell.desktop.pinUnpin') : t('shell.desktop.pinPin')}
             onClick={() => (isPinned ? unpinScanRoute() : pinScanRoute(win.viewId))}
           >
             <Pin size={TITLEBAR_ICON_SIZE} aria-hidden />
           </button>
         )}
         <span className="window-titlebar__title">{title}</span>
-        {showsScanBadge && <span className="window-badge">스캔 수신</span>}
-        <button type="button" className="window-btn" title="왼쪽 절반" onClick={() => snapWindow(win.id, 'left')}>
+        {showsScanBadge && <span className="window-badge">{t('shell.desktop.scanReceiving')}</span>}
+        <button type="button" className="window-btn" title={t('shell.desktop.snapLeft')} onClick={() => snapWindow(win.id, 'left')}>
           <PanelLeft size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
-        <button type="button" className="window-btn" title="오른쪽 절반" onClick={() => snapWindow(win.id, 'right')}>
+        <button type="button" className="window-btn" title={t('shell.desktop.snapRight')} onClick={() => snapWindow(win.id, 'right')}>
           <PanelRight size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
-        <button type="button" className="window-btn" title="최소화" onClick={() => minimizeWindow(win.id)}>
+        <button type="button" className="window-btn" title={t('shell.desktop.minimize')} onClick={() => minimizeWindow(win.id)}>
           <Minus size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
-        <button type="button" className="window-btn window-btn--close" title="닫기" onClick={() => closeWindow(win.id)}>
+        <button type="button" className="window-btn window-btn--close" title={t('common.close')} onClick={() => closeWindow(win.id)}>
           <X size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
       </div>
       <div className="window-body">
-        <Suspense fallback={<div className="window-loading">불러오는 중…</div>}>
+        <Suspense fallback={<div className="window-loading">{t('common.loading')}</div>}>
           <ViewComponent shell={shell} params={win.params} />
         </Suspense>
       </div>

@@ -155,6 +155,44 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── 더보기: 언어 토글(ADR-023) ───────────────────────────────────────── */
+.m-more-locale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+  padding-left: calc(16px + env(safe-area-inset-left, 0px));
+  padding-right: calc(16px + env(safe-area-inset-right, 0px));
+}
+
+.m-more-locale-label {
+  font: 600 var(--fs-md) var(--sans);
+  color: var(--ink);
+}
+
+.m-more-locale-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.m-more-locale-btn {
+  min-width: 44px;
+  min-height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-2);
+  font: 700 var(--fs-sm) var(--sans);
+}
+
+.m-more-locale-btn.is-active {
+  background: var(--deep);
+  border-color: var(--deep);
+  color: #fff;
+}
+
 /* ── 더보기 목록 ───────────────────────────────────────────────────── */
 .m-more-list {
   list-style: none;

@@ -30,14 +30,18 @@ jobs:
       - name: webapp 의존성 설치
         working-directory: webapp
         run: npm ci
-      - name: webapp 뷰 경계 린트 (FRONTEND.md 수용 기준 — CI 게이트)
+      - name: webapp 뷰 경계·i18n 린트 (FRONTEND.md·ADR-023 수용 기준 — CI 게이트)
         working-directory: webapp
         run: |
           npm run lint
           npm run check-view-boundary
+          npm run check-i18n-literals
       - name: webapp 빌드 (tsc + vite)
         working-directory: webapp
         run: npm run build
+      - name: webapp 번들 예산 체크 (FRONTEND.md 「성능 예산」 — work 180KB/student 70KB gz)
+        working-directory: webapp
+        run: npm run size
       # 병행 배포(FRONTEND.md '기존 배포 철수' 1단계): 사이트 루트는 spike/(스파이크·
       # register.html)가 그대로 차지하고, 새 통합 웹앱은 /app/ 서브패스에만 얹는다.
       - name: 배포 아티팩트 조립 (spike=루트 + webapp/dist=/app/)

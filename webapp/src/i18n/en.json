@@ -1,0 +1,165 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Retry",
+    "close": "Close",
+    "settings": "Settings",
+    "appLauncher": "App launcher",
+    "more": "More",
+    "back": "Back",
+    "language": "Language",
+    "hide": "Hide",
+    "show": "Show",
+    "none": "(none)",
+    "unknownError": "Unknown error"
+  },
+  "registry": {
+    "loanReturn": { "title": "Checkout / Return" },
+    "register": { "title": "Register Book" },
+    "search": { "title": "Search" },
+    "inventory": { "title": "Inventory Check" },
+    "bookDetail": { "title": "Book Detail" },
+    "recentOps": { "title": "Recent Activity" }
+  },
+  "shell": {
+    "desktop": {
+      "minimizedSuffix": " (minimized)",
+      "scannerExpand": "Expand scanner",
+      "scannerCollapse": "Collapse scanner",
+      "scannerLabel": "Scanner",
+      "scanningNative": "Scanning (built-in decoder)",
+      "scanningZxing": "Scanning (ZXing)",
+      "cameraPreparing": "Starting camera…",
+      "cameraError": "Camera error",
+      "idle": "Idle",
+      "pinPin": "Pin scans to this window (only one at a time)",
+      "pinUnpin": "Unpin scan",
+      "scanReceiving": "Receiving scans",
+      "snapLeft": "Snap left",
+      "snapRight": "Snap right",
+      "minimize": "Minimize",
+      "maxWindows": "Up to {max} windows can be open at once."
+    },
+    "mobile": {
+      "scanTabLabel": "Scan",
+      "moreEmpty": "Nothing to show here.",
+      "tabBarLabel": "Primary navigation"
+    }
+  },
+  "views": {
+    "loanReturn": {
+      "hint": "Scan a book to automatically checkout or return it",
+      "modeCheckout": "Checkout",
+      "modeReturn": "Return",
+      "modeStatus": "Status lookup",
+      "errorUnknownAction": "{kind} failed — the server deployment is out of date. Redeploy Code.gs to a new version in Apps Script.",
+      "errorGeneric": "{kind} failed: {message}",
+      "operatorNoteWithName": "Web app · {operator}",
+      "operatorNote": "Web app",
+      "checkoutDone": "Checked out — {title}",
+      "checkoutDoneWithMember": "Checked out — {title} → {member}",
+      "returnDone": "Returned — {title}",
+      "returnDoneWithMember": "Returned — {title} ({member})",
+      "cannotCheckout": "This book can't be checked out — {title} ({status})",
+      "isbnHint": "ISBN scans are handled in the Register view.",
+      "manualUnknownFormat": "Unrecognized format (7-digit copy barcode or S:studentCode).",
+      "undoDone": "Undo complete",
+      "undoFailed": "Undo failed — {message}",
+      "slotBook": "Copy",
+      "slotStudent": "Student",
+      "checking": "Checking…",
+      "waitingScan": "Waiting for scan",
+      "awaitingStudent": "Who's borrowing? — scan a student ID",
+      "statusBusy": "Working…",
+      "retryHint": "Last attempt failed — retry below.",
+      "retryButton": "Retry",
+      "clear": "Clear",
+      "manualSummary": "Manual entry (camera unavailable)",
+      "manualPlaceholder": "7-digit copy barcode or S:studentCode",
+      "manualApply": "Apply",
+      "todayCount": "Today: {count}",
+      "recentCaption": "(local display only — the sheet is the source of truth)",
+      "recentEmpty": "No activity yet.",
+      "undoPrefix": "Undo·",
+      "opPending": "Working",
+      "opDone": "Done",
+      "opFailed": "Failed",
+      "undoBarText": "{mode} — {copyKey}",
+      "undoButton": "Undo ({seconds}s)"
+    },
+    "register": {
+      "todayPrefix": "Today:",
+      "todayUnit": "",
+      "diagLogLabel": "Diagnostic log",
+      "diagRecentRequests": "Recent API requests ({count})",
+      "diagCopyButton": "Copy log",
+      "diagEmpty": "No requests recorded yet.",
+      "diagCopySuccess": "Diagnostic log copied to clipboard.",
+      "diagCopyFailure": "Failed to copy to clipboard.",
+      "failedListHeading": "Failed — needs retry",
+      "scanHint": "Scanner is active. Scan an ISBN (EAN-13) barcode.",
+      "manualEntryButton": "Manual entry",
+      "manualIsbnLabel": "Enter ISBN-13 directly",
+      "lookupButton": "Look up",
+      "lookupInProgress": "Looking up bibliographic data…",
+      "dupBannerTitle": "This book is already in the catalog: {title}",
+      "dupBannerQuestion": "Add as another copy?",
+      "addAsDuplicate": "Add as copy",
+      "editAndRegister": "Edit details and register",
+      "labelTitle": "Title *",
+      "labelSubtitle": "Subtitle",
+      "labelAuthors": "Authors (comma-separated)",
+      "labelPublisher": "Publisher",
+      "labelYear": "Published year",
+      "labelPages": "Pages",
+      "labelCopyCount": "Copies",
+      "labelCondition": "Condition",
+      "conditionGood": "Good",
+      "conditionFair": "Fair",
+      "conditionDamaged": "Damaged",
+      "cancelAndRescan": "Cancel and scan again",
+      "saving": "Saving…",
+      "newTitleSuffix": " · new title",
+      "dupTitleSuffix": " · copy added to existing title",
+      "pencilHint": " — write the copy number inside the front cover in pencil",
+      "titleIdLine": "Title ID: {id}",
+      "requestIdLine": "Request ID: {id} — cross-check this in the Apps Script execution log and the 18_SYS_OPERATIONS sheet",
+      "nextScan": "Next scan",
+      "errorLookupFailed": "Lookup failed",
+      "errorInvalidIsbn": "Not a valid ISBN-13 (13 digits starting with 978/979, including check digit).",
+      "errorSaveFailed": "Save failed — {reason} (try again or retry from the failed list)",
+      "errorTitleRequired": "Title is required.",
+      "errorNoOperator": "No operator info — enter your login details in Settings."
+    },
+    "search": {
+      "comingSoon": "Search is coming soon.",
+      "comingSoonDetail": "The catalog mirror search screen will live here."
+    },
+    "inventory": {
+      "comingSoon": "Inventory check is coming soon.",
+      "comingSoonDetail": "The scan-reconciliation screen will live here."
+    },
+    "bookDetail": {
+      "comingSoon": "Book detail is coming soon."
+    },
+    "recentOps": {
+      "comingSoon": "Recent activity is coming soon."
+    }
+  },
+  "student": {
+    "common": {
+      "notReady": "Login method not yet decided — route only."
+    },
+    "bookPage": {
+      "title": "Student Book Page"
+    },
+    "myShelf": {
+      "title": "My Shelf"
+    },
+    "ranking": {
+      "title": "Ranking"
+    }
+  }
+}

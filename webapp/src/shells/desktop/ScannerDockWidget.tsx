@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { cameraService, type CameraStatus } from '../../services/camera';
+import { t } from '../../i18n';
 
 // 우하단 고정 스캐너 도크 — 닫기 불가(접기만). DesktopShell 루트에 마운트되어
 // 데스크톱 셸이 사는 동안 카메라 ref-count를 계속 쥐고 있는다("카메라는 창이 아니다").
@@ -46,11 +47,11 @@ export function ScannerDockWidget() {
         type="button"
         className="scanner-dock__toggle"
         onClick={() => setCollapsed((c) => !c)}
-        title={collapsed ? '스캐너 펼치기' : '스캐너 접기'}
+        title={collapsed ? t('shell.desktop.scannerExpand') : t('shell.desktop.scannerCollapse')}
       >
         <span className="scanner-dock__dot" style={{ background: dotColor }} aria-hidden />
         <Camera size={14} aria-hidden />
-        {!collapsed && <span className="scanner-dock__label">스캐너</span>}
+        {!collapsed && <span className="scanner-dock__label">{t('shell.desktop.scannerLabel')}</span>}
       </button>
       {!collapsed && (
         <div className="scanner-dock__body">
@@ -65,12 +66,12 @@ export function ScannerDockWidget() {
 function statusText(status: CameraStatus): string {
   switch (status.state) {
     case 'active':
-      return status.decoder === 'native' ? '스캔 중 (내장 디코더)' : '스캔 중 (ZXing)';
+      return status.decoder === 'native' ? t('shell.desktop.scanningNative') : t('shell.desktop.scanningZxing');
     case 'starting':
-      return '카메라 준비 중…';
+      return t('shell.desktop.cameraPreparing');
     case 'error':
-      return status.message ?? '카메라 오류';
+      return status.message ?? t('shell.desktop.cameraError');
     default:
-      return '대기 중';
+      return t('shell.desktop.idle');
   }
 }

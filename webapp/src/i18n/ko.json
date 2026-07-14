@@ -1,0 +1,165 @@
+{
+  "common": {
+    "loading": "불러오는 중…",
+    "cancel": "취소",
+    "save": "저장",
+    "retry": "재시도",
+    "close": "닫기",
+    "settings": "설정",
+    "appLauncher": "앱 런처",
+    "more": "더보기",
+    "back": "뒤로",
+    "language": "언어",
+    "hide": "숨기기",
+    "show": "보기",
+    "none": "(없음)",
+    "unknownError": "알 수 없는 오류"
+  },
+  "registry": {
+    "loanReturn": { "title": "대출·반납" },
+    "register": { "title": "도서 등록" },
+    "search": { "title": "통합 검색" },
+    "inventory": { "title": "장서 점검" },
+    "bookDetail": { "title": "도서 상세" },
+    "recentOps": { "title": "최근 처리" }
+  },
+  "shell": {
+    "desktop": {
+      "minimizedSuffix": " (최소화됨)",
+      "scannerExpand": "스캐너 펼치기",
+      "scannerCollapse": "스캐너 접기",
+      "scannerLabel": "스캐너",
+      "scanningNative": "스캔 중 (내장 디코더)",
+      "scanningZxing": "스캔 중 (ZXing)",
+      "cameraPreparing": "카메라 준비 중…",
+      "cameraError": "카메라 오류",
+      "idle": "대기 중",
+      "pinPin": "이 창에 스캔 고정 (전역 1개만 가능)",
+      "pinUnpin": "스캔 고정 해제",
+      "scanReceiving": "스캔 수신",
+      "snapLeft": "왼쪽 절반",
+      "snapRight": "오른쪽 절반",
+      "minimize": "최소화",
+      "maxWindows": "창은 최대 {max}개까지 동시에 열 수 있습니다."
+    },
+    "mobile": {
+      "scanTabLabel": "스캔",
+      "moreEmpty": "표시할 항목이 없습니다.",
+      "tabBarLabel": "주요 화면"
+    }
+  },
+  "views": {
+    "loanReturn": {
+      "hint": "책을 스캔하면 자동으로 대출/반납을 판별합니다",
+      "modeCheckout": "대출",
+      "modeReturn": "반납",
+      "modeStatus": "상태 조회",
+      "errorUnknownAction": "{kind} 실패 — 서버 배포가 이전 버전입니다. Apps Script에서 Code.gs를 새 버전으로 재배포하세요.",
+      "errorGeneric": "{kind} 실패: {message}",
+      "operatorNoteWithName": "웹앱 · {operator}",
+      "operatorNote": "웹앱",
+      "checkoutDone": "대출 완료 — {title}",
+      "checkoutDoneWithMember": "대출 완료 — {title} → {member}",
+      "returnDone": "반납 완료 — {title}",
+      "returnDoneWithMember": "반납 완료 — {title} ({member})",
+      "cannotCheckout": "대출할 수 없는 상태입니다 — {title} ({status})",
+      "isbnHint": "ISBN 스캔은 도서 등록 뷰에서 처리하세요.",
+      "manualUnknownFormat": "인식할 수 없는 형식입니다 (소장본 바코드 7자리 또는 S:학생코드).",
+      "undoDone": "실행취소 완료",
+      "undoFailed": "실행취소 실패 — {message}",
+      "slotBook": "소장본",
+      "slotStudent": "학생",
+      "checking": "조회 중…",
+      "waitingScan": "스캔 대기 중",
+      "awaitingStudent": "누가 빌리나요? — 학생증을 스캔하세요",
+      "statusBusy": "처리 중…",
+      "retryHint": "마지막 시도 실패 — 아래에서 다시 시도하세요.",
+      "retryButton": "다시 시도",
+      "clear": "지우기",
+      "manualSummary": "수동 입력 (카메라 사용 불가 시)",
+      "manualPlaceholder": "소장본 바코드 7자리 또는 S:학생코드",
+      "manualApply": "적용",
+      "todayCount": "오늘 {count}건",
+      "recentCaption": "(로컬 표시용 — 실제 기록은 시트 기준)",
+      "recentEmpty": "아직 처리한 건이 없습니다.",
+      "undoPrefix": "취소·",
+      "opPending": "처리 중",
+      "opDone": "완료",
+      "opFailed": "실패",
+      "undoBarText": "{mode} 처리됨 — {copyKey}",
+      "undoButton": "실행취소 ({seconds}s)"
+    },
+    "register": {
+      "todayPrefix": "오늘",
+      "todayUnit": "권",
+      "diagLogLabel": "진단 로그",
+      "diagRecentRequests": "최근 API 요청 ({count})",
+      "diagCopyButton": "진단 로그 복사",
+      "diagEmpty": "아직 기록된 요청이 없습니다.",
+      "diagCopySuccess": "진단 로그를 클립보드에 복사했습니다.",
+      "diagCopyFailure": "클립보드 복사에 실패했습니다.",
+      "failedListHeading": "실패 목록 — 재시도 필요",
+      "scanHint": "스캐너가 활성화되어 있습니다. ISBN(EAN-13) 바코드를 스캔하세요.",
+      "manualEntryButton": "수동 입력",
+      "manualIsbnLabel": "ISBN-13 직접 입력",
+      "lookupButton": "조회",
+      "lookupInProgress": "서지 조회 중…",
+      "dupBannerTitle": "이미 있는 책입니다: {title}",
+      "dupBannerQuestion": "복본으로 추가할까요?",
+      "addAsDuplicate": "복본으로 추가",
+      "editAndRegister": "서지 정보 수정해서 등록",
+      "labelTitle": "서명 *",
+      "labelSubtitle": "부제",
+      "labelAuthors": "저자 (쉼표로 구분)",
+      "labelPublisher": "출판사",
+      "labelYear": "발행년",
+      "labelPages": "페이지",
+      "labelCopyCount": "복본수",
+      "labelCondition": "상태",
+      "conditionGood": "양호",
+      "conditionFair": "보통",
+      "conditionDamaged": "손상",
+      "cancelAndRescan": "취소하고 다시 스캔",
+      "saving": "저장 중…",
+      "newTitleSuffix": " · 신규 서지",
+      "dupTitleSuffix": " · 기존 서지에 복본 추가",
+      "pencilHint": " — 책 속표지에 등록번호를 연필로 적어두세요",
+      "titleIdLine": "서지 ID: {id}",
+      "requestIdLine": "요청 ID: {id} — Apps Script 실행 기록·18_SYS_OPERATIONS 시트에서 이 ID로 대조하세요",
+      "nextScan": "다음 스캔",
+      "errorLookupFailed": "조회 실패",
+      "errorInvalidIsbn": "올바른 ISBN-13이 아닙니다 (978/979로 시작하는 13자리, 체크숫자 포함).",
+      "errorSaveFailed": "저장 실패 — {reason} (다시 시도하거나 실패 목록에서 재시도하세요)",
+      "errorTitleRequired": "서명은 필수입니다.",
+      "errorNoOperator": "작업자 정보가 없습니다 — 설정에서 로그인 정보를 입력하세요."
+    },
+    "search": {
+      "comingSoon": "통합 검색은 곧 제공됩니다.",
+      "comingSoonDetail": "카탈로그 미러 검색 화면이 이 자리에 들어갈 예정입니다."
+    },
+    "inventory": {
+      "comingSoon": "장서 점검은 곧 제공됩니다.",
+      "comingSoonDetail": "스캔 대조 화면이 이 자리에 들어갈 예정입니다."
+    },
+    "bookDetail": {
+      "comingSoon": "도서 상세는 곧 제공됩니다."
+    },
+    "recentOps": {
+      "comingSoon": "최근 처리 목록은 곧 제공됩니다."
+    }
+  },
+  "student": {
+    "common": {
+      "notReady": "로그인 방식 미결정으로 라우트만 준비됨."
+    },
+    "bookPage": {
+      "title": "학생용 도서 페이지"
+    },
+    "myShelf": {
+      "title": "내 서가"
+    },
+    "ranking": {
+      "title": "랭킹"
+    }
+  }
+}

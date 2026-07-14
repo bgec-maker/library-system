@@ -8,6 +8,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    // scripts/check-bundle-size.mjs가 엔트리→청크 의존 그래프를 읽어 초기 JS gzip 예산을
+    // 계산하는 데 필요하다(.vite/manifest.json). FRONTEND.md 「성능 예산」.
+    manifest: true
   }
 });

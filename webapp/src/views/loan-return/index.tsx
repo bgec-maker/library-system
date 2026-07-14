@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/scanBus';
 import { apiCall, newRequestId } from '../../services/api';
 import { useSession } from '../../services/session';
+import { intlLocaleTag, t } from '../../i18n';
 import './loan-return.css';
 
 // 대출·반납 뷰 — FRONTEND.md "실행 정책": 확인 탭 없이 즉시 실행 + 실행취소 5초.
@@ -16,6 +17,7 @@ import './loan-return.css';
 // 시트 쪽 GAS가 아직 이전 배포라면 UNKNOWN_ACTION이 뜬다 → 재배포 필요 안내를 그대로 보여준다).
 
 type TxMode = 'checkout' | 'return';
+type ActionKind = TxMode | 'status';
 type OpStatus = 'pending' | 'ok' | 'error';
 
 interface BookInfo {
@@ -89,19 +91,28 @@ function bumpTodayCount(): number {
   return next;
 }
 
+// ADR-023: 날짜·숫자는 사전에 넣지 않고 Intl.*(locale)로 로케일만 반영한다.
 function fmtTime(at: number): string {
-  return new Date(at).toLocaleTimeString('ko-KR', { hour12: false });
+  return new Date(at).toLocaleTimeString(intlLocaleTag(), { hour12: false });
 }
 
-function modeLabel(mode: TxMode): string {
-  return mode === 'checkout' ? '대출' : '반납';
-}
-
-function actionErrorMessage(kind: '대출' | '반납' | '상태 조회', code: string, message: string): string {
-  if (code === 'UNKNOWN_ACTION') {
-    return `${kind} 실패 — 서버 배포가 이전 버전입니다. Apps Script에서 Code.gs를 새 버전으로 재배포하세요.`;
+function actionKindLabel(kind: ActionKind): string {
+  switch (kind) {
+    case 'checkout':
+      return t('views.loanReturn.modeCheckout');
+    case 'return':
+      return t('views.loanReturn.modeReturn');
+    case 'status':
+      return t('views.loanReturn.modeStatus');
   }
-  return `${kind} 실패: ${message}`;
+}
+
+function actionErrorMessage(kind: ActionKind, code: string, message: string): string {
+  const kindLabel = actionKindLabel(kind);
+  if (code === 'UNKNOWN_ACTION') {
+    return t('views.loanReturn.errorUnknownAction', { kind: kindLabel });
+  }
+  return t('views.loanReturn.errorGeneric', { kind: kindLabel, message });
 }
 
 export default function LoanReturnView({ shell }: ViewProps) {
@@ -132,7 +143,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
   busyRef.current = busy;
 
   useEffect(() => {
-    shell.setTitle(getViewMeta('loan-return')?.title ?? '대출·반납');
+    shell.setTitle(getViewMeta('loan-return')?.title ?? t('registry.loanReturn.title'));
   }, [shell]);
 
   const clearUndo = useCallback(() => {
@@ -170,7 +181,10 @@ export default function LoanReturnView({ shell }: ViewProps) {
     setOps((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
   }, []);
 
-  const operatorNote = useCallback(() => (operator ? `웹앱 · ${operator}` : '웹앱'), [operator]);
+  const operatorNote = useCallback(
+    () => (operator ? t('views.loanReturn.operatorNoteWithName', { operator }) : t('views.loanReturn.operatorNote')),
+    [operator]
+  );
 
   const resetSlots = useCallback(() => {
     setBook(null);
@@ -193,12 +207,14 @@ export default function LoanReturnView({ shell }: ViewProps) {
       if (res.ok) {
         patchOp(requestId, { status: 'ok' });
         setTodayCount(bumpTodayCount());
-        const who = res.data?.memberName ? ` → ${res.data.memberName}` : '';
-        shell.toast(`대출 완료 — ${info.title}${who}`, 'success');
+        const message = res.data?.memberName
+          ? t('views.loanReturn.checkoutDoneWithMember', { title: info.title, member: res.data.memberName })
+          : t('views.loanReturn.checkoutDone', { title: info.title });
+        shell.toast(message, 'success');
         startUndo(requestId, 'checkout', info.barcode, memberKey);
         resetSlots();
       } else {
-        const message = actionErrorMessage('대출', res.error.code, res.error.message);
+        const message = actionErrorMessage('checkout', res.error.code, res.error.message);
         console.error('[loan-return] checkout 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, memberKey, requestId });
         patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
         shell.toast(message, 'error');
@@ -222,13 +238,15 @@ export default function LoanReturnView({ shell }: ViewProps) {
       if (res.ok) {
         patchOp(requestId, { status: 'ok' });
         setTodayCount(bumpTodayCount());
-        const who = info.memberName ? ` (${info.memberName})` : '';
-        shell.toast(`반납 완료 — ${info.title}${who}`, 'success');
+        const message = info.memberName
+          ? t('views.loanReturn.returnDoneWithMember', { title: info.title, member: info.memberName })
+          : t('views.loanReturn.returnDone', { title: info.title });
+        shell.toast(message, 'success');
         // 반납 실행취소(=재대출)에 memberNo가 필요 — copyStatus에서 받아둔 값을 넘긴다.
         startUndo(requestId, 'return', info.barcode, info.memberNo || undefined);
         resetSlots();
       } else {
-        const message = actionErrorMessage('반납', res.error.code, res.error.message);
+        const message = actionErrorMessage('return', res.error.code, res.error.message);
         console.error('[loan-return] return 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, requestId });
         patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
         shell.toast(message, 'error');
@@ -247,7 +265,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
       const res = await apiCall<CopyStatusResult>('copyStatus', { copyKey: barcode });
       setChecking(false);
       if (!res.ok) {
-        const message = actionErrorMessage('상태 조회', res.error.code, res.error.message);
+        const message = actionErrorMessage('status', res.error.code, res.error.message);
         console.error('[loan-return] copyStatus 실패', { code: res.error.code, message: res.error.message, copyKey: barcode });
         shell.toast(message, 'error');
         return;
@@ -273,7 +291,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
       }
 
       if (data.titleStatusCode !== 'ACTIVE' || (data.statusCode !== 'AVAILABLE' && data.statusCode !== 'HOLD_READY')) {
-        shell.toast(`대출할 수 없는 상태입니다 — ${data.title} (${data.statusCode})`, 'error');
+        shell.toast(t('views.loanReturn.cannotCheckout', { title: data.title, status: data.statusCode }), 'error');
         return;
       }
 
@@ -319,7 +337,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
       } else if (target.kind === 'student') {
         handleStudentScan(target.studentCode);
       } else if (target.kind === 'isbn') {
-        shell.toast('ISBN 스캔은 도서 등록 뷰에서 처리하세요.', 'info');
+        shell.toast(t('views.loanReturn.isbnHint'), 'info');
       }
       // kind === 'unknown' → 조용히 무시(서비스 계층이 이미 실패음을 재생함, FRONTEND.md).
     },
@@ -340,7 +358,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
     setManualError(null);
     const target = parseScan(manualInput);
     if (target.kind === 'unknown') {
-      setManualError('인식할 수 없는 형식입니다 (소장본 바코드 7자리 또는 S:학생코드).');
+      setManualError(t('views.loanReturn.manualUnknownFormat'));
       return;
     }
     applyScanTarget(target);
@@ -368,20 +386,19 @@ export default function LoanReturnView({ shell }: ViewProps) {
     // (copyStatus에서 받아둔 memberNo 사용; 없으면 서버가 VALIDATION_ERROR로 알려준다).
     const undoAction: TxMode = undoOfMode === 'checkout' ? 'return' : 'checkout';
     const requestId = newRequestId();
+    const undoNote = `${operatorNote()} · ${t('views.loanReturn.undoPrefix')}`;
     const payload: Record<string, unknown> =
-      undoAction === 'checkout'
-        ? { memberKey, copyKey, note: `${operatorNote()} · 실행취소`, requestId }
-        : { copyKey, note: `${operatorNote()} · 실행취소`, requestId };
+      undoAction === 'checkout' ? { memberKey, copyKey, note: undoNote, requestId } : { copyKey, note: undoNote, requestId };
     pushOp({ id: requestId, mode: undoAction, copyKey, memberKey, status: 'pending', isUndo: true, at: Date.now() });
     const res = await apiCall<Record<string, unknown>>(undoAction, payload);
     if (res.ok) {
       patchOp(requestId, { status: 'ok' });
-      shell.toast('실행취소 완료', 'success');
+      shell.toast(t('views.loanReturn.undoDone'), 'success');
     } else {
-      const message = actionErrorMessage(undoAction === 'checkout' ? '대출' : '반납', res.error.code, res.error.message);
+      const message = actionErrorMessage(undoAction, res.error.code, res.error.message);
       console.error('[loan-return] undo 실패', { undoAction, code: res.error.code, message: res.error.message, copyKey, memberKey, requestId });
       patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
-      shell.toast(`실행취소 실패 — ${message}`, 'error');
+      shell.toast(t('views.loanReturn.undoFailed', { message }), 'error');
     }
   }
 
@@ -392,53 +409,55 @@ export default function LoanReturnView({ shell }: ViewProps) {
     <div className="lr-view">
       <header className="lr-header">
         <h1>
-          <ArrowLeftRight size={20} aria-hidden /> 대출·반납
+          <ArrowLeftRight size={20} aria-hidden /> {t('registry.loanReturn.title')}
         </h1>
-        <span className="lr-header-hint">책을 스캔하면 자동으로 대출/반납을 판별합니다</span>
+        <span className="lr-header-hint">{t('views.loanReturn.hint')}</span>
       </header>
 
       <div className="lr-slots">
         <div className={`lr-slot${book ? ' filled' : ''}`}>
-          <span className="lr-slot-label">소장본</span>
-          <span className="lr-slot-value mono">{checking ? '조회 중…' : book ? book.barcode : '스캔 대기 중'}</span>
+          <span className="lr-slot-label">{t('views.loanReturn.slotBook')}</span>
+          <span className="lr-slot-value mono">
+            {checking ? t('views.loanReturn.checking') : book ? book.barcode : t('views.loanReturn.waitingScan')}
+          </span>
           {book && <span className="lr-slot-sub">{book.title}</span>}
         </div>
         <div className={`lr-slot${student ? ' filled' : ''}${awaitingStudent ? ' waiting' : ''}`}>
-          <span className="lr-slot-label">학생</span>
+          <span className="lr-slot-label">{t('views.loanReturn.slotStudent')}</span>
           <span className="lr-slot-value mono">
-            {student ? student.studentCode : awaitingStudent ? '누가 빌리나요? — 학생증을 스캔하세요' : '—'}
+            {student ? student.studentCode : awaitingStudent ? t('views.loanReturn.awaitingStudent') : '—'}
           </span>
         </div>
       </div>
 
       <div className="lr-action-row">
-        {(checking || busy) && <span className="lr-status lr-status-busy">처리 중…</span>}
-        {canRetry && <span className="lr-status lr-status-error">마지막 시도 실패 — 아래에서 다시 시도하세요.</span>}
+        {(checking || busy) && <span className="lr-status lr-status-busy">{t('views.loanReturn.statusBusy')}</span>}
+        {canRetry && <span className="lr-status lr-status-error">{t('views.loanReturn.retryHint')}</span>}
         {canRetry && (
           <button type="button" className="warn" onClick={handleRetry}>
-            다시 시도
+            {t('views.loanReturn.retryButton')}
           </button>
         )}
         {(book || student) && (
           <button type="button" className="ghost" onClick={resetSlots} disabled={busy || checking}>
-            지우기
+            {t('views.loanReturn.clear')}
           </button>
         )}
       </div>
 
       <details className="lr-manual">
-        <summary>수동 입력 (카메라 사용 불가 시)</summary>
+        <summary>{t('views.loanReturn.manualSummary')}</summary>
         <div className="lr-manual-row">
           <input
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
-            placeholder="소장본 바코드 7자리 또는 S:학생코드"
+            placeholder={t('views.loanReturn.manualPlaceholder')}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleManualSubmit();
             }}
           />
           <button type="button" onClick={handleManualSubmit}>
-            적용
+            {t('views.loanReturn.manualApply')}
           </button>
         </div>
         {manualError && <p className="lr-manual-error">{manualError}</p>}
@@ -446,22 +465,26 @@ export default function LoanReturnView({ shell }: ViewProps) {
 
       <div className="lr-recent">
         <div className="lr-recent-header">
-          <span>오늘 {todayCount}건</span>
-          <span className="lr-recent-caption">(로컬 표시용 — 실제 기록은 시트 기준)</span>
+          <span>{t('views.loanReturn.todayCount', { count: todayCount })}</span>
+          <span className="lr-recent-caption">{t('views.loanReturn.recentCaption')}</span>
         </div>
         <ul className="lr-recent-list">
-          {ops.length === 0 && <li className="lr-recent-empty">아직 처리한 건이 없습니다.</li>}
+          {ops.length === 0 && <li className="lr-recent-empty">{t('views.loanReturn.recentEmpty')}</li>}
           {ops.map((op) => (
             <li key={op.id} className={`lr-op lr-op-${op.status}`}>
               <span className="lr-op-mode">
-                {op.isUndo ? '취소·' : ''}
-                {modeLabel(op.mode)}
+                {op.isUndo ? t('views.loanReturn.undoPrefix') : ''}
+                {actionKindLabel(op.mode)}
               </span>
               <span className="lr-op-copy mono">{op.copyKey}</span>
               {op.memberKey && <span className="lr-op-member mono">{op.memberKey}</span>}
               <span className="lr-op-time">{fmtTime(op.at)}</span>
               <span className="lr-op-status">
-                {op.status === 'pending' ? '처리 중' : op.status === 'ok' ? '완료' : (op.errorCode ?? '실패')}
+                {op.status === 'pending'
+                  ? t('views.loanReturn.opPending')
+                  : op.status === 'ok'
+                    ? t('views.loanReturn.opDone')
+                    : (op.errorCode ?? t('views.loanReturn.opFailed'))}
               </span>
             </li>
           ))}
@@ -470,11 +493,9 @@ export default function LoanReturnView({ shell }: ViewProps) {
 
       {undo && (
         <div className="lr-undo-bar">
-          <span>
-            {modeLabel(undo.mode)} 처리됨 — {undo.copyKey}
-          </span>
+          <span>{t('views.loanReturn.undoBarText', { mode: actionKindLabel(undo.mode), copyKey: undo.copyKey })}</span>
           <button type="button" onClick={() => void handleUndoClick()}>
-            실행취소 ({undoSecondsLeft}s)
+            {t('views.loanReturn.undoButton', { seconds: undoSecondsLeft })}
           </button>
         </div>
       )}

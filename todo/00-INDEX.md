@@ -16,7 +16,7 @@
 
 ## 큐 (위에서부터)
 - [x] 01 repo-cleanup
-- [ ] 02 perf-ci + i18n 기반
+- [x] 02 perf-ci + i18n 기반
 - [ ] 03 camera-on-demand
 - [ ] 04 dashboard-baselayer
 - [ ] 05 reports-r1

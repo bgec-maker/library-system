@@ -1,7 +1,8 @@
-import { Suspense, lazy, useMemo } from 'react';
+import { Suspense, lazy, useMemo, type ReactNode } from 'react';
 import './tokens/work.css';
 import './styles/base.css';
 import { SessionGate } from './components/SessionGate';
+import { ensureLocaleReady } from './i18n';
 
 // 셸 선택 + 스킨 로드 — FRONTEND.md: "셸은 부팅 시 하나만 선택, 리사이즈로 셸 전환 안 함".
 // 학생 표면(#/b/:barcode)은 완전히 별도 번들로 lazy-load해 사서 셸 코드가 같이 딸려가지 않게 한다
@@ -29,17 +30,27 @@ function BootFallback() {
   );
 }
 
+// i18n/index.ts의 Suspense 리소스 패턴 — 로케일 사전이 로드되기 전에는 자식(셸·학생 표면)이
+// 아예 렌더되지 않는다. registry.ts 등 t()를 모듈 평가 시점에 호출하는 코드가 항상 올바른
+// 로케일을 보고 시작하도록 보장한다(ADR-023 "활성 로케일만 dynamic import").
+function I18nGate({ children }: { children: ReactNode }) {
+  ensureLocaleReady();
+  return <>{children}</>;
+}
+
 export default function Boot() {
   const studentRoute = useMemo(() => isStudentRoute(window.location.hash), []);
   const platform = useMemo(() => detectPlatform(), []);
 
   return (
     <Suspense fallback={<BootFallback />}>
-      {studentRoute ? (
-        <StudentRoot />
-      ) : (
-        <SessionGate>{platform === 'desktop' ? <DesktopShell /> : <MobileShell />}</SessionGate>
-      )}
+      <I18nGate>
+        {studentRoute ? (
+          <StudentRoot />
+        ) : (
+          <SessionGate>{platform === 'desktop' ? <DesktopShell /> : <MobileShell />}</SessionGate>
+        )}
+      </I18nGate>
     </Suspense>
   );
 }

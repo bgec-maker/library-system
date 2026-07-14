@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "check-view-boundary": "node scripts/check-view-boundary.mjs",
-    "verify": "npm run lint && npm run check-view-boundary && tsc -b --noEmit"
+    "check-i18n-literals": "node scripts/check-i18n-literals.mjs",
+    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && tsc -b --noEmit",
+    "size": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.24.0",

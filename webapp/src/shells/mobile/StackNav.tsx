@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
+import { t } from '../../i18n';
 
 // FRONTEND.md '모바일 셸 — 탭 + 스택': book-detail 같은 push 전용 뷰(registry의 mobile.tab이 없는 뷰)를
 // 위한 스택 내비게이터. 브라우저/제스처 뒤로가기(popstate) 또는 자체 뒤로가기 버튼으로 pop하고,
@@ -125,14 +126,14 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
   return (
     <div className="m-stack-overlay" role="dialog" aria-modal="true">
       <header className="m-stack-header">
-        <button type="button" className="m-stack-back" onClick={() => window.history.back()} aria-label="뒤로">
+        <button type="button" className="m-stack-back" onClick={() => window.history.back()} aria-label={t('common.back')}>
           <ChevronLeft size={24} aria-hidden />
         </button>
         <h1 className="m-stack-title">{top.title}</h1>
         <span className="m-stack-spacer" aria-hidden="true" />
       </header>
       <div className="m-stack-body">
-        <Suspense fallback={<div className="m-shell-loading">불러오는 중…</div>}>
+        <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
           <Comp shell={shell} params={top.params} />
         </Suspense>
       </div>

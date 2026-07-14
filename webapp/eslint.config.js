@@ -38,6 +38,34 @@ const viewBoundaryRules = {
   ]
 };
 
+// ADR-023 「웹앱 다국어」 + FRONTEND.md 「다국어」: "views/**·shells/**·student/** JSX 내
+// 한글 문자열 리터럴을 린트로 검출 — 모든 UI 문자열은 사전 키". esquery의 정규식 속성 매칭
+// ([value=/…/])으로 Hangul(가-힣) 리터럴을 잡는다. 대상은 명시적으로 "JSX 안" —
+// JSXText(마크업 텍스트) · JSX 속성값 문자열 리터럴(예: title="저장") · JSX 표현식 컨테이너
+// 안의 템플릿 리터럴(예: title={`${x} (최소화됨)`}). 코드 주석은 이 AST 노드들에 애초에
+// 안 걸린다(주석은 이 셀렉터들이 보는 트리에 없다) — 이 프로젝트 컨벤션(CLAUDE.md: "주석 =
+// 한국어")과 자연히 공존한다. shell.toast()/console.error() 같은 순수 함수 인자 문자열은
+// 의도적으로 범위 밖(ADR-023 문구 그대로 "JSX 내"에 한정) — 그 문자열들은 4번 요구사항에
+// 따라 수동으로 t()로 이관했다.
+const HANGUL = '/[\\uAC00-\\uD7A3]/';
+const i18nLiteralRules = {
+  'no-restricted-syntax': [
+    'error',
+    {
+      selector: `JSXText[value=${HANGUL}]`,
+      message: '뷰/셸/학생 표면 JSX 텍스트에 한글 리터럴 금지 — src/i18n의 t(\'key\')로 옮기세요(ADR-023).'
+    },
+    {
+      selector: `JSXAttribute > Literal[value=${HANGUL}]`,
+      message: '뷰/셸/학생 표면 JSX 속성 문자열에 한글 리터럴 금지 — t(\'key\')로 옮기세요(ADR-023).'
+    },
+    {
+      selector: `JSXExpressionContainer TemplateElement[value.raw=${HANGUL}]`,
+      message: 'JSX 표현식 안 템플릿 리터럴에 한글 리터럴 금지 — t(\'key\', {…})로 옮기세요(ADR-023).'
+    }
+  ]
+};
+
 export default [
   // public/은 정적 자산(zxing.js 벤더 번들 포함) — 소스 코드가 아니므로 대상에서 제외.
   { ignores: ['dist/**', 'node_modules/**', 'public/**'] },
@@ -72,6 +100,12 @@ export default [
     // 뷰 경계 — 이 프로젝트에서 가장 강제력이 큰 규칙.
     files: ['src/views/**/*.{ts,tsx}'],
     rules: viewBoundaryRules
+  },
+  {
+    // 다국어 강제 — views/shells/student의 JSX 안 한글 리터럴 금지(ADR-023).
+    // check-i18n-literals.mjs가 CI 전용 이중 방어선으로 동일 경계를 regex로 재검사한다.
+    files: ['src/views/**/*.tsx', 'src/shells/**/*.tsx', 'src/student/**/*.tsx'],
+    rules: i18nLiteralRules
   },
   {
     // CI 스크립트 — Node 전역(console/process 등) 사용.

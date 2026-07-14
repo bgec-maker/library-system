@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { pushToast } from '../../services/toastBus';
+import { t } from '../../i18n';
 import {
   getEffectiveScanRoute,
   isScanRoutePinned,
@@ -101,7 +102,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     }
 
     if (get().windows.length >= MAX_WINDOWS) {
-      pushToast(`창은 최대 ${MAX_WINDOWS}개까지 동시에 열 수 있습니다.`, 'error');
+      pushToast(t('shell.desktop.maxWindows', { max: MAX_WINDOWS }), 'error');
       return;
     }
 

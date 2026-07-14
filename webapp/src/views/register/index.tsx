@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { useSession } from '../../services/session';
 import { apiCall, newRequestId, onApiLog, getRecentApiLog, type ApiCallLogEntry } from '../../services/api';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
+import { intlLocaleTag, t } from '../../i18n';
 import './register.css';
 
 // register.html("스파이크 — 검증된 등록 흐름")을 그대로 흡수: 스캔→조회→확인폼→저장→등록번호
@@ -145,19 +146,19 @@ function DiagnosticsPanel({ log, onCopy }: { log: ApiCallLogEntry[]; onCopy: () 
   return (
     <div className="reg-diagPanel panel">
       <div className="reg-diagHead">
-        <span>최근 API 요청 ({log.length})</span>
+        <span>{t('views.register.diagRecentRequests', { count: log.length })}</span>
         <button type="button" className="ghost" onClick={onCopy}>
-          진단 로그 복사
+          {t('views.register.diagCopyButton')}
         </button>
       </div>
       {log.length === 0 ? (
-        <p className="reg-diagEmpty">아직 기록된 요청이 없습니다.</p>
+        <p className="reg-diagEmpty">{t('views.register.diagEmpty')}</p>
       ) : (
         <ul className="reg-diagList mono">
           {log.map((entry, i) => (
             <li key={`${entry.at}-${i}`} className={`reg-diagRow outcome-${entry.outcome}`}>
               <div className="reg-diagLine1">
-                <span>{new Date(entry.at).toLocaleTimeString('ko-KR', { hour12: false })}</span>
+                <span>{new Date(entry.at).toLocaleTimeString(intlLocaleTag(), { hour12: false })}</span>
                 <span>{entry.action}</span>
                 <span className="reg-diagOutcome">{outcomeLabel(entry.outcome)}</span>
                 <span>{entry.durationMs}ms</span>
@@ -178,14 +179,14 @@ function FailedList({ entries, onRetry }: { entries: FailedEntry[]; onRetry: (en
   if (entries.length === 0) return null;
   return (
     <div className="reg-failList">
-      <h2>실패 목록 — 재시도 필요</h2>
+      <h2>{t('views.register.failedListHeading')}</h2>
       {entries.map((entry) => (
         <div className="reg-failRow" key={entry.requestId}>
           <span>
             {entry.payload.title || entry.payload.isbn} — {entry.reason}
           </span>
           <button type="button" onClick={() => onRetry(entry)}>
-            재시도
+            {t('common.retry')}
           </button>
         </div>
       ))}
@@ -197,7 +198,7 @@ export default function RegisterView({ shell }: ViewProps) {
   const operator = useSession((s) => s.operator);
 
   useEffect(() => {
-    shell.setTitle(getViewMeta('register')?.title ?? '도서 등록');
+    shell.setTitle(getViewMeta('register')?.title ?? t('registry.register.title'));
   }, [shell]);
 
   const [screen, setScreen] = useState<Screen>('scan');
@@ -238,7 +239,7 @@ export default function RegisterView({ shell }: ViewProps) {
         setScreen('confirm');
         return;
       }
-      setErrorBanner(res.error.message || '조회 실패');
+      setErrorBanner(res.error.message || t('views.register.errorLookupFailed'));
       setScreen('scan');
       return;
     }
@@ -266,7 +267,7 @@ export default function RegisterView({ shell }: ViewProps) {
     const digits = manualValue.replace(/[^0-9]/g, '');
     const validPrefix = digits.startsWith('978') || digits.startsWith('979');
     if (!validPrefix || !isValidEan13(digits)) {
-      setErrorBanner('올바른 ISBN-13이 아닙니다 (978/979로 시작하는 13자리, 체크숫자 포함).');
+      setErrorBanner(t('views.register.errorInvalidIsbn'));
       return;
     }
     setManualOpen(false);
@@ -279,8 +280,8 @@ export default function RegisterView({ shell }: ViewProps) {
     setScreen('saving');
     const res = await apiCall<RegisterByIsbnResult>('registerByIsbn', payload);
     if (!res.ok) {
-      const reason = res.error.message || '알 수 없는 오류';
-      setErrorBanner(`저장 실패 — ${reason} (다시 시도하거나 실패 목록에서 재시도하세요)`);
+      const reason = res.error.message || t('common.unknownError');
+      setErrorBanner(t('views.register.errorSaveFailed', { reason }));
       setFailedList((prev) => {
         const next = [...prev.filter((f) => f.requestId !== requestId), { requestId, payload, reason }];
         writeFailedList(next);
@@ -307,11 +308,11 @@ export default function RegisterView({ shell }: ViewProps) {
     if (!lookup) return;
     const title = form.title.trim();
     if (!title) {
-      setErrorBanner('서명은 필수입니다.');
+      setErrorBanner(t('views.register.errorTitleRequired'));
       return;
     }
     if (!operator) {
-      setErrorBanner('작업자 정보가 없습니다 — 설정에서 로그인 정보를 입력하세요.');
+      setErrorBanner(t('views.register.errorNoOperator'));
       return;
     }
     const copyCount = Math.max(1, Math.min(50, Number(form.copyCount) || 1));
@@ -361,9 +362,9 @@ export default function RegisterView({ shell }: ViewProps) {
     const text = JSON.stringify(diagLog, null, 2);
     try {
       await navigator.clipboard.writeText(text);
-      shell.toast('진단 로그를 클립보드에 복사했습니다.', 'success');
+      shell.toast(t('views.register.diagCopySuccess'), 'success');
     } catch {
-      shell.toast('클립보드 복사에 실패했습니다.', 'error');
+      shell.toast(t('views.register.diagCopyFailure'), 'error');
     }
   }
 
@@ -371,13 +372,14 @@ export default function RegisterView({ shell }: ViewProps) {
     <div className="reg-root">
       <header className="reg-header">
         <h1>
-          <BookPlus size={20} aria-hidden /> 도서 등록
+          <BookPlus size={20} aria-hidden /> {t('registry.register.title')}
         </h1>
         <div className="reg-stats">
-          오늘 <b>{todayCount}</b>권
+          {t('views.register.todayPrefix')} <b>{todayCount}</b>
+          {t('views.register.todayUnit')}
         </div>
         <button type="button" className="ghost reg-diagBtn" onClick={() => setDiagOpen((v) => !v)}>
-          진단 로그 {diagOpen ? '숨기기' : '보기'}
+          {t('views.register.diagLogLabel')} {diagOpen ? t('common.hide') : t('common.show')}
         </button>
       </header>
 
@@ -391,14 +393,14 @@ export default function RegisterView({ shell }: ViewProps) {
 
       {screen === 'scan' && (
         <section className="reg-scan panel">
-          <p className="reg-scanHint">스캐너가 활성화되어 있습니다. ISBN(EAN-13) 바코드를 스캔하세요.</p>
+          <p className="reg-scanHint">{t('views.register.scanHint')}</p>
           {!manualOpen ? (
             <button type="button" className="ghost" onClick={() => setManualOpen(true)}>
-              수동 입력
+              {t('views.register.manualEntryButton')}
             </button>
           ) : (
             <div className="reg-manual">
-              <label htmlFor="regManualIsbn">ISBN-13 직접 입력</label>
+              <label htmlFor="regManualIsbn">{t('views.register.manualIsbnLabel')}</label>
               <input
                 id="regManualIsbn"
                 inputMode="numeric"
@@ -408,7 +410,7 @@ export default function RegisterView({ shell }: ViewProps) {
               />
               <div className="reg-row2" style={{ marginTop: 10 }}>
                 <button type="button" onClick={handleManualSubmit}>
-                  조회
+                  {t('views.register.lookupButton')}
                 </button>
                 <button
                   type="button"
@@ -418,7 +420,7 @@ export default function RegisterView({ shell }: ViewProps) {
                     setManualValue('');
                   }}
                 >
-                  취소
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -430,7 +432,7 @@ export default function RegisterView({ shell }: ViewProps) {
         <section className="reg-lookup panel">
           <div className="reg-spinner" aria-hidden="true" />
           <div>
-            서지 조회 중… (<span className="mono">{isbn}</span>)
+            {t('views.register.lookupInProgress')} (<span className="mono">{isbn}</span>)
           </div>
         </section>
       )}
@@ -439,14 +441,14 @@ export default function RegisterView({ shell }: ViewProps) {
         <section className="reg-confirm">
           {dupVisible && (
             <div className="reg-dupBanner">
-              <b>이미 있는 책입니다: {lookup.existingTitle ?? lookup.title}</b>
-              <div>복본으로 추가할까요?</div>
+              <b>{t('views.register.dupBannerTitle', { title: lookup.existingTitle ?? lookup.title ?? '' })}</b>
+              <div>{t('views.register.dupBannerQuestion')}</div>
               <div className="reg-row2" style={{ marginTop: 10 }}>
                 <button type="button" onClick={() => setDupVisible(false)}>
-                  복본으로 추가
+                  {t('views.register.addAsDuplicate')}
                 </button>
                 <button type="button" className="ghost" onClick={() => setDupVisible(false)}>
-                  서지 정보 수정해서 등록
+                  {t('views.register.editAndRegister')}
                 </button>
               </div>
             </div>
@@ -461,18 +463,18 @@ export default function RegisterView({ shell }: ViewProps) {
                 </div>
               </div>
 
-              <label htmlFor="regTitle">서명 *</label>
+              <label htmlFor="regTitle">{t('views.register.labelTitle')}</label>
               <input id="regTitle" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
 
-              <label htmlFor="regSubtitle">부제</label>
+              <label htmlFor="regSubtitle">{t('views.register.labelSubtitle')}</label>
               <input id="regSubtitle" value={form.subtitle} onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))} />
 
-              <label htmlFor="regAuthors">저자 (쉼표로 구분)</label>
+              <label htmlFor="regAuthors">{t('views.register.labelAuthors')}</label>
               <input id="regAuthors" value={form.authors} onChange={(e) => setForm((f) => ({ ...f, authors: e.target.value }))} />
 
               <div className="reg-row2">
                 <div>
-                  <label htmlFor="regPublisher">출판사</label>
+                  <label htmlFor="regPublisher">{t('views.register.labelPublisher')}</label>
                   <input
                     id="regPublisher"
                     value={form.publisher}
@@ -480,7 +482,7 @@ export default function RegisterView({ shell }: ViewProps) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="regYear">발행년</label>
+                  <label htmlFor="regYear">{t('views.register.labelYear')}</label>
                   <input
                     id="regYear"
                     inputMode="numeric"
@@ -492,7 +494,7 @@ export default function RegisterView({ shell }: ViewProps) {
 
               <div className="reg-row2">
                 <div>
-                  <label htmlFor="regPages">페이지</label>
+                  <label htmlFor="regPages">{t('views.register.labelPages')}</label>
                   <input
                     id="regPages"
                     inputMode="numeric"
@@ -501,7 +503,7 @@ export default function RegisterView({ shell }: ViewProps) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="regCopyCount">복본수</label>
+                  <label htmlFor="regCopyCount">{t('views.register.labelCopyCount')}</label>
                   <input
                     id="regCopyCount"
                     type="number"
@@ -514,22 +516,22 @@ export default function RegisterView({ shell }: ViewProps) {
                 </div>
               </div>
 
-              <label htmlFor="regCondition">상태</label>
+              <label htmlFor="regCondition">{t('views.register.labelCondition')}</label>
               <select
                 id="regCondition"
                 value={form.condition}
                 onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value as BookCondition }))}
               >
-                <option value="GOOD">양호</option>
-                <option value="FAIR">보통</option>
-                <option value="DAMAGED">손상</option>
+                <option value="GOOD">{t('views.register.conditionGood')}</option>
+                <option value="FAIR">{t('views.register.conditionFair')}</option>
+                <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
               </select>
 
               <button type="button" onClick={() => void handleSave()}>
-                저장
+                {t('common.save')}
               </button>
               <button type="button" className="ghost" onClick={handleCancel}>
-                취소하고 다시 스캔
+                {t('views.register.cancelAndRescan')}
               </button>
             </div>
           )}
@@ -539,7 +541,7 @@ export default function RegisterView({ shell }: ViewProps) {
       {screen === 'saving' && (
         <section className="reg-lookup panel">
           <div className="reg-spinner" aria-hidden="true" />
-          <div>저장 중…</div>
+          <div>{t('views.register.saving')}</div>
         </section>
       )}
 
@@ -555,14 +557,15 @@ export default function RegisterView({ shell }: ViewProps) {
           )}
           <div className="reg-resultTitle">
             {result.title}
-            {result.created ? ' · 신규 서지' : ' · 기존 서지에 복본 추가'} — 책 속표지에 등록번호를 연필로 적어두세요
+            {result.created ? t('views.register.newTitleSuffix') : t('views.register.dupTitleSuffix')}
+            {t('views.register.pencilHint')}
           </div>
           <div className="reg-resultMeta mono">
-            {result.titleId && <div>서지 ID: {result.titleId}</div>}
-            <div>요청 ID: {result.requestId} — Apps Script 실행 기록·18_SYS_OPERATIONS 시트에서 이 ID로 대조하세요</div>
+            {result.titleId && <div>{t('views.register.titleIdLine', { id: result.titleId })}</div>}
+            <div>{t('views.register.requestIdLine', { id: result.requestId })}</div>
           </div>
           <button type="button" onClick={handleNext}>
-            다음 스캔
+            {t('views.register.nextScan')}
           </button>
         </section>
       )}

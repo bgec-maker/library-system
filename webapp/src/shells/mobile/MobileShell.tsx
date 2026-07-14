@@ -10,6 +10,7 @@ import { pushToast } from '../../services/toastBus';
 import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
+import { setLocale, t, useLocale, type Locale } from '../../i18n';
 import TabBar, { type TabSelection } from './TabBar';
 import StackNav, { type StackNavHandle } from './StackNav';
 import './mobile.css';
@@ -20,11 +21,11 @@ import './mobile.css';
 // ToastHost·ScanFlashOverlay는 셸 루트에서 이 파일 한 곳에서만 마운트한다.
 
 function tabHeaderTitle(id: TabSelection): string {
-  if (id === 'more') return '더보기';
+  if (id === 'more') return t('common.more');
   const meta = getViewMeta(id);
   if (!meta) return id;
   // TabBar의 labelFor와 동일 규칙(loan-return→"스캔") — 헤더 타이틀 기본값에도 그대로 적용.
-  return meta.id === 'loan-return' ? '스캔' : meta.title;
+  return meta.id === 'loan-return' ? t('shell.mobile.scanTabLabel') : meta.title;
 }
 
 interface MoreMenuScreenProps {
@@ -32,33 +33,64 @@ interface MoreMenuScreenProps {
   onOpen: (viewId: ViewId) => void;
 }
 
-function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
-  if (items.length === 0) {
-    return <p className="m-more-empty">표시할 항목이 없습니다.</p>;
+// 언어 토글 — FRONTEND.md "전환 UI: 설정·더보기". 데스크톱 Dock.tsx의 LocaleSwitch와 같은
+// 이유로 언어 이름은 사전 키가 아니라 ASCII 로케일 코드로 표시한다.
+function LocaleRow() {
+  const locale = useLocale();
+
+  function pick(next: Locale) {
+    if (next !== locale) void setLocale(next);
   }
+
   return (
-    <ul className="m-more-list">
-      {items.map((meta) => {
-        const Icon = meta.icon;
-        return (
-          <li key={meta.id}>
-            <button type="button" className="m-more-item" onClick={() => onOpen(meta.id)}>
-              <span className="m-more-icon" aria-hidden="true">
-                <Icon size={20} />
-              </span>
-              <span className="m-more-label">{meta.title}</span>
-              <span className="m-more-chevron" aria-hidden="true">
-                <ChevronRight size={20} />
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="m-more-locale" role="group" aria-label={t('common.language')}>
+      <span className="m-more-locale-label">{t('common.language')}</span>
+      <div className="m-more-locale-btns">
+        <button type="button" className={`m-more-locale-btn${locale === 'ko' ? ' is-active' : ''}`} onClick={() => pick('ko')}>
+          KO
+        </button>
+        <button type="button" className={`m-more-locale-btn${locale === 'en' ? ' is-active' : ''}`} onClick={() => pick('en')}>
+          EN
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
+  return (
+    <>
+      <LocaleRow />
+      {items.length === 0 ? (
+        <p className="m-more-empty">{t('shell.mobile.moreEmpty')}</p>
+      ) : (
+        <ul className="m-more-list">
+          {items.map((meta) => {
+            const Icon = meta.icon;
+            return (
+              <li key={meta.id}>
+                <button type="button" className="m-more-item" onClick={() => onOpen(meta.id)}>
+                  <span className="m-more-icon" aria-hidden="true">
+                    <Icon size={20} />
+                  </span>
+                  <span className="m-more-label">{meta.title}</span>
+                  <span className="m-more-chevron" aria-hidden="true">
+                    <ChevronRight size={20} />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
   );
 }
 
 export default function MobileShell() {
+  // 언어 토글이 눌리면 이 컴포넌트가 재렌더되고, 활성 탭 뷰·StackNav도 함께 재렌더돼 t()를
+  // 다시 평가한다(DesktopShell.tsx의 동일 패턴 참고).
+  useLocale();
   const role = useSession((s) => s.role);
   const tabs = useMemo(() => mobileTabViews(role), [role]);
   const moreList = useMemo(() => moreMenuViews(role), [role]);
@@ -161,7 +193,7 @@ export default function MobileShell() {
       <div className="m-shell-content">
         <header className="m-shell-header">
           <h1 className="m-shell-title">{tabTitle}</h1>
-          <button type="button" className="m-shell-settings" aria-label="설정" onClick={openSessionSettings}>
+          <button type="button" className="m-shell-settings" aria-label={t('common.settings')} onClick={openSessionSettings}>
             <Settings size={20} aria-hidden />
           </button>
         </header>
@@ -169,7 +201,7 @@ export default function MobileShell() {
           {activeTabId === 'more' ? (
             <MoreMenuScreen items={moreList} onOpen={handleMoreOpen} />
           ) : (
-            <Suspense fallback={<div className="m-shell-loading">불러오는 중…</div>}>
+            <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
               {ActiveComp && <ActiveComp shell={tabShell} params={activeTabParams} />}
             </Suspense>
           )}
