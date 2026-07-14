@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --navy: #17324d;
+      --navy-2: #234b6e;
+      --teal: #0f766e;
+      --teal-soft: #ccfbf1;
+      --blue-soft: #e8f1f8;
+      --green: #15803d;
+      --green-soft: #dcfce7;
+      --amber: #b45309;
+      --amber-soft: #fef3c7;
+      --red: #b91c1c;
+      --red-soft: #fee2e2;
+      --purple: #6d28d9;
+      --purple-soft: #ede9fe;
+      --ink: #17202a;
+      --muted: #64748b;
+      --line: #dbe3ec;
+      --surface: #f8fafc;
+      --white: #fff;
+      --radius: 12px;
+      --shadow: 0 4px 14px rgba(23, 50, 77, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f5f8fb;
+      font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 15px 16px 12px;
+      color: var(--white);
+      background: linear-gradient(135deg, var(--navy), var(--navy-2));
+      box-shadow: 0 3px 12px rgba(23, 50, 77, .22);
+    }
+    header h1 { margin: 0; font-size: 18px; letter-spacing: -.25px; }
+    header p { margin: 3px 0 0; color: #dceaf5; font-size: 11px; }
+    nav {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 9px 10px;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button {
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 999px;
+      padding: 7px 11px;
+      color: var(--muted);
+      background: #eef3f7;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    nav button.active { color: var(--white); background: var(--teal); }
+    main { padding: 12px 12px 78px; }
+    section[hidden] { display: none; }
+    .section-title { margin: 3px 2px 10px; font-size: 16px; color: var(--navy); }
+    .section-subtitle { margin: -6px 2px 12px; color: var(--muted); font-size: 11px; }
+    .grid { display: grid; gap: 9px; }
+    .grid.two { grid-template-columns: 1fr 1fr; }
+    .card {
+      margin-bottom: 10px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+    .card h3 { margin: 0 0 9px; color: var(--navy); font-size: 14px; }
+    .card p.help { margin: -4px 0 10px; color: var(--muted); font-size: 11px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { min-height: 78px; padding: 11px; border-radius: 10px; background: var(--blue-soft); }
+    .stat.green { color: var(--green); background: var(--green-soft); }
+    .stat.amber { color: var(--amber); background: var(--amber-soft); }
+    .stat.red { color: var(--red); background: var(--red-soft); }
+    .stat.purple { color: var(--purple); background: var(--purple-soft); }
+    .stat .label { font-size: 11px; font-weight: 700; }
+    .stat .value { margin-top: 6px; font-size: 25px; font-weight: 800; line-height: 1; }
+    label { display: block; margin: 0 0 9px; color: #334155; font-size: 11px; font-weight: 700; }
+    label span { display: block; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #c9d5e1;
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--ink);
+      background: var(--white);
+      font: inherit;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15, 118, 110, .12); }
+    textarea { min-height: 64px; resize: vertical; }
+    .check { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+    .check input { width: auto; margin: 0; }
+    .btn-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    button.primary, button.secondary, button.danger, button.ghost {
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.primary { color: var(--white); background: var(--teal); }
+    button.secondary { color: var(--navy); background: var(--blue-soft); }
+    button.danger { color: var(--red); background: var(--red-soft); }
+    button.ghost { color: var(--muted); background: #eef2f6; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .result-list { display: grid; gap: 7px; margin-top: 10px; }
+    .result-item { padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--white); }
+    .result-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .result-title { font-weight: 800; color: var(--navy); }
+    .result-meta, .result-detail { margin-top: 3px; color: var(--muted); font-size: 11px; word-break: break-all; }
+    .badge { flex: 0 0 auto; border-radius: 999px; padding: 3px 7px; color: var(--navy-2); background: var(--blue-soft); font-size: 9px; font-weight: 800; }
+    .badge.active, .badge.available, .badge.returned, .badge.completed, .badge.paid { color: var(--green); background: var(--green-soft); }
+    .badge.open, .badge.waiting, .badge.pending { color: var(--amber); background: var(--amber-soft); }
+    .badge.suspended, .badge.lost, .badge.failed, .badge.withdawn, .badge.withdrawn { color: var(--red); background: var(--red-soft); }
+    .table-list { display: grid; gap: 6px; }
+    .table-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid #edf1f5; }
+    .table-row:last-child { border-bottom: 0; }
+    .table-row strong { color: var(--navy); font-size: 11px; }
+    .empty { padding: 20px 8px; color: var(--muted); text-align: center; }
+    details { margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); box-shadow: var(--shadow); }
+    summary { cursor: pointer; padding: 12px 13px; color: var(--navy); font-weight: 800; }
+    details .inside { padding: 0 13px 13px; }
+    .notice { padding: 9px 10px; border-radius: 8px; color: var(--amber); background: var(--amber-soft); font-size: 11px; }
+    #feedback {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      left: 10px;
+      z-index: 30;
+      display: none;
+      max-height: 44vh;
+      overflow: auto;
+      padding: 11px 12px;
+      border-radius: 10px;
+      color: var(--navy);
+      background: var(--white);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 30px rgba(23, 50, 77, .25);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    #feedback.success { color: #166534; background: #f0fdf4; border-color: #86efac; }
+    #feedback.error { color: #991b1b; background: #fff1f2; border-color: #fda4af; }
+    #feedback.loading { color: var(--navy); background: #eff6ff; border-color: #93c5fd; }
+    #feedback .close { float: right; border: 0; color: inherit; background: transparent; cursor: pointer; font-weight: 800; }
+    pre { margin: 8px 0 0; font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📚 도서관 관리</h1>
+    <p id="libraryMeta">MVP 운영 사이드바 · 불러오는 중…</p>
+  </header>
+
+  <nav id="tabs">
+    <button data-tab="dashboard">현황</button>
+    <button data-tab="search">검색</button>
+    <button data-tab="checkout">대출</button>
+    <button data-tab="return">반납·연장</button>
+    <button data-tab="reservation">예약</button>
+    <button data-tab="member">회원</button>
+    <button data-tab="catalog">도서</button>
+    <button data-tab="admin">관리</button>
+  </nav>
+
+  <main>
+    <section id="tab-dashboard">
+      <h2 class="section-title">운영 현황</h2>
+      <p class="section-subtitle" id="refreshedAt">원본 DB 기준 집계</p>
+      <div class="stats" id="stats"></div>
+      <div class="card" style="margin-top:10px">
+        <h3>오늘 반납 예정 · 연체</h3>
+        <div id="dueItems" class="table-list"></div>
+      </div>
+      <div class="card">
+        <h3>예약 수령 대기</h3>
+        <div id="readyItems" class="table-list"></div>
+      </div>
+      <button class="primary" id="refreshDashboardButton">현황 새로고침</button>
+    </section>
+
+    <section id="tab-search" hidden>
+      <h2 class="section-title">통합 검색</h2>
+      <p class="section-subtitle">정확한 바코드·회원번호·ID를 먼저 찾고, 제목·저자·연락처를 부분 검색합니다.</p>
+      <form id="searchForm" class="card">
+        <label><span>검색어 *</span><input name="query" autocomplete="off" placeholder="제목, 저자, ISBN, 바코드, 회원번호" required></label>
+        <label><span>검색 범위</span>
+          <select name="scope">
+            <option value="ALL">전체</option>
+            <option value="BOOKS">도서</option>
+            <option value="COPIES">소장본</option>
+            <option value="MEMBERS">회원</option>
+            <option value="LOANS">대출</option>
+            <option value="RESERVATIONS">예약</option>
+            <option value="FINES">연체료</option>
+          </select>
+        </label>
+        <button class="primary" type="submit">검색</button>
+      </form>
+      <div id="searchSummary" class="section-subtitle"></div>
+      <div id="searchResults" class="result-list"></div>
+    </section>
+
+    <section id="tab-checkout" hidden>
+      <h2 class="section-title">대출 처리</h2>
+      <p class="section-subtitle">회원 상태·만료·한도·연체·예약 우선권·소장본 상태를 잠금 안에서 다시 확인합니다.</p>
+      <form id="checkoutForm" class="card">
+        <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" autocomplete="off" placeholder="0000018 (7자리)" required></label>
+        <label><span>소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" placeholder="C-000001" required></label>
+        <label><span>메모</span><textarea name="note" placeholder="선택 입력"></textarea></label>
+        <button class="primary" type="submit">대출 확정</button>
+      </form>
+      <div class="notice">바코드 스캐너는 보통 키보드처럼 동작합니다. 입력칸을 선택한 뒤 스캔하세요.</div>
+    </section>
+
+    <section id="tab-return" hidden>
+      <h2 class="section-title">반납 · 연장</h2>
+      <details open>
+        <summary>반납 처리</summary>
+        <div class="inside">
+          <form id="returnForm">
+            <label><span>소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" required></label>
+            <label><span>메모</span><textarea name="note"></textarea></label>
+            <button class="primary" type="submit">반납 확정</button>
+          </form>
+        </div>
+      </details>
+      <details>
+        <summary>대출 연장</summary>
+        <div class="inside">
+          <form id="renewForm">
+            <label><span>대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
+            <label><span>메모</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit">연장 적용</button>
+          </form>
+        </div>
+      </details>
+      <details>
+        <summary>대출 도서 분실 처리</summary>
+        <div class="inside">
+          <p class="help">진행 중 대출을 분실로 종료하고 소장본도 분실 상태로 바꿉니다. 대체 비용은 0원을 포함해 반드시 직접 입력하세요.</p>
+          <form id="lostLoanForm" novalidate>
+            <label><span>대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
+            <label><span>대체 비용 *</span><input name="fineAmount" type="number" inputmode="numeric" min="0" step="1" required></label>
+            <label><span>분실 사유/메모</span><textarea name="note" placeholder="신고 경위, 확인 내용 등"></textarea></label>
+            <button class="danger" type="submit">분실 처리 확정</button>
+          </form>
+          <div class="notice">분실 처리는 일반 반납으로 되돌리지 않습니다. 대출 ID·소장본과 대체 비용을 확인한 뒤 실행하세요.</div>
+        </div>
+      </details>
+    </section>
+
+    <section id="tab-reservation" hidden>
+      <h2 class="section-title">예약 관리</h2>
+      <details open>
+        <summary>예약 등록</summary>
+        <div class="inside">
+          <form id="reserveForm">
+            <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
+            <label><span>도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
+            <label><span>메모</span><textarea name="note"></textarea></label>
+            <button class="primary" type="submit">예약 등록</button>
+          </form>
+        </div>
+      </details>
+      <details>
+        <summary>예약 취소</summary>
+        <div class="inside">
+          <form id="cancelReservationForm">
+            <label><span>예약 ID *</span><input name="reservationId" required></label>
+            <label><span>취소 사유</span><textarea name="note"></textarea></label>
+            <button class="danger" type="submit">예약 취소</button>
+          </form>
+        </div>
+      </details>
+    </section>
+
+    <section id="tab-member" hidden>
+      <h2 class="section-title">회원 등록</h2>
+      <form id="memberForm" class="card">
+        <div class="grid two">
+          <label><span>이름 *</span><input name="name" required></label>
+          <label><span>회원 유형</span><select name="memberType" id="memberTypeSelect"></select></label>
+        </div>
+        <div class="grid two">
+          <label><span>학년 *</span><input name="grade" inputmode="numeric" placeholder="1"></label>
+          <label><span>반 *</span><input name="classNo" inputmode="numeric" placeholder="2"></label>
+        </div>
+        <div class="grid two">
+          <label><span>번호</span><input name="studentNo" inputmode="numeric" placeholder="21"></label>
+          <label><span>학번</span><input name="schoolNo" autocomplete="off" placeholder="예: 20260102"></label>
+        </div>
+        <details class="inline-detail">
+          <summary>보호자 연락처·기타 (선택)</summary>
+          <div class="grid two">
+            <label><span>전화번호</span><input name="phone" inputmode="tel"></label>
+            <label><span>이메일</span><input name="email" type="email"></label>
+          </div>
+          <label><span>유효기간 (교직원 외부인 등)</span><input name="expiresAt" type="date"></label>
+        </details>
+        <label><span>대출 한도 덮어쓰기</span><input name="loanLimitOverride" type="number" min="1" step="1" placeholder="비우면 정책값 사용"></label>
+        <label class="check"><input name="privacyConsent" type="checkbox" value="true"> 개인정보 수집 동의 확인</label>
+        <label><span>메모</span><textarea name="note"></textarea></label>
+        <button class="primary" type="submit">회원 등록</button>
+      </form>
+      <details>
+        <summary>회원 정보·상태 변경</summary>
+        <div class="inside">
+          <form id="memberUpdateForm">
+            <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
+            <label><span>이름</span><input name="name" placeholder="변경할 때만 입력"></label>
+            <div class="grid two">
+              <label><span>전화번호</span><input name="phone" inputmode="tel"></label>
+              <label><span>이메일</span><input name="email" type="email"></label>
+            </div>
+            <div class="grid two">
+              <label><span>회원 유형</span><select name="memberType" id="memberTypeUpdateSelect"></select></label>
+              <label><span>회원 상태</span><select name="status" id="memberStatusSelect"></select></label>
+            </div>
+            <div class="grid two">
+              <label><span>학년</span><input name="grade" inputmode="numeric" placeholder="변경할 때만"></label>
+              <label><span>반</span><input name="classNo" inputmode="numeric" placeholder="변경할 때만"></label>
+            </div>
+            <div class="grid two">
+              <label><span>번호</span><input name="studentNo" inputmode="numeric" placeholder="변경할 때만"></label>
+              <label><span>학번</span><input name="schoolNo" placeholder="변경할 때만"></label>
+            </div>
+            <div class="grid two">
+              <label><span>새 유효기간</span><input name="expiresAt" type="date"></label>
+              <label><span>대출 한도</span><input name="loanLimitOverride" type="number" min="1" step="1"></label>
+            </div>
+            <label class="check"><input name="clearSuspension" type="checkbox" value="true"> 대출 정지 해제 (사서 판단)</label>
+            <label class="check"><input name="clearLoanLimit" type="checkbox" value="true"> 개인 대출 한도를 지우고 정책값 사용</label>
+            <label><span>변경 사유/메모</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit">회원 정보 변경</button>
+          </form>
+        </div>
+      </details>
+    </section>
+
+    <section id="tab-catalog" hidden>
+      <h2 class="section-title">도서 · 소장본 등록</h2>
+      <details open>
+        <summary>새 도서와 최초 소장본</summary>
+        <div class="inside">
+          <form id="titleForm">
+            <div class="grid two">
+              <label><span>ISBN</span><input name="isbn" inputmode="numeric"></label>
+              <label><span>발행연도</span><input name="publishedYear" type="number" min="0" max="2200"></label>
+            </div>
+            <label><span>도서명 *</span><input name="title" required></label>
+            <label><span>부제</span><input name="subtitle"></label>
+            <div class="grid two">
+              <label><span>판차</span><input name="edition"></label>
+              <label><span>출판사</span><input name="publisher"></label>
+            </div>
+            <label><span>저자</span><input name="authors" placeholder="여러 명이면 쉼표로 구분"></label>
+            <div class="grid two">
+              <label><span>언어 코드</span><input name="languageCode" value="KOR"></label>
+              <label><span>분류기호</span><input name="classificationNo"></label>
+            </div>
+            <label><span>분류 코드</span><input name="categoryCodes" list="categoryOptions" placeholder="예: KDC800"></label>
+            <datalist id="categoryOptions"></datalist>
+            <label><span>키워드</span><input name="keywords" placeholder="쉼표로 구분"></label>
+            <label><span>설명</span><textarea name="description"></textarea></label>
+            <label class="check"><input id="createCopyCheckbox" name="createCopy" type="checkbox" value="true" checked> 최초 소장본도 함께 등록</label>
+            <div id="firstCopyFields">
+              <div class="grid two">
+                <label><span>바코드</span><input name="barcode" placeholder="비우면 자동 생성"></label>
+                <label><span>상태</span><select name="condition" class="conditionSelect"></select></label>
+              </div>
+              <div class="grid two">
+                <label><span>위치</span><input name="locationCode" value="MAIN"></label>
+                <label><span>서가</span><input name="shelfCode"></label>
+              </div>
+              <div class="grid two">
+                <label><span>입수일</span><input name="acquiredAt" type="date"></label>
+                <label><span>가격</span><input name="price" type="number" min="0" step="1"></label>
+              </div>
+              <label><span>입수처/기증자</span><input name="acquisitionSource"></label>
+              <label><span>소장본 메모</span><textarea name="copyNote"></textarea></label>
+            </div>
+            <button class="primary" type="submit">도서 등록</button>
+          </form>
+        </div>
+      </details>
+
+      <details>
+        <summary>기존 도서에 소장본 추가</summary>
+        <div class="inside">
+          <form id="copyForm">
+            <label><span>도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
+            <div class="grid two">
+              <label><span>바코드</span><input name="barcode" placeholder="비우면 자동 생성"></label>
+              <label><span>상태</span><select name="condition" class="conditionSelect"></select></label>
+            </div>
+            <div class="grid two">
+              <label><span>위치</span><input name="locationCode" value="MAIN"></label>
+              <label><span>서가</span><input name="shelfCode"></label>
+            </div>
+            <div class="grid two">
+              <label><span>입수일</span><input name="acquiredAt" type="date"></label>
+              <label><span>가격</span><input name="price" type="number" min="0" step="1"></label>
+            </div>
+            <label><span>입수처/기증자</span><input name="acquisitionSource"></label>
+            <label><span>메모</span><textarea name="copyNote"></textarea></label>
+            <button class="secondary" type="submit">소장본 추가</button>
+          </form>
+        </div>
+      </details>
+    </section>
+
+    <section id="tab-admin" hidden>
+      <h2 class="section-title">관리 도구</h2>
+      <div class="card">
+        <h3>무결성 · 파생 상태</h3>
+        <p class="help">DB 직접 편집이나 부분 실패로 생긴 불일치를 점검합니다.</p>
+        <div class="btn-row">
+          <button class="secondary" id="integrityButton">무결성 점검</button>
+          <button class="secondary admin-only" id="reconcileButton">소장본 상태 복구</button>
+        </div>
+        <div id="integrityResults" class="result-list"></div>
+      </div>
+      <details>
+        <summary>소장본 상태 수동 변경</summary>
+        <div class="inside">
+          <form id="copyStatusForm">
+            <label><span>바코드 또는 Copy ID *</span><input name="copyKey" required></label>
+            <label><span>새 상태 *</span><select name="status" id="copyStatusSelect"></select></label>
+            <label><span>사유</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit">상태 변경</button>
+          </form>
+        </div>
+      </details>
+      <details>
+        <summary>연체료 납부</summary>
+        <div class="inside">
+          <form id="fineForm">
+            <label><span>연체료 ID *</span><input name="fineId" required></label>
+            <label><span>납부 금액 *</span><input name="amount" type="number" min="1" step="1" required></label>
+            <button class="secondary" type="submit">납부 기록</button>
+          </form>
+        </div>
+      </details>
+      <details class="admin-only">
+        <summary>직원 계정·권한</summary>
+        <div class="inside">
+          <form id="staffForm">
+            <label><span>Google 계정 이메일 *</span><input name="email" type="email" required></label>
+            <label><span>표시 이름</span><input name="displayName"></label>
+            <div class="grid two">
+              <label><span>역할</span>
+                <select name="role">
+                  <option value="LIBRARIAN">사서</option>
+                  <option value="VIEWER">조회</option>
+                  <option value="ADMIN">관리자</option>
+                </select>
+              </label>
+              <label><span>상태</span>
+                <select name="status"><option value="ACTIVE">활성</option><option value="INACTIVE">비활성</option></select>
+              </label>
+            </div>
+            <button class="secondary" type="submit">직원 등록/변경</button>
+          </form>
+        </div>
+      </details>
+      <details class="admin-only">
+        <summary>기본 대출 정책 변경</summary>
+        <div class="inside">
+          <form id="policyForm">
+            <label><span>정책 ID</span><input name="policyId" value="POL-DEFAULT"></label>
+            <div class="grid two">
+              <label><span>대출 일수</span><input name="loanDays" type="number" min="0" step="1"></label>
+              <label><span>최대 대출 권수</span><input name="maxOpenLoans" type="number" min="0" step="1"></label>
+              <label><span>최대 연장 횟수</span><input name="maxRenewals" type="number" min="0" step="1"></label>
+              <label><span>연장 일수</span><input name="renewalDays" type="number" min="0" step="1"></label>
+              <label><span>최대 예약 건수</span><input name="maxReservations" type="number" min="0" step="1"></label>
+              <label><span>예약 보관 일수</span><input name="holdDays" type="number" min="0" step="1"></label>
+            </div>
+            <label><span>일 연체료</span><input name="overdueFeePerDay" type="number" min="0" step="1"></label>
+            <p class="help">횟수·권수에 0을 입력하면 해당 기능을 허용하지 않습니다. 일수 0은 날짜를 더하지 않고 계산 기준일의 종료 시각을 사용합니다.</p>
+            <button class="secondary" type="submit">정책 변경</button>
+          </form>
+        </div>
+      </details>
+      <div class="notice">최초 설정·DB 시트 보호·일일 트리거 설치는 스프레드시트의 📚 도서관 관리 → 관리 메뉴에서 실행하세요. DB 보호를 켜면 활성 ADMIN만 편집할 수 있으므로, 바운드 사이드바를 쓰는 LIBRARIAN 계정의 저장 작업도 차단됩니다. 이 화면에서 직원을 바꾸면 보호 목록도 자동 동기화되며, STAFF 시트를 직접 고친 경우에는 DB 보호 메뉴를 다시 실행하세요.</div>
+    </section>
+  </main>
+
+  <div id="feedback"><button class="close" type="button" aria-label="닫기">×</button><div id="feedbackText"></div></div>
+
+  <script>
+    const INITIAL_TAB = <?!= JSON.stringify(initialTab) ?>;
+    const state = { bootstrap: null, activeTab: INITIAL_TAB || 'dashboard' };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      bindTabs();
+      bindForms();
+      document.querySelector('#feedback .close').addEventListener('click', hideFeedback);
+      document.getElementById('createCopyCheckbox').addEventListener('change', event => {
+        document.getElementById('firstCopyFields').hidden = !event.target.checked;
+      });
+      activateTab(state.activeTab);
+      callApi('apiBootstrap', { initialTab: state.activeTab }).then(data => {
+        state.bootstrap = data;
+        hydrateOptions(data.options || {});
+        hydrateRole(data.actor || {});
+        renderDashboard(data.dashboard);
+        document.getElementById('libraryMeta').textContent = `${data.dashboard.libraryName} · v${data.version} · ${data.dashboard.actorLabel}`;
+        hideFeedback();
+      }).catch(() => {});
+    });
+
+    function bindTabs() {
+      document.querySelectorAll('#tabs button').forEach(button => {
+        button.addEventListener('click', () => activateTab(button.dataset.tab));
+      });
+    }
+
+    function activateTab(tab) {
+      state.activeTab = tab;
+      document.querySelectorAll('main section').forEach(section => { section.hidden = section.id !== `tab-${tab}`; });
+      document.querySelectorAll('#tabs button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
+    }
+
+    function bindForms() {
+      bindApiForm('checkoutForm', 'apiCheckout', '대출이 완료되었습니다.');
+      bindApiForm('returnForm', 'apiReturn', '반납이 완료되었습니다.');
+      bindApiForm('renewForm', 'apiRenew', '연장이 완료되었습니다.');
+      bindApiForm('lostLoanForm', 'apiMarkLoanLost', '대출과 소장본을 분실 상태로 처리했습니다.', validateLostLoanPayload);
+      bindApiForm('reserveForm', 'apiReserve', '예약이 등록되었습니다.');
+      bindApiForm('cancelReservationForm', 'apiCancelReservation', '예약이 취소되었습니다.');
+      bindApiForm('memberForm', 'apiRegisterMember', '회원이 등록되었습니다.');
+      bindApiForm('memberUpdateForm', 'apiUpdateMember', '회원 정보가 변경되었습니다.');
+      bindApiForm('titleForm', 'apiRegisterTitle', '도서가 등록되었습니다.');
+      bindApiForm('copyForm', 'apiRegisterCopy', '소장본이 추가되었습니다.');
+      bindApiForm('copyStatusForm', 'apiUpdateCopyStatus', '소장본 상태가 변경되었습니다.');
+      bindApiForm('fineForm', 'apiPayFine', '납부 기록이 저장되었습니다.');
+      bindApiForm('staffForm', 'apiUpsertStaff', '직원 계정이 등록/변경되었습니다.');
+      bindApiForm('policyForm', 'apiUpdatePolicy', '대출 정책이 변경되었습니다.');
+
+      document.getElementById('searchForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = event.submitter;
+        setButtonLoading(button, true);
+        try {
+          const data = await callApi('apiSearch', formObject(event.currentTarget), false);
+          renderSearch(data);
+          hideFeedback();
+        } catch (ignore) {
+        } finally { setButtonLoading(button, false); }
+      });
+
+      document.getElementById('refreshDashboardButton').addEventListener('click', async event => {
+        setButtonLoading(event.currentTarget, true);
+        try {
+          const data = await callApi('apiRefreshDashboard', {}, false);
+          renderDashboard(data);
+          showFeedback('현황을 새로고침했습니다.', 'success');
+        } catch (ignore) {
+        } finally { setButtonLoading(event.currentTarget, false); }
+      });
+
+      document.getElementById('integrityButton').addEventListener('click', async event => {
+        setButtonLoading(event.currentTarget, true);
+        try {
+          const data = await callApi('apiRunIntegrityCheck', {}, false);
+          renderIntegrity(data);
+          showFeedback(data.issueCount ? `${data.issueCount}개 문제를 찾았습니다.` : '무결성 문제가 없습니다.', data.issueCount ? 'error' : 'success');
+        } catch (ignore) {
+        } finally { setButtonLoading(event.currentTarget, false); }
+      });
+
+      document.getElementById('reconcileButton').addEventListener('click', async event => {
+        setButtonLoading(event.currentTarget, true);
+        try {
+          const data = await callApi('apiReconcileCopyStatuses', { requestId: requestId() }, false);
+          showFeedback(`${data.changedCount}개 소장본 상태를 복구했습니다.`, 'success', data);
+        } catch (ignore) {
+        } finally { setButtonLoading(event.currentTarget, false); }
+      });
+    }
+
+    function bindApiForm(formId, apiName, successMessage, validatePayload) {
+      document.getElementById(formId).addEventListener('submit', async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = event.submitter;
+        const payload = formObject(form);
+        if (validatePayload) {
+          const validationMessage = validatePayload(payload, form);
+          if (validationMessage) {
+            showFeedback(validationMessage, 'error');
+            return;
+          }
+        }
+        payload.requestId = requestId();
+        setButtonLoading(button, true);
+        try {
+          const data = await callApi(apiName, payload, false);
+          showFeedback(successMessage, 'success', data);
+          if (apiName !== 'apiUpdateCopyStatus' && apiName !== 'apiPayFine') form.reset();
+          if (formId === 'titleForm') {
+            document.getElementById('createCopyCheckbox').checked = true;
+            document.getElementById('firstCopyFields').hidden = false;
+            form.querySelector('[name="languageCode"]').value = 'KOR';
+            form.querySelector('[name="locationCode"]').value = 'MAIN';
+          }
+          if (formId === 'copyForm') form.querySelector('[name="locationCode"]').value = 'MAIN';
+          try {
+            const dashboard = await callApi('apiRefreshDashboard', {}, false);
+            renderDashboard(dashboard);
+          } catch (ignore) {}
+        } catch (ignore) {
+        } finally { setButtonLoading(button, false); }
+      });
+    }
+
+    function validateLostLoanPayload(payload, form) {
+      if (!String(payload.loanOrCopyKey == null ? '' : payload.loanOrCopyKey).trim()) {
+        const keyInput = form.querySelector('[name="loanOrCopyKey"]');
+        if (keyInput) keyInput.focus();
+        return '대출 ID 또는 소장본 바코드를 입력하세요.';
+      }
+      const rawAmount = String(payload.fineAmount == null ? '' : payload.fineAmount).trim();
+      const amount = Number(rawAmount);
+      if (!/^\d+$/.test(rawAmount) || !Number.isSafeInteger(amount) || amount < 0) {
+        const amountInput = form.querySelector('[name="fineAmount"]');
+        if (amountInput) amountInput.focus();
+        return '대체 비용은 0 이상의 정수로 입력하세요.';
+      }
+      payload.fineAmount = amount;
+      return '';
+    }
+
+    function formObject(form) {
+      const data = Object.fromEntries(new FormData(form).entries());
+      form.querySelectorAll('input[type="checkbox"]').forEach(input => { data[input.name] = input.checked; });
+      return data;
+    }
+
+    function callApi(name, payload = {}, showLoading = true) {
+      if (showLoading) showFeedback('처리 중…', 'loading');
+      return new Promise((resolve, reject) => {
+        const runner = google.script.run
+          .withSuccessHandler(response => {
+            if (!response || !response.ok) {
+              const error = response && response.error ? response.error : { code: 'EMPTY_RESPONSE', message: '응답을 받지 못했습니다.' };
+              showFeedback(`[${error.code}] ${error.message}`, 'error', error.details);
+              reject(error);
+              return;
+            }
+            resolve(response.data);
+          })
+          .withFailureHandler(error => {
+            const message = error && error.message ? error.message : String(error);
+            showFeedback(message, 'error');
+            reject(error);
+          });
+        runner[name](payload);
+      });
+    }
+
+    function hydrateOptions(options) {
+      fillSelect(document.getElementById('memberTypeSelect'), options.memberTypes || [], 'GENERAL');
+      fillOptionalSelect(document.getElementById('memberTypeUpdateSelect'), options.memberTypes || [], '변경 안 함');
+      fillOptionalSelect(document.getElementById('memberStatusSelect'), options.memberStatuses || [], '변경 안 함');
+      document.querySelectorAll('.conditionSelect').forEach(select => fillSelect(select, options.copyConditions || [], 'GOOD'));
+      fillSelect(document.getElementById('copyStatusSelect'), (options.copyStatuses || []).filter(item => item.code !== 'ON_LOAN' && item.code !== 'HOLD_READY'));
+      const datalist = document.getElementById('categoryOptions');
+      datalist.innerHTML = (options.categories || []).map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(item.label)}</option>`).join('');
+    }
+
+    function fillSelect(select, items, selectedCode) {
+      select.innerHTML = items.map(item => `<option value="${escapeHtml(item.code)}" ${item.code === selectedCode ? 'selected' : ''}>${escapeHtml(item.label)} (${escapeHtml(item.code)})</option>`).join('');
+    }
+
+    function fillOptionalSelect(select, items, emptyLabel) {
+      select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + items.map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(item.label)} (${escapeHtml(item.code)})</option>`).join('');
+    }
+
+    function hydrateRole(actor) {
+      const role = actor.role || 'VIEWER';
+      if (role === 'VIEWER') {
+        ['checkout', 'return', 'reservation', 'member', 'catalog', 'admin'].forEach(tab => {
+          const button = document.querySelector(`#tabs button[data-tab="${tab}"]`);
+          if (button) button.hidden = true;
+        });
+        if (state.activeTab !== 'dashboard' && state.activeTab !== 'search') activateTab('dashboard');
+      }
+      if (role !== 'ADMIN') document.querySelectorAll('.admin-only').forEach(element => { element.hidden = true; });
+    }
+
+    function renderDashboard(data) {
+      if (!data) return;
+      document.getElementById('refreshedAt').textContent = `마지막 갱신 ${data.refreshedAt}`;
+      const cards = [
+        ['활성 도서', data.stats.activeTitles, ''],
+        ['대출 가능', data.stats.availableCopies, 'green'],
+        ['대출 중', data.stats.openLoans, ''],
+        ['오늘 반납', data.stats.dueToday, 'amber'],
+        ['연체', data.stats.overdue, 'red'],
+        ['예약 대기/준비', data.stats.activeReservations, 'purple'],
+        ['활성 회원', data.stats.activeMembers, 'green']
+      ];
+      document.getElementById('stats').innerHTML = cards.map(card => `<div class="stat ${card[2]}"><div class="label">${card[0]}</div><div class="value">${numberFormat(card[1])}</div></div>`).join('');
+      document.getElementById('dueItems').innerHTML = data.dueItems && data.dueItems.length
+        ? data.dueItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.type)}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberNo)} · ${escapeHtml(item.memberName)} · ${escapeHtml(item.barcode)} · ${escapeHtml(item.dueAtText)}${item.overdueDays ? ` · ${item.overdueDays}일` : ''}</div></div></div>`).join('')
+        : '<div class="empty">오늘 반납 예정 또는 연체 항목이 없습니다.</div>';
+      document.getElementById('readyItems').innerHTML = data.readyItems && data.readyItems.length
+        ? data.readyItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.memberNo)}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberName)} · 수령기한 ${escapeHtml(item.pickupExpiresText)}</div></div></div>`).join('')
+        : '<div class="empty">수령 준비 예약이 없습니다.</div>';
+    }
+
+    function renderSearch(data) {
+      document.getElementById('searchSummary').textContent = `검색 결과 ${data.total}건${data.total > data.results.length ? ` · 상위 ${data.results.length}건 표시` : ''}`;
+      document.getElementById('searchResults').innerHTML = data.results.length ? data.results.map(item => {
+        const statusClass = String(item.status || '').toLowerCase();
+        return `<div class="result-item"><div class="result-top"><div class="result-title">${escapeHtml(item.primary)}</div><span class="badge ${escapeHtml(statusClass)}">${escapeHtml(item.status || item.type)}</span></div><div class="result-meta">${escapeHtml(item.type)} · ${escapeHtml(item.id)} · ${escapeHtml(item.secondary || '')}</div><div class="result-detail">${escapeHtml(item.details || '')}</div></div>`;
+      }).join('') : '<div class="empty">일치하는 결과가 없습니다.</div>';
+    }
+
+    function renderIntegrity(data) {
+      document.getElementById('integrityResults').innerHTML = data.issues.length ? data.issues.map(issue => `<div class="result-item"><div class="result-top"><div class="result-title">${escapeHtml(issue.code)}</div><span class="badge failed">${escapeHtml(issue.sheet)}:${issue.row}</span></div><div class="result-detail">${escapeHtml(issue.message)}</div></div>`).join('') : '<div class="empty">무결성 문제가 없습니다.</div>';
+    }
+
+    function showFeedback(message, type = '', details) {
+      const box = document.getElementById('feedback');
+      box.className = type;
+      document.getElementById('feedbackText').innerHTML = `<strong>${escapeHtml(message)}</strong>${details ? `<pre>${escapeHtml(JSON.stringify(details, null, 2))}</pre>` : ''}`;
+      box.style.display = 'block';
+    }
+
+    function hideFeedback() { document.getElementById('feedback').style.display = 'none'; }
+    function setButtonLoading(button, loading) { if (button) button.disabled = loading; }
+    function requestId() { return `WEB-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`.toUpperCase(); }
+    function numberFormat(value) { return new Intl.NumberFormat('ko-KR').format(Number(value || 0)); }
+    function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
+  </script>
+</body>
+</html>

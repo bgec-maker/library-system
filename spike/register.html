@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>폰 등록 — 도서관</title>
+<link rel="manifest" href="register.manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1b3a4b">
+<style>
+  :root{
+    --ink:#16181d; --ink-2:#4a5058; --ink-3:#878f99;
+    --paper:#f2f0ea; --panel:#ffffff; --rule:#ddd9cf;
+    --deep:#1b3a4b; --brass:#d9a441;
+    --pass:#1f7a54; --fail:#b3352c; --wait:#8a7a4a;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--sans); background:var(--paper); color:var(--ink);
+    line-height:1.5; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:14px 14px 40px;min-height:100vh;display:flex;flex-direction:column}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:2px solid var(--ink);margin-bottom:14px}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .stats{display:flex;gap:14px;font:12px var(--mono);color:var(--ink-2)}
+  .stats b{color:var(--ink);font-size:16px}
+  .gear{background:none;border:none;font-size:20px;line-height:1;padding:6px;cursor:pointer;color:var(--ink-2)}
+
+  section{display:none;flex:1;flex-direction:column}
+  section.active{display:flex}
+
+  /* ── 스캔 화면 ─────────────────────────────── */
+  #camWrap{position:relative;background:var(--deep);border-radius:6px;overflow:hidden;aspect-ratio:4/3}
+  video{width:100%;height:100%;object-fit:cover;display:block}
+  #reticle{position:absolute;inset:30% 14%;border:2px solid rgba(255,255,255,.85);border-radius:4px;box-shadow:0 0 0 100vmax rgba(0,0,0,.35);pointer-events:none}
+  #flash{position:absolute;inset:0;background:#3ddc84;opacity:0;pointer-events:none;transition:opacity .28s}
+  #flash.on{opacity:.55;transition:none}
+  .hint{text-align:center;color:var(--ink-2);font-size:13px;margin-top:12px}
+  .camState{text-align:center;font:12px var(--mono);color:var(--ink-3);margin-top:6px}
+
+  /* ── 공용 ─────────────────────────────────── */
+  button{font:600 15px var(--sans);padding:14px 16px;border-radius:6px;border:none;background:var(--deep);color:#fff;cursor:pointer;width:100%;margin-top:10px}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;color:var(--deep);border:1.5px solid var(--deep)}
+  button.warn{background:var(--brass);color:#3a2c05}
+  button:disabled{opacity:.4}
+  input,select{width:100%;font:15px var(--sans);padding:12px 12px;border:1.5px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink)}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin:12px 0 5px}
+  .row2{display:flex;gap:10px}
+  .row2>div{flex:1}
+
+  /* ── 조회중 ───────────────────────────────── */
+  #lookupView{align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--ink-2)}
+  .spinner{width:36px;height:36px;border-radius:50%;border:4px solid var(--rule);border-top-color:var(--deep);animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── 확인/보정 폼 ─────────────────────────── */
+  #dupBanner{display:none;background:#FEF3C7;border-left:6px solid var(--brass);border-radius:3px;padding:14px;margin-bottom:6px}
+  #dupBanner b{display:block;font-size:15px;margin-bottom:4px}
+  #dupBanner.show{display:block}
+  .cover{width:56px;height:80px;object-fit:cover;border-radius:3px;background:var(--rule);flex:none}
+  .titleRow{display:flex;gap:12px;align-items:flex-start;margin-bottom:6px}
+  .titleRow .isbn{font:12px var(--mono);color:var(--ink-3)}
+  .srcTag{display:inline-block;font:11px var(--mono);color:#fff;background:var(--ink-3);border-radius:3px;padding:2px 6px;margin-left:6px}
+
+  /* ── 결과(등록번호 크게) ──────────────────── */
+  #resultView{align-items:center;justify-content:center;text-align:center;gap:6px}
+  .bignum{font:800 15vw/1 var(--mono);letter-spacing:-.02em;color:var(--pass)}
+  .bignum.multi{font-size:9vw}
+  #resultTitle{color:var(--ink-2);font-size:14px;margin-top:4px;max-width:90%}
+  .barcodeList{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+
+  /* ── 오류 ─────────────────────────────────── */
+  #errBanner{display:none;background:#FEE2E2;border-left:6px solid var(--fail);border-radius:3px;padding:12px 14px;margin-bottom:10px;color:#7f1d1d;font-size:13.5px}
+  #errBanner.show{display:block}
+
+  /* ── 실패 목록 ────────────────────────────── */
+  #failList{margin-top:14px;border-top:1px solid var(--rule);padding-top:10px}
+  #failList h2{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+  .failRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dotted var(--rule);font-size:13px}
+  .failRow button{width:auto;margin:0;padding:8px 12px;font-size:12px}
+
+  /* ── 설정 오버레이 ────────────────────────── */
+  #setupOverlay{position:fixed;inset:0;background:var(--paper);z-index:50;display:none;align-items:center;padding:20px}
+  #setupOverlay.show{display:flex}
+  .setupCard{max-width:420px;margin:0 auto;width:100%}
+  .setupCard h1{margin-bottom:4px}
+  .setupCard p{color:var(--ink-2);font-size:13px;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<div id="setupOverlay">
+  <div class="setupCard">
+    <h1>초기 설정</h1>
+    <p>Web App 배포 URL·공유 토큰·작업자 이름을 입력하세요. 이 기기에만 저장됩니다(localStorage).</p>
+    <label for="cfgUrl">GAS Web App URL</label>
+    <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    <label for="cfgToken">공유 토큰</label>
+    <input id="cfgToken" type="text" placeholder="ScriptProperties의 MOBILE_REG_TOKEN" autocomplete="off">
+    <label for="cfgOperator">작업자 이름</label>
+    <input id="cfgOperator" type="text" placeholder="예: 홍길동" autocomplete="off">
+    <button id="cfgSave">저장하고 시작</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header>
+  <h1>📱 폰 등록</h1>
+  <div class="stats"><div>오늘 <b id="statToday">0</b>권</div></div>
+  <button class="gear" id="openSettings" aria-label="설정">⚙</button>
+</header>
+
+<div id="errBanner"></div>
+
+<section id="scanView" class="active">
+  <div id="camWrap">
+    <video id="v" playsinline muted autoplay></video>
+    <div id="reticle"></div>
+    <div id="flash"></div>
+  </div>
+  <p class="hint">ISBN(EAN-13) 바코드를 조준 프레임 안에 맞추세요.</p>
+  <p class="camState" id="camState">카메라 시작 중…</p>
+  <button id="manualBtn" class="ghost">수동 입력</button>
+</section>
+
+<section id="lookupView">
+  <div class="spinner"></div>
+  <div>서지 조회 중… (<span id="lookupIsbn"></span>)</div>
+</section>
+
+<section id="confirmView">
+  <div id="dupBanner">
+    <b>이미 있는 책입니다: <span id="dupTitle"></span></b>
+    <div>복본으로 추가할까요?</div>
+    <button id="dupAddBtn">복본으로 추가</button>
+    <button id="dupEditBtn" class="ghost">서지 정보 수정해서 등록</button>
+  </div>
+  <div id="confirmForm">
+    <div class="titleRow">
+      <img id="coverImg" class="cover" alt="">
+      <div>
+        <div class="isbn" id="confirmIsbn"></div>
+        <span class="srcTag" id="sourceTag"></span>
+      </div>
+    </div>
+    <label for="fTitle">서명 *</label>
+    <input id="fTitle" type="text" required>
+    <label for="fSubtitle">부제</label>
+    <input id="fSubtitle" type="text">
+    <label for="fAuthors">저자 (쉼표로 구분)</label>
+    <input id="fAuthors" type="text">
+    <div class="row2">
+      <div><label for="fPublisher">출판사</label><input id="fPublisher" type="text"></div>
+      <div><label for="fYear">발행년</label><input id="fYear" type="number" inputmode="numeric"></div>
+    </div>
+    <div class="row2">
+      <div><label for="fPages">페이지</label><input id="fPages" type="number" inputmode="numeric"></div>
+      <div><label for="fCopyCount">복본수</label><input id="fCopyCount" type="number" inputmode="numeric" value="1" min="1" max="50"></div>
+    </div>
+    <label for="fCondition">상태</label>
+    <select id="fCondition">
+      <option value="GOOD">양호</option>
+      <option value="FAIR">보통</option>
+      <option value="DAMAGED">손상</option>
+    </select>
+    <button id="saveBtn">저장</button>
+    <button id="cancelBtn" class="ghost">취소하고 다시 스캔</button>
+  </div>
+</section>
+
+<section id="savingView">
+  <div class="spinner"></div>
+  <div>저장 중…</div>
+</section>
+
+<section id="resultView">
+  <div class="bignum" id="resultBig"></div>
+  <div class="barcodeList" id="resultExtra"></div>
+  <div id="resultTitle"></div>
+  <button id="nextBtn">다음 스캔</button>
+</section>
+
+<div id="failList" style="display:none">
+  <h2>실패 목록 — 재시도 필요</h2>
+  <div id="failRows"></div>
+</div>
+
+</div>
+
+<script src="zxing.js"></script>
+<script>
+var $ = function(s){ return document.querySelector(s); };
+var CFG_KEYS = { url: 'mobileReg.url', token: 'mobileReg.token', operator: 'mobileReg.operator' };
+var TODAY_KEY = 'mobileReg.today.' + new Date().toISOString().slice(0, 10);
+var FAILED_KEY = 'mobileReg.failed';
+
+var stream = null, zxing = null, loop = null, lastFrameAt = 0, lastHitAt = 0;
+var currentLookup = null;   // { isbn, ...조회결과 }
+
+/* ── 설정 ─────────────────────────────────── */
+function getConfig() {
+  return {
+    url: localStorage.getItem(CFG_KEYS.url) || '',
+    token: localStorage.getItem(CFG_KEYS.token) || '',
+    operator: localStorage.getItem(CFG_KEYS.operator) || ''
+  };
+}
+function configComplete(cfg) { return cfg.url && cfg.token && cfg.operator; }
+
+function showSetup() {
+  var cfg = getConfig();
+  $('#cfgUrl').value = cfg.url;
+  $('#cfgToken').value = cfg.token;
+  $('#cfgOperator').value = cfg.operator;
+  $('#setupOverlay').classList.add('show');
+}
+$('#cfgSave').onclick = function() {
+  var url = $('#cfgUrl').value.trim(), token = $('#cfgToken').value.trim(), operator = $('#cfgOperator').value.trim();
+  if (!url || !token || !operator) { alert('세 항목 모두 입력하세요.'); return; }
+  localStorage.setItem(CFG_KEYS.url, url);
+  localStorage.setItem(CFG_KEYS.token, token);
+  localStorage.setItem(CFG_KEYS.operator, operator);
+  $('#setupOverlay').classList.remove('show');
+  startCamera();
+};
+$('#openSettings').onclick = showSetup;
+
+/* ── 세션 카운터 / 실패 목록 (localStorage 영속) ───── */
+function getTodayCount() { return Number(localStorage.getItem(TODAY_KEY) || 0); }
+function addTodayCount(n) { localStorage.setItem(TODAY_KEY, String(getTodayCount() + n)); renderStats(); }
+function renderStats() { $('#statToday').textContent = getTodayCount(); }
+
+function getFailedList() { try { return JSON.parse(localStorage.getItem(FAILED_KEY) || '[]'); } catch (e) { return []; } }
+function setFailedList(list) { localStorage.setItem(FAILED_KEY, JSON.stringify(list)); renderFailedList(); }
+function addFailed(entry) { var list = getFailedList(); list.push(entry); setFailedList(list); }
+function removeFailed(requestId) { setFailedList(getFailedList().filter(function(f) { return f.requestId !== requestId; })); }
+
+function renderFailedList() {
+  var list = getFailedList();
+  var box = $('#failList'), rows = $('#failRows');
+  if (!list.length) { box.style.display = 'none'; rows.innerHTML = ''; return; }
+  box.style.display = 'block';
+  rows.innerHTML = '';
+  list.forEach(function(entry) {
+    var row = document.createElement('div');
+    row.className = 'failRow';
+    row.innerHTML = '<span>' + (entry.payload.title || entry.payload.isbn) + ' — ' + entry.reason + '</span>';
+    var btn = document.createElement('button');
+    btn.textContent = '재시도';
+    btn.onclick = function() { retryFailed(entry); };
+    row.appendChild(btn);
+    rows.appendChild(row);
+  });
+}
+
+/* ── API 호출 (30초 타임아웃, 재시도는 항상 동일 requestId) ─── */
+function apiCall(action, payload) {
+  var cfg = getConfig();
+  var body = Object.assign({ action: action, token: cfg.token }, payload);
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 30000);
+  return fetch(cfg.url, { method: 'POST', body: JSON.stringify(body), signal: controller.signal })
+    .then(function(res) { return res.json(); })
+    .catch(function(err) {
+      if (err && err.name === 'AbortError') return { ok: false, error: { code: 'CLIENT_TIMEOUT', message: '30초 내에 응답이 없었습니다.' } };
+      return { ok: false, error: { code: 'NETWORK_ERROR', message: String(err && err.message || err) } };
+    })
+    .finally(function() { clearTimeout(timer); });
+}
+
+/* ── 화면 전환 ─────────────────────────────── */
+function showView(id) {
+  ['scanView', 'lookupView', 'confirmView', 'savingView', 'resultView'].forEach(function(v) {
+    $('#' + v).classList.toggle('active', v === id);
+  });
+}
+function showError(message) {
+  var el = $('#errBanner');
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 6000);
+}
+
+/* ── 카메라 · 스캔 루프 (10fps 스로틀 + 조준 프레임 크롭) ─── */
+function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    $('#camState').textContent = '이 브라우저는 카메라를 지원하지 않습니다. 수동 입력을 사용하세요.';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+    .then(function(s) {
+      stream = s;
+      var v = $('#v');
+      v.srcObject = stream;
+      return v.play().catch(function() {});
+    })
+    .then(initDecoder)
+    .then(function() { $('#camState').textContent = ''; scanLoop(); })
+    .catch(function(e) { $('#camState').textContent = '카메라 오류: ' + (e.message || e); });
+}
+
+function initDecoder() {
+  if (window.ZXing) {
+    zxing = new ZXing.MultiFormatReader();
+    var hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    zxing.setHints(hints);
+  } else {
+    $('#camState').textContent = 'ZXing 로드 실패 — 수동 입력을 사용하세요.';
+  }
+}
+
+var scanCanvas = document.createElement('canvas');
+function scanLoop() {
+  var v = $('#v');
+  var now = performance.now();
+  if (stream && zxing && v.readyState === 4 && now - lastFrameAt >= 100) { // 10fps 스로틀
+    lastFrameAt = now;
+    try {
+      // 조준 프레임(reticle: inset 30% 14%)만 크롭해 디코더에 넘김 — 처리 픽셀 축소로 발열 저감
+      var vw = v.videoWidth, vh = v.videoHeight;
+      var cropX = Math.round(vw * 0.14), cropW = Math.round(vw * 0.72);
+      var cropY = Math.round(vh * 0.30), cropH = Math.round(vh * 0.40);
+      scanCanvas.width = cropW; scanCanvas.height = cropH;
+      var ctx = scanCanvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+      var d = ctx.getImageData(0, 0, cropW, cropH);
+      var lum = new ZXing.RGBLuminanceSource(new Int32Array(new Uint32Array(d.data.buffer)), cropW, cropH);
+      var bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+      try {
+        var result = zxing.decode(bmp);
+        onRawScan(result.getText());
+      } catch (notFound) { /* 프레임에 코드 없음 — 정상 */ }
+      finally { zxing.reset(); }
+    } catch (e) { /* 프레임 처리 오류 — 다음 프레임에서 재시도 */ }
+  }
+  loop = requestAnimationFrame(scanLoop);
+}
+
+function stopCamera() {
+  cancelAnimationFrame(loop);
+  if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; }
+}
+
+/* ── ISBN 검증 (부가기호 5자리 등 차단) ─────── */
+function isValidIsbn13(raw) {
+  if (!/^\d{13}$/.test(raw)) return false;
+  if (raw.slice(0, 3) !== '978' && raw.slice(0, 3) !== '979') return false;
+  var sum = 0;
+  for (var i = 0; i < 12; i++) sum += Number(raw.charAt(i)) * (i % 2 === 0 ? 1 : 3);
+  var check = (10 - (sum % 10)) % 10;
+  return check === Number(raw.charAt(12));
+}
+
+function onRawScan(text) {
+  var raw = String(text).replace(/[^0-9]/g, '');
+  if (!isValidIsbn13(raw)) return; // 부가기호(5자리) 등 무시하고 계속 스캔
+  var now = performance.now();
+  if (now - lastHitAt < 1200) return; // 같은 코드 연속 인식 방지
+  lastHitAt = now;
+  var f = $('#flash'); f.classList.add('on'); setTimeout(function() { f.classList.remove('on'); }, 40);
+  navigator.vibrate && navigator.vibrate(35);
+  beginLookup(raw);
+}
+
+$('#manualBtn').onclick = function() {
+  var raw = prompt('ISBN-13을 직접 입력하세요 (숫자 13자리):');
+  if (!raw) return;
+  raw = raw.replace(/[^0-9]/g, '');
+  if (!isValidIsbn13(raw)) { showError('올바른 ISBN-13이 아닙니다.'); return; }
+  beginLookup(raw);
+};
+
+/* ── 조회 → 확인 폼 ────────────────────────── */
+function beginLookup(isbn) {
+  $('#lookupIsbn').textContent = isbn;
+  showView('lookupView');
+  apiCall('lookupIsbn', { isbn: isbn }).then(function(res) {
+    if (!res.ok) {
+      showError((res.error && res.error.message) || '조회 실패');
+      if (res.error && res.error.code === 'NOT_FOUND') {
+        currentLookup = { isbn: isbn, title: '', subtitle: '', authors: '', publisher: '', publishedYear: '', pageCount: '', coverUrl: '', source: 'MANUAL', isDuplicate: false };
+        fillConfirmForm(currentLookup);
+        showView('confirmView');
+        return;
+      }
+      showView('scanView');
+      return;
+    }
+    currentLookup = res.data;
+    fillConfirmForm(currentLookup);
+    showView('confirmView');
+  });
+}
+
+function fillConfirmForm(data) {
+  $('#confirmIsbn').textContent = data.isbn;
+  $('#sourceTag').textContent = data.source || 'MANUAL';
+  $('#coverImg').src = data.coverUrl || '';
+  $('#fTitle').value = data.title || '';
+  $('#fSubtitle').value = data.subtitle || '';
+  $('#fAuthors').value = data.authors || '';
+  $('#fPublisher').value = data.publisher || '';
+  $('#fYear').value = data.publishedYear || '';
+  $('#fPages').value = data.pageCount || '';
+  $('#fCopyCount').value = 1;
+  $('#fCondition').value = 'GOOD';
+  var dup = $('#dupBanner');
+  if (data.isDuplicate) {
+    dup.classList.add('show');
+    $('#dupTitle').textContent = data.existingTitle;
+    $('#confirmForm').style.display = 'none';
+  } else {
+    dup.classList.remove('show');
+    $('#confirmForm').style.display = 'block';
+  }
+}
+
+$('#dupAddBtn').onclick = function() { $('#confirmForm').style.display = 'block'; $('#dupBanner').classList.remove('show'); };
+$('#dupEditBtn').onclick = function() { $('#confirmForm').style.display = 'block'; $('#dupBanner').classList.remove('show'); };
+$('#cancelBtn').onclick = function() { currentLookup = null; showView('scanView'); };
+
+/* ── 저장 ─────────────────────────────────── */
+$('#saveBtn').onclick = function() {
+  var title = $('#fTitle').value.trim();
+  if (!title) { showError('서명은 필수입니다.'); return; }
+  var copyCount = Math.max(1, Math.min(50, Number($('#fCopyCount').value) || 1));
+  var cfg = getConfig();
+  var payload = {
+    isbn: currentLookup.isbn,
+    operator: cfg.operator,
+    title: title,
+    subtitle: $('#fSubtitle').value.trim(),
+    authors: $('#fAuthors').value.trim(),
+    publisher: $('#fPublisher').value.trim(),
+    publishedYear: $('#fYear').value || '',
+    pageCount: $('#fPages').value || '',
+    coverUrl: currentLookup.coverUrl || '',
+    copyCount: copyCount,
+    condition: $('#fCondition').value
+  };
+  var requestId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+  submitRegister({ requestId: requestId, payload: payload });
+};
+
+function submitRegister(entry) {
+  showView('savingView');
+  var payload = Object.assign({ requestId: entry.requestId }, entry.payload);
+  apiCall('registerByIsbn', payload).then(function(res) {
+    if (!res.ok) {
+      var reason = (res.error && res.error.message) || '알 수 없는 오류';
+      showError('저장 실패 — ' + reason + ' (다시 시도하거나 실패 목록에서 재시도하세요)');
+      addFailed({ requestId: entry.requestId, payload: entry.payload, reason: reason });
+      showView('confirmView');
+      return;
+    }
+    removeFailed(entry.requestId);
+    showResult(res.data);
+  });
+}
+
+function retryFailed(entry) {
+  submitRegister(entry);
+}
+
+function showResult(data) {
+  addTodayCount(data.copyCount);
+  var big = $('#resultBig'), extra = $('#resultExtra');
+  if (data.barcodes.length === 1) {
+    big.textContent = data.barcodes[0];
+    big.classList.remove('multi');
+    extra.innerHTML = '';
+  } else {
+    big.textContent = data.barcodes[0];
+    big.classList.add('multi');
+    extra.innerHTML = data.barcodes.slice(1).map(function(b) { return '<div>' + b + '</div>'; }).join('');
+  }
+  $('#resultTitle').textContent = data.title + (data.created ? ' · 신규 서지' : ' · 기존 서지에 복본 추가') + ' — 책 속표지에 등록번호를 연필로 적어두세요';
+  showView('resultView');
+}
+
+$('#nextBtn').onclick = function() { currentLookup = null; showView('scanView'); };
+
+/* ── 부팅 ─────────────────────────────────── */
+renderStats();
+renderFailedList();
+if (!configComplete(getConfig())) {
+  showSetup();
+} else {
+  startCamera();
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function() {});
+addEventListener('pagehide', stopCamera);
+</script>
+</body>
+</html>

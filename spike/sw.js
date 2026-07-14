@@ -1,10 +1,11 @@
 // 스파이크용 최소 Service Worker — 오프라인 동작 검증이 목적입니다.
 // 실제 앱에서는 Workbox(vite-plugin-pwa)를 쓰세요.
-const CACHE = 'spike-v1';
+const CACHE = 'spike-v2';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './zxing.js',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png',
-  './test-qr-book.png', './test-qr-student.png', './test-isbn.png'
+  './test-qr-book.png', './test-qr-student.png', './test-isbn.png',
+  './register.html', './register.manifest.webmanifest'
 ];
 
 self.addEventListener('install', e => {

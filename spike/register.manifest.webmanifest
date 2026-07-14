@@ -1,0 +1,15 @@
+{
+  "name": "도서관 폰 등록",
+  "short_name": "폰등록",
+  "description": "ISBN 스캔으로 도서·소장본을 등록합니다.",
+  "start_url": "./register.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f0ea",
+  "theme_color": "#1b3a4b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
