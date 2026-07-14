@@ -22,11 +22,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: webapp 의존성 설치
+        working-directory: webapp
+        run: npm ci
+      - name: webapp 뷰 경계 린트 (FRONTEND.md 수용 기준 — CI 게이트)
+        working-directory: webapp
+        run: |
+          npm run lint
+          npm run check-view-boundary
+      - name: webapp 빌드 (tsc + vite)
+        working-directory: webapp
+        run: npm run build
+      # 병행 배포(FRONTEND.md '기존 배포 철수' 1단계): 사이트 루트는 spike/(스파이크·
+      # register.html)가 그대로 차지하고, 새 통합 웹앱은 /app/ 서브패스에만 얹는다.
+      - name: 배포 아티팩트 조립 (spike=루트 + webapp/dist=/app/)
+        run: |
+          mkdir -p _site
+          cp -r spike/. _site/
+          mkdir -p _site/app
+          cp -r webapp/dist/. _site/app/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          # Phase 0: 스파이크를 배포합니다.
-          # Phase 2에서 React가 들어오면 이 값을 dist 로 바꾸세요.
-          path: spike
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

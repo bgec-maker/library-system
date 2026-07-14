@@ -1,0 +1,25 @@
+/* student.css — 학생 공개 표면 스킨. work.css와 같은 변수명, 발랄한 값.
+   /b/:barcode 같은 학생 라우트에서만 로드되고 사서 셸 코드는 같이 딸려오지 않는다(번들 분리). */
+:root {
+  --ink: #201a3a;
+  --ink-2: #4d4370;
+  --ink-3: #8b81ab;
+
+  --paper: #fbf7ff;
+  --panel: #ffffff;
+  --rule: #e6ddf7;
+
+  --deep: #6d3fd6;
+  --brass: #ff8a3d;
+
+  --pass: #1fa96a;
+  --fail: #e5484d;
+  --wait: #f4b740;
+  --idle: #d8cff0;
+
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius: 14px;
+  --shadow-window: 0 8px 28px rgba(109, 63, 214, 0.22);
+}

@@ -10,7 +10,9 @@ Phase 0  스파이크 (iOS 설치형 PWA 카메라+QR/EAN-13)   ✅ 통과 2026-
 학교화v1  사용자 지참 (P1·P2·P5·P6 구현 주장)         🟡 검증 대기 ← 다음 작업
 Phase 1  도메인·전용 Gmail·설치                       병행
 Phase 2  잔여 패치 = school-patch-v1의 Phase B        (P3 수기입력 · 연간리셋 · P7 한/영)
-▶ 즉시   **폰 ISBN 등록 도구** — docs/TASK_MOBILE_REG.md  (P4를 웹앱 형태로 흡수. 0단계 착수 조건)
+완료     폰 ISBN 등록 도구 (register.html — 배포됨, 스모크 버그 1건 주차 중)
+완료     통합 웹앱 1차 구현 (webapp/ — 셸/뷰/레지스트리/서비스, /app/ 병행 배포) 🟡 실기기 검증 대기
+▶ 즉시   **docs/VERIFY.md 대로 실기기 검증** — 스모크 버그 진단 절차 포함. 통과하면 철수 3단계(리다이렉트 스텁) 진행
 Phase 4+ 웹앱 (Pages + GAS Web App)                  기존 계획 유지
 ```
 
@@ -24,6 +26,8 @@ Phase 4+ 웹앱 (Pages + GAS Web App)                  기존 계획 유지
 | | 문서 | 내용 |
 |---|---|---|
 | 1 | `school-patch-v1/PATCH_NOTES.md` | **최신 구현** — 검증 프로토콜 9단계 포함. 🟡 미검증 |
+| 1⅓ | `docs/FRONTEND.md` | **웹앱 프론트 아키텍처** — 셸/뷰 계약, 창 관리자, 스캔 라우팅 |
+| 1⅔ | `docs/VERIFY.md` | **웹앱 실기기 검증 절차** — 수용 기준 체크리스트 + 스모크 버그("저장했는데 시트에 안 보임") 진단 순서 |
 | 1½ | `docs/PATCH_SPEC.md` | 패치 명세 원본 — v1이 P1·P2·P5·P6 구현 주장, **잔여 P3·P4·P7** |
 | 2 | `docs/DECISIONS.md` | 왜 이렇게 결정했나 (ADR 17개). **기각된 대안을 다시 제안하기 전에 필독** — 특히 ADR-003(ISBN), ADR-016(패키지 채택), 개정된 002·005 |
 | 3 | `mvp-package/README.md` | 채택된 기반의 설치·보안 경계 (정직하게 잘 쓰여 있음) |

@@ -1,0 +1,95 @@
+/* base.css — 스킨(work.css/student.css) 변수만 참조하는 구조 스타일.
+   여기엔 색상 리터럴을 직접 쓰지 않는다 — 전부 var(--token). */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button {
+  font: 600 15px var(--sans);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--deep);
+  color: #fff;
+  cursor: pointer;
+}
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.ghost { background: transparent; color: var(--deep); border: 1.5px solid var(--deep); }
+button.warn { background: var(--brass); color: var(--ink); }
+button.danger { background: var(--fail); color: #fff; }
+
+input, select, textarea {
+  font: 15px var(--sans);
+  padding: 10px 12px;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 10px 0 4px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.mono { font-family: var(--mono); }
+
+.session-gate-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.session-gate-card {
+  max-width: 420px;
+  width: 100%;
+  padding: 20px;
+}
+.session-gate-card h1 { font-size: 20px; margin-bottom: 6px; }
+.session-gate-sub { color: var(--ink-2); font-size: 13px; margin-bottom: 6px; }
+.session-gate-card input { width: 100%; margin-bottom: 4px; }
+.session-gate-card button { width: 100%; margin-top: 10px; }
+
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+.toast {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: var(--shadow-window);
+  max-width: 320px;
+}
+.toast.success { background: var(--pass); }
+.toast.error { background: var(--fail); }
+.toast.info { background: var(--deep); }

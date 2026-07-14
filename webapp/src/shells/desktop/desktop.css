@@ -1,0 +1,292 @@
+/* desktop.css — 데스크톱 창 관리자 전용 스타일. base.css와 마찬가지로 색상 리터럴 금지,
+   tokens/work.css(또는 student.css)의 var(--token)만 참조한다. */
+
+.desktop-shell {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.desktop-workspace {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── 좌측 런처 도크 ───────────────────────────────────────────────── */
+.dock {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  background: var(--deep);
+  box-shadow: var(--shadow-window);
+  z-index: 500;
+}
+
+.dock-apps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.dock-minimized {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.dock-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dock-icon:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dock-icon.is-open {
+  background: var(--brass);
+}
+
+.dock-icon--min {
+  opacity: 0.85;
+}
+
+/* ── 창 ───────────────────────────────────────────────────────────── */
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+}
+
+.window.is-focused {
+  outline: 2px solid var(--brass);
+  outline-offset: -1px;
+}
+
+.window-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 10px;
+  background: var(--deep);
+  color: #fff;
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.window-titlebar__title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--pass);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.window-pin {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 3px 5px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.window-pin:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.window-pin.is-pinned {
+  color: var(--brass);
+}
+
+.window-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font: 600 14px var(--sans);
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.window-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.window-btn--close:hover {
+  background: var(--fail);
+}
+
+.window-body {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: var(--panel);
+  min-height: 0;
+}
+
+.window-loading {
+  padding: 16px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.window-resize {
+  position: absolute;
+}
+
+.window-resize--n {
+  top: -3px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.window-resize--s {
+  bottom: -3px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.window-resize--e {
+  top: 10px;
+  right: -3px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.window-resize--w {
+  top: 10px;
+  left: -3px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.window-resize--ne {
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+.window-resize--nw {
+  top: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+.window-resize--se {
+  bottom: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+.window-resize--sw {
+  bottom: -4px;
+  left: -4px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+/* ── 스캐너 도크 위젯 ─────────────────────────────────────────────── */
+.scanner-dock {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  z-index: 700;
+}
+
+.scanner-dock__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--deep);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: 600 12px var(--sans);
+}
+
+.scanner-dock__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.scanner-dock__body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scanner-dock__preview {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: #000;
+  display: block;
+}
+
+.scanner-dock__status {
+  font-size: 11px;
+  color: var(--ink-2);
+}
