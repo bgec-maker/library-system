@@ -1,6 +1,9 @@
+import { Settings, SquareDashed } from 'lucide-react';
 import { viewsForRole } from '../../registry';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
 import { DOCK_WIDTH, useWindowStore } from './useWindowStore';
+
+const DOCK_ICON_SIZE = 24;
 
 // 좌측 런처 도크 — 위: 역할 필터된 앱 아이콘(클릭=열기/포커스), 아래: 최소화된 창 목록(클릭=복원+포커스).
 export function Dock() {
@@ -16,6 +19,7 @@ export function Dock() {
       <div className="dock-apps">
         {views.map((v) => {
           const isOpen = windows.some((w) => w.viewId === v.id && !w.minimized);
+          const Icon = v.icon;
           return (
             <button
               key={v.id}
@@ -24,7 +28,7 @@ export function Dock() {
               title={v.title}
               onClick={() => openWindow(v.id)}
             >
-              <span aria-hidden>{v.icon}</span>
+              <Icon size={DOCK_ICON_SIZE} aria-hidden />
             </button>
           );
         })}
@@ -33,6 +37,7 @@ export function Dock() {
         <div className="dock-minimized">
           {minimized.map((w) => {
             const meta = views.find((v) => v.id === w.viewId);
+            const Icon = meta?.icon ?? SquareDashed;
             return (
               <button
                 key={w.id}
@@ -41,14 +46,14 @@ export function Dock() {
                 title={`${meta?.title ?? w.viewId} (최소화됨)`}
                 onClick={() => restoreWindow(w.id)}
               >
-                <span aria-hidden>{meta?.icon ?? '▫️'}</span>
+                <Icon size={DOCK_ICON_SIZE} aria-hidden />
               </button>
             );
           })}
         </div>
       )}
       <button type="button" className="dock-icon dock-settings" title="설정" onClick={openSessionSettings}>
-        <span aria-hidden>⚙</span>
+        <Settings size={DOCK_ICON_SIZE} aria-hidden />
       </button>
     </nav>
   );

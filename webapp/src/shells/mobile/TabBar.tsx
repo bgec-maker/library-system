@@ -1,4 +1,7 @@
+import { Ellipsis } from 'lucide-react';
 import type { ViewId, ViewMeta } from '../../types';
+
+const TAB_ICON_SIZE = 20;
 
 // FRONTEND.md '모바일 셸 — 탭 + 스택': 하단 탭 = registry가 내려주는 탭(loan-return/register/search)
 // + 셸이 덧붙이는 "더보기"(moreMenuViews를 리스트로 보여주는 자체 화면, registry엔 없는 셸 전용 슬롯).
@@ -21,20 +24,23 @@ function labelFor(meta: ViewMeta): string {
 export default function TabBar({ tabs, activeId, onSelect }: TabBarProps) {
   return (
     <nav className="m-tabbar" aria-label="주요 화면">
-      {tabs.map((meta) => (
-        <button
-          key={meta.id}
-          type="button"
-          className={`m-tab${activeId === meta.id ? ' active' : ''}`}
-          aria-current={activeId === meta.id ? 'page' : undefined}
-          onClick={() => onSelect(meta.id)}
-        >
-          <span className="m-tab-icon" aria-hidden="true">
-            {meta.icon}
-          </span>
-          <span className="m-tab-label">{labelFor(meta)}</span>
-        </button>
-      ))}
+      {tabs.map((meta) => {
+        const Icon = meta.icon;
+        return (
+          <button
+            key={meta.id}
+            type="button"
+            className={`m-tab${activeId === meta.id ? ' active' : ''}`}
+            aria-current={activeId === meta.id ? 'page' : undefined}
+            onClick={() => onSelect(meta.id)}
+          >
+            <span className="m-tab-icon" aria-hidden="true">
+              <Icon size={TAB_ICON_SIZE} />
+            </span>
+            <span className="m-tab-label">{labelFor(meta)}</span>
+          </button>
+        );
+      })}
       <button
         type="button"
         className={`m-tab${activeId === 'more' ? ' active' : ''}`}
@@ -42,7 +48,7 @@ export default function TabBar({ tabs, activeId, onSelect }: TabBarProps) {
         onClick={() => onSelect('more')}
       >
         <span className="m-tab-icon" aria-hidden="true">
-          ⋯
+          <Ellipsis size={TAB_ICON_SIZE} />
         </span>
         <span className="m-tab-label">더보기</span>
       </button>

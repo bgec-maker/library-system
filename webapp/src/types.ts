@@ -1,5 +1,6 @@
 // FRONTEND.md — ViewRegistry 단일 원천에서 쓰는 공용 타입.
 // 이 파일은 셸·뷰·서비스 모두가 참조하는 계약이므로 함부로 넓히지 않는다.
+import type { LucideIcon } from 'lucide-react';
 
 export type Role = 'LIBRARIAN' | 'STATION';
 
@@ -16,7 +17,8 @@ export type ScanInterest = 'focus' | 'none';
 export interface ViewMeta {
   id: ViewId;
   title: string;
-  icon: string;
+  /** lucide-react 아이콘 컴포넌트 — 셸이 size/stroke를 지정해 렌더한다(색은 currentColor). */
+  icon: LucideIcon;
   roles: Role[];
   scan: ScanInterest;
   desktop: { min: [number, number]; single?: boolean };

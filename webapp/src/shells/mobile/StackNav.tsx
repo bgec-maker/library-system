@@ -1,4 +1,5 @@
 import { Suspense, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
@@ -125,7 +126,7 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
     <div className="m-stack-overlay" role="dialog" aria-modal="true">
       <header className="m-stack-header">
         <button type="button" className="m-stack-back" onClick={() => window.history.back()} aria-label="뒤로">
-          ‹
+          <ChevronLeft size={24} aria-hidden />
         </button>
         <h1 className="m-stack-title">{top.title}</h1>
         <span className="m-stack-spacer" aria-hidden="true" />

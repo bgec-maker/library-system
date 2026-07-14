@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { Minus, PanelLeft, PanelRight, Pin, X } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
@@ -17,6 +18,7 @@ import { DOCK_WIDTH, useWindowStore, type WindowState } from './useWindowStore';
 type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const RESIZE_DIRS: ResizeDir[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 const MIN_VISIBLE = 120; // 드래그해도 타이틀바 일부는 항상 화면에 남도록
+const TITLEBAR_ICON_SIZE = 14;
 
 interface WindowProps {
   win: WindowState;
@@ -161,22 +163,22 @@ export function Window({ win }: WindowProps) {
             title={isPinned ? '스캔 고정 해제' : '이 창에 스캔 고정 (전역 1개만 가능)'}
             onClick={() => (isPinned ? unpinScanRoute() : pinScanRoute(win.viewId))}
           >
-            📌
+            <Pin size={TITLEBAR_ICON_SIZE} aria-hidden />
           </button>
         )}
         <span className="window-titlebar__title">{title}</span>
         {showsScanBadge && <span className="window-badge">스캔 수신</span>}
         <button type="button" className="window-btn" title="왼쪽 절반" onClick={() => snapWindow(win.id, 'left')}>
-          ◧
+          <PanelLeft size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
         <button type="button" className="window-btn" title="오른쪽 절반" onClick={() => snapWindow(win.id, 'right')}>
-          ◨
+          <PanelRight size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
         <button type="button" className="window-btn" title="최소화" onClick={() => minimizeWindow(win.id)}>
-          —
+          <Minus size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
         <button type="button" className="window-btn window-btn--close" title="닫기" onClick={() => closeWindow(win.id)}>
-          ×
+          <X size={TITLEBAR_ICON_SIZE} aria-hidden />
         </button>
       </div>
       <div className="window-body">

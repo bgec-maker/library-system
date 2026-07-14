@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera } from 'lucide-react';
 import { cameraService, type CameraStatus } from '../../services/camera';
 
 // 우하단 고정 스캐너 도크 — 닫기 불가(접기만). DesktopShell 루트에 마운트되어
@@ -48,6 +49,7 @@ export function ScannerDockWidget() {
         title={collapsed ? '스캐너 펼치기' : '스캐너 접기'}
       >
         <span className="scanner-dock__dot" style={{ background: dotColor }} aria-hidden />
+        <Camera size={14} aria-hidden />
         {!collapsed && <span className="scanner-dock__label">스캐너</span>}
       </button>
       {!collapsed && (

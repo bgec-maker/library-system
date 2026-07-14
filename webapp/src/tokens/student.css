@@ -20,6 +20,14 @@
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
+  /* 타입 스케일 6단 — work.css와 같은 변수명(스킨 교체 = 파일 교체 원칙). 최소 12px(--fs-xs). */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+
   --radius: 14px;
   --shadow-window: 0 8px 28px rgba(109, 63, 214, 0.22);
 }

@@ -1,20 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeftRight } from 'lucide-react';
 import type { ScanTarget, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/scanBus';
 import { apiCall, newRequestId } from '../../services/api';
+import { useSession } from '../../services/session';
 import './loan-return.css';
 
 // 대출·반납 뷰 — FRONTEND.md "실행 정책": 확인 탭 없이 즉시 실행 + 실행취소 5초.
 //
-// ⚠️ 백엔드 공백(작업 지시서 그대로): school-patch-v1/Code.gs doPost는 현재
-// 'lookupIsbn'·'registerByIsbn'만 라우팅한다. checkout_/return_ 도메인 함수는 존재하지만
-// doPost에 연결돼 있지 않다. 이 뷰는 미래 계약(action:'checkout'|'return',
-// payload {memberKey?, copyKey, note?, requestId})을 실제로 호출하고, 서버가 돌려주는
-// UNKNOWN_ACTION을 감추지 않고 그대로 화면·콘솔에 드러낸다. 가짜 성공을 만들지 않는다.
+// 모드 토글 없음: 책을 스캔하면 서버 copyStatus로 현재 상태를 조회해서
+//   대출 중(ON_LOAN)   → 즉시 반납
+//   대출 가능           → "누가 빌리나요?" 대기 → 학생 스캔 → 대출
+// 를 자동 분기한다 (doPost의 copyStatus/checkout/return 액션 — 이 뷰와 같은 커밋에서 추가됨.
+// 시트 쪽 GAS가 아직 이전 배포라면 UNKNOWN_ACTION이 뜬다 → 재배포 필요 안내를 그대로 보여준다).
 
 type TxMode = 'checkout' | 'return';
 type OpStatus = 'pending' | 'ok' | 'error';
+
+interface BookInfo {
+  barcode: string;
+  title: string;
+  statusCode: string;
+  onLoan: boolean;
+  memberNo: string;
+  memberName: string;
+}
+
+interface CopyStatusResult {
+  copyId: string;
+  barcode: string;
+  statusCode: string;
+  title: string;
+  titleStatusCode: string;
+  onLoan: boolean;
+  loanId: string;
+  dueAt: string;
+  memberNo: string;
+  memberName: string;
+}
 
 interface OpRecord {
   id: string; // requestId
@@ -32,6 +56,7 @@ interface UndoState {
   opId: string;
   mode: TxMode;
   copyKey: string;
+  /** return 실행취소(=재대출)에 필요 — copyStatus 응답의 memberNo를 기억해 둔다. */
   memberKey?: string;
   deadline: number;
 }
@@ -72,11 +97,18 @@ function modeLabel(mode: TxMode): string {
   return mode === 'checkout' ? '대출' : '반납';
 }
 
+function actionErrorMessage(kind: '대출' | '반납' | '상태 조회', code: string, message: string): string {
+  if (code === 'UNKNOWN_ACTION') {
+    return `${kind} 실패 — 서버 배포가 이전 버전입니다. Apps Script에서 Code.gs를 새 버전으로 재배포하세요.`;
+  }
+  return `${kind} 실패: ${message}`;
+}
+
 export default function LoanReturnView({ shell }: ViewProps) {
-  const [mode, setMode] = useState<TxMode>('checkout');
-  const [book, setBook] = useState<{ barcode: string } | null>(null);
+  const operator = useSession((s) => s.operator);
+  const [book, setBook] = useState<BookInfo | null>(null);
   const [student, setStudent] = useState<{ studentCode: string } | null>(null);
-  const [note, setNote] = useState('');
+  const [checking, setChecking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ops, setOps] = useState<OpRecord[]>([]);
   const [todayCount, setTodayCount] = useState<number>(() => readTodayCount());
@@ -86,10 +118,18 @@ export default function LoanReturnView({ shell }: ViewProps) {
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [undoSecondsLeft, setUndoSecondsLeft] = useState(0);
 
-  // 같은 (모드+바코드[+학생]) 조합은 자동으로 1회만 실행한다 — 실패해도 자동 재시도하지 않고
-  // "다시 시도" 버튼(사람의 입력)을 눌러야만 재실행된다(요청 규칙 4).
+  // 같은 (모드+바코드[+학생]) 조합은 자동으로 1회만 실행 — 실패해도 자동 재시도하지 않고
+  // "다시 시도" 버튼(사람의 입력)을 눌러야만 재실행된다.
   const lastAttemptRef = useRef<string | null>(null);
   const undoIntervalRef = useRef<number | null>(null);
+  const bookRef = useRef<BookInfo | null>(null);
+  bookRef.current = book;
+  const studentRef = useRef<{ studentCode: string } | null>(null);
+  studentRef.current = student;
+  const checkingRef = useRef(false);
+  checkingRef.current = checking;
+  const busyRef = useRef(false);
+  busyRef.current = busy;
 
   useEffect(() => {
     shell.setTitle(getViewMeta('loan-return')?.title ?? '대출·반납');
@@ -130,102 +170,160 @@ export default function LoanReturnView({ shell }: ViewProps) {
     setOps((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
   }, []);
 
+  const operatorNote = useCallback(() => (operator ? `웹앱 · ${operator}` : '웹앱'), [operator]);
+
+  const resetSlots = useCallback(() => {
+    setBook(null);
+    setStudent(null);
+    setLastFailedKey(null);
+    lastAttemptRef.current = null;
+  }, []);
+
   const runCheckout = useCallback(
-    async (copyKey: string, memberKey: string) => {
+    async (info: BookInfo, memberKey: string) => {
       setBusy(true);
       const requestId = newRequestId();
-      pushOp({ id: requestId, mode: 'checkout', copyKey, memberKey, status: 'pending', at: Date.now() });
-      const res = await apiCall<Record<string, unknown>>('checkout', {
+      pushOp({ id: requestId, mode: 'checkout', copyKey: info.barcode, memberKey, status: 'pending', at: Date.now() });
+      const res = await apiCall<{ memberName?: string; dueAt?: string }>('checkout', {
         memberKey,
-        copyKey,
-        note: note || undefined,
+        copyKey: info.barcode,
+        note: operatorNote(),
         requestId
       });
       if (res.ok) {
         patchOp(requestId, { status: 'ok' });
         setTodayCount(bumpTodayCount());
-        shell.toast(`대출 처리 완료 — ${copyKey}`, 'success');
-        startUndo(requestId, 'checkout', copyKey, memberKey);
-        setBook(null);
-        setStudent(null);
-        setNote('');
-        setLastFailedKey(null);
+        const who = res.data?.memberName ? ` → ${res.data.memberName}` : '';
+        shell.toast(`대출 완료 — ${info.title}${who}`, 'success');
+        startUndo(requestId, 'checkout', info.barcode, memberKey);
+        resetSlots();
       } else {
-        const message =
-          res.error.code === 'UNKNOWN_ACTION'
-            ? `서버에 checkout 액션이 아직 없습니다 — Code.gs doPost 확장 필요 (${res.error.message})`
-            : `대출 처리 실패: ${res.error.message}`;
-        console.error('[loan-return] checkout 실패', { code: res.error.code, message: res.error.message, copyKey, memberKey, requestId });
+        const message = actionErrorMessage('대출', res.error.code, res.error.message);
+        console.error('[loan-return] checkout 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, memberKey, requestId });
         patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
         shell.toast(message, 'error');
-        setLastFailedKey(`checkout:${copyKey}:${memberKey}`);
+        setLastFailedKey(`checkout:${info.barcode}:${memberKey}`);
       }
       setBusy(false);
     },
-    [note, patchOp, pushOp, shell, startUndo]
+    [operatorNote, patchOp, pushOp, resetSlots, shell, startUndo]
   );
 
   const runReturn = useCallback(
-    async (copyKey: string) => {
+    async (info: BookInfo) => {
       setBusy(true);
       const requestId = newRequestId();
-      pushOp({ id: requestId, mode: 'return', copyKey, status: 'pending', at: Date.now() });
+      pushOp({ id: requestId, mode: 'return', copyKey: info.barcode, memberKey: info.memberNo || undefined, status: 'pending', at: Date.now() });
       const res = await apiCall<Record<string, unknown>>('return', {
-        copyKey,
-        note: note || undefined,
+        copyKey: info.barcode,
+        note: operatorNote(),
         requestId
       });
       if (res.ok) {
         patchOp(requestId, { status: 'ok' });
         setTodayCount(bumpTodayCount());
-        shell.toast(`반납 처리 완료 — ${copyKey}`, 'success');
-        startUndo(requestId, 'return', copyKey);
-        setBook(null);
-        setNote('');
-        setLastFailedKey(null);
+        const who = info.memberName ? ` (${info.memberName})` : '';
+        shell.toast(`반납 완료 — ${info.title}${who}`, 'success');
+        // 반납 실행취소(=재대출)에 memberNo가 필요 — copyStatus에서 받아둔 값을 넘긴다.
+        startUndo(requestId, 'return', info.barcode, info.memberNo || undefined);
+        resetSlots();
       } else {
-        const message =
-          res.error.code === 'UNKNOWN_ACTION'
-            ? `서버에 return 액션이 아직 없습니다 — Code.gs doPost 확장 필요 (${res.error.message})`
-            : `반납 처리 실패: ${res.error.message}`;
-        console.error('[loan-return] return 실패', { code: res.error.code, message: res.error.message, copyKey, requestId });
+        const message = actionErrorMessage('반납', res.error.code, res.error.message);
+        console.error('[loan-return] return 실패', { code: res.error.code, message: res.error.message, copyKey: info.barcode, requestId });
         patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
         shell.toast(message, 'error');
-        setLastFailedKey(`return:${copyKey}`);
+        setLastFailedKey(`return:${info.barcode}`);
       }
       setBusy(false);
     },
-    [note, patchOp, pushOp, shell, startUndo]
+    [operatorNote, patchOp, pushOp, resetSlots, shell, startUndo]
   );
 
-  // 책+학생(대출) 또는 책만(반납)이 갖춰지면 즉시 실행 — 확인 탭 없음(FRONTEND.md 실행 정책).
-  useEffect(() => {
-    if (busy) return;
-    if (mode === 'checkout' && book && student) {
-      const key = `checkout:${book.barcode}:${student.studentCode}`;
-      if (lastAttemptRef.current === key) return;
-      lastAttemptRef.current = key;
-      void runCheckout(book.barcode, student.studentCode);
-    } else if (mode === 'return' && book) {
-      const key = `return:${book.barcode}`;
-      if (lastAttemptRef.current === key) return;
-      lastAttemptRef.current = key;
-      void runReturn(book.barcode);
-    }
-  }, [mode, book, student, busy, runCheckout, runReturn]);
+  // 책 스캔 → copyStatus 조회 → 대출중이면 즉시 반납 / 가능하면 학생 대기(또는 선스캔된 학생으로 즉시 대출).
+  const handleBookScan = useCallback(
+    async (barcode: string) => {
+      if (checkingRef.current || busyRef.current) return;
+      setChecking(true);
+      const res = await apiCall<CopyStatusResult>('copyStatus', { copyKey: barcode });
+      setChecking(false);
+      if (!res.ok) {
+        const message = actionErrorMessage('상태 조회', res.error.code, res.error.message);
+        console.error('[loan-return] copyStatus 실패', { code: res.error.code, message: res.error.message, copyKey: barcode });
+        shell.toast(message, 'error');
+        return;
+      }
+      const data = res.data;
+      const info: BookInfo = {
+        barcode: data.barcode,
+        title: data.title,
+        statusCode: data.statusCode,
+        onLoan: data.onLoan,
+        memberNo: data.memberNo,
+        memberName: data.memberName
+      };
+
+      if (data.onLoan) {
+        // 대출 중인 책 → 즉시 반납 (같은 책 재스캔 연타는 lastAttempt 가드가 흡수)
+        const key = `return:${info.barcode}`;
+        if (lastAttemptRef.current === key) return;
+        lastAttemptRef.current = key;
+        setBook(info);
+        void runReturn(info);
+        return;
+      }
+
+      if (data.titleStatusCode !== 'ACTIVE' || (data.statusCode !== 'AVAILABLE' && data.statusCode !== 'HOLD_READY')) {
+        shell.toast(`대출할 수 없는 상태입니다 — ${data.title} (${data.statusCode})`, 'error');
+        return;
+      }
+
+      const pendingStudent = studentRef.current;
+      if (pendingStudent) {
+        const key = `checkout:${info.barcode}:${pendingStudent.studentCode}`;
+        if (lastAttemptRef.current === key) return;
+        lastAttemptRef.current = key;
+        setBook(info);
+        void runCheckout(info, pendingStudent.studentCode);
+        return;
+      }
+
+      // "누가 빌리나요?" 대기 상태
+      setBook(info);
+      setLastFailedKey(null);
+      lastAttemptRef.current = null;
+    },
+    [runCheckout, runReturn, shell]
+  );
+
+  const handleStudentScan = useCallback(
+    (studentCode: string) => {
+      const pendingBook = bookRef.current;
+      if (pendingBook && !pendingBook.onLoan) {
+        const key = `checkout:${pendingBook.barcode}:${studentCode}`;
+        if (lastAttemptRef.current === key) return;
+        lastAttemptRef.current = key;
+        setStudent({ studentCode });
+        void runCheckout(pendingBook, studentCode);
+      } else {
+        // 학생을 먼저 스캔한 경우 — 책 스캔을 기다린다.
+        setStudent({ studentCode });
+      }
+    },
+    [runCheckout]
+  );
 
   const applyScanTarget = useCallback(
     (target: ScanTarget) => {
       if (target.kind === 'book' || target.kind === 'book-url') {
-        setBook({ barcode: target.barcode });
+        void handleBookScan(target.barcode);
       } else if (target.kind === 'student') {
-        setStudent({ studentCode: target.studentCode });
+        handleStudentScan(target.studentCode);
       } else if (target.kind === 'isbn') {
         shell.toast('ISBN 스캔은 도서 등록 뷰에서 처리하세요.', 'info');
       }
       // kind === 'unknown' → 조용히 무시(서비스 계층이 이미 실패음을 재생함, FRONTEND.md).
     },
-    [shell]
+    [handleBookScan, handleStudentScan, shell]
   );
 
   // scanBus 구독 — 이 뷰가 유효 스캔 라우트일 때만 반응한다(포커스 아닌 창은 무시).
@@ -249,27 +347,16 @@ export default function LoanReturnView({ shell }: ViewProps) {
     setManualInput('');
   }
 
-  function handleClearSlots() {
-    setBook(null);
-    setStudent(null);
-    setLastFailedKey(null);
-    lastAttemptRef.current = null;
-  }
-
-  function handleModeChange(next: TxMode) {
-    setMode(next);
-    setLastFailedKey(null);
-    lastAttemptRef.current = null;
-  }
-
   function handleRetry() {
-    if (busy) return;
-    if (mode === 'checkout' && book && student) {
-      lastAttemptRef.current = `checkout:${book.barcode}:${student.studentCode}`;
-      void runCheckout(book.barcode, student.studentCode);
-    } else if (mode === 'return' && book) {
-      lastAttemptRef.current = `return:${book.barcode}`;
-      void runReturn(book.barcode);
+    if (busy || !lastFailedKey) return;
+    const pendingBook = bookRef.current;
+    if (!pendingBook) return;
+    if (lastFailedKey.startsWith('return:')) {
+      lastAttemptRef.current = lastFailedKey;
+      void runReturn(pendingBook);
+    } else if (lastFailedKey.startsWith('checkout:') && studentRef.current) {
+      lastAttemptRef.current = lastFailedKey;
+      void runCheckout(pendingBook, studentRef.current.studentCode);
     }
   }
 
@@ -277,89 +364,67 @@ export default function LoanReturnView({ shell }: ViewProps) {
     if (!undo) return;
     const { mode: undoOfMode, copyKey, memberKey } = undo;
     clearUndo();
-    // 실행취소 = 반대 트랜잭션(요청 규칙 3) — checkout의 취소는 return, return의 취소는 checkout.
-    // return은 memberKey를 수집하지 않으므로(대출만 memberKey 필요) return 취소 시 memberKey가
-    // 비어 있을 수 있다 — 이 또한 서버에 checkout/return이 아직 없으므로 지금은 UNKNOWN_ACTION으로
-    // 동일하게 드러난다(백엔드 공백, 배선만 해둠).
+    // 실행취소 = 반대 트랜잭션 — checkout의 취소는 return, return의 취소는 재checkout
+    // (copyStatus에서 받아둔 memberNo 사용; 없으면 서버가 VALIDATION_ERROR로 알려준다).
     const undoAction: TxMode = undoOfMode === 'checkout' ? 'return' : 'checkout';
     const requestId = newRequestId();
     const payload: Record<string, unknown> =
-      undoAction === 'checkout' ? { memberKey, copyKey, requestId } : { copyKey, requestId };
+      undoAction === 'checkout'
+        ? { memberKey, copyKey, note: `${operatorNote()} · 실행취소`, requestId }
+        : { copyKey, note: `${operatorNote()} · 실행취소`, requestId };
     pushOp({ id: requestId, mode: undoAction, copyKey, memberKey, status: 'pending', isUndo: true, at: Date.now() });
     const res = await apiCall<Record<string, unknown>>(undoAction, payload);
     if (res.ok) {
       patchOp(requestId, { status: 'ok' });
       shell.toast('실행취소 완료', 'success');
     } else {
-      const message =
-        res.error.code === 'UNKNOWN_ACTION'
-          ? `실행취소 실패 — 서버에 ${undoAction} 액션이 아직 없습니다 (Code.gs doPost 확장 필요)`
-          : `실행취소 실패: ${res.error.message}`;
+      const message = actionErrorMessage(undoAction === 'checkout' ? '대출' : '반납', res.error.code, res.error.message);
       console.error('[loan-return] undo 실패', { undoAction, code: res.error.code, message: res.error.message, copyKey, memberKey, requestId });
       patchOp(requestId, { status: 'error', errorCode: res.error.code, errorMessage: message });
-      shell.toast(message, 'error');
+      shell.toast(`실행취소 실패 — ${message}`, 'error');
     }
   }
 
-  const currentKey =
-    mode === 'checkout' && book && student
-      ? `checkout:${book.barcode}:${student.studentCode}`
-      : mode === 'return' && book
-        ? `return:${book.barcode}`
-        : null;
-  const canRetry = Boolean(currentKey) && currentKey === lastFailedKey && !busy;
+  const awaitingStudent = Boolean(book && !book.onLoan && !busy && !checking);
+  const canRetry = Boolean(lastFailedKey) && !busy && !checking;
 
   return (
     <div className="lr-view">
-      <div className="lr-mode-toggle" role="tablist" aria-label="처리 모드">
-        <button
-          type="button"
-          className={mode === 'checkout' ? '' : 'ghost'}
-          aria-pressed={mode === 'checkout'}
-          onClick={() => handleModeChange('checkout')}
-        >
-          대출
-        </button>
-        <button
-          type="button"
-          className={mode === 'return' ? '' : 'ghost'}
-          aria-pressed={mode === 'return'}
-          onClick={() => handleModeChange('return')}
-        >
-          반납
-        </button>
-      </div>
+      <header className="lr-header">
+        <h1>
+          <ArrowLeftRight size={20} aria-hidden /> 대출·반납
+        </h1>
+        <span className="lr-header-hint">책을 스캔하면 자동으로 대출/반납을 판별합니다</span>
+      </header>
 
       <div className="lr-slots">
         <div className={`lr-slot${book ? ' filled' : ''}`}>
           <span className="lr-slot-label">소장본</span>
-          <span className="lr-slot-value mono">{book ? book.barcode : '스캔 대기 중'}</span>
+          <span className="lr-slot-value mono">{checking ? '조회 중…' : book ? book.barcode : '스캔 대기 중'}</span>
+          {book && <span className="lr-slot-sub">{book.title}</span>}
         </div>
-        {mode === 'checkout' && (
-          <div className={`lr-slot${student ? ' filled' : ''}`}>
-            <span className="lr-slot-label">학생</span>
-            <span className="lr-slot-value mono">{student ? student.studentCode : '스캔 대기 중'}</span>
-          </div>
-        )}
+        <div className={`lr-slot${student ? ' filled' : ''}${awaitingStudent ? ' waiting' : ''}`}>
+          <span className="lr-slot-label">학생</span>
+          <span className="lr-slot-value mono">
+            {student ? student.studentCode : awaitingStudent ? '누가 빌리나요? — 학생증을 스캔하세요' : '—'}
+          </span>
+        </div>
       </div>
 
       <div className="lr-action-row">
-        {busy && <span className="lr-status lr-status-busy">처리 중…</span>}
-        {!busy && canRetry && <span className="lr-status lr-status-error">마지막 시도 실패 — 아래에서 다시 시도하세요.</span>}
+        {(checking || busy) && <span className="lr-status lr-status-busy">처리 중…</span>}
+        {canRetry && <span className="lr-status lr-status-error">마지막 시도 실패 — 아래에서 다시 시도하세요.</span>}
         {canRetry && (
           <button type="button" className="warn" onClick={handleRetry}>
             다시 시도
           </button>
         )}
         {(book || student) && (
-          <button type="button" className="ghost" onClick={handleClearSlots} disabled={busy}>
+          <button type="button" className="ghost" onClick={resetSlots} disabled={busy || checking}>
             지우기
           </button>
         )}
       </div>
-
-      <label htmlFor="lr-note">비고 (선택)</label>
-      <input id="lr-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 파손 확인" />
 
       <details className="lr-manual">
         <summary>수동 입력 (카메라 사용 불가 시)</summary>

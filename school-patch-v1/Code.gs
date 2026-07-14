@@ -2293,6 +2293,9 @@ function doPost(e) {
       var action = cleanText_(payload.action);
       if (action === 'lookupIsbn') return apiLookupIsbn_(payload);
       if (action === 'registerByIsbn') return apiRegisterByIsbn_(payload);
+      if (action === 'copyStatus') return apiCopyStatus_(payload);
+      if (action === 'checkout') return apiWebCheckout_(payload);
+      if (action === 'return') return apiWebReturn_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2302,6 +2305,47 @@ function doPost(e) {
     };
   }
   return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 소장본 상태 조회(읽기 전용) — 웹앱 loan-return이 "스캔 → 대출중이면 즉시 반납 / 가능하면
+// 대출 대기"를 판단하는 데 쓴다. 대출 중이면 누가 빌렸는지(반납 확인 표시용)도 함께 돌려준다.
+function apiCopyStatus_(payload) {
+  var copy = findCopyByKey_(requiredText_(payload.copyKey, '소장본 바코드'));
+  var title = findByIdRequired_(LIBRARY_MVP.SHEETS.TITLES, 'title_id', copy.title_id, '연결된 도서');
+  var openLoan = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.find(function(row) {
+    return row.copy_id === copy.copy_id && row.status_code === 'OPEN' && !row.returned_at;
+  });
+  var member = openLoan
+    ? readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.find(function(row) { return row.member_id === openLoan.member_id; })
+    : null;
+  return {
+    copyId: copy.copy_id,
+    barcode: copy.barcode,
+    statusCode: copy.status_code,
+    title: title.title,
+    titleStatusCode: title.status_code,
+    onLoan: Boolean(openLoan),
+    loanId: openLoan ? openLoan.loan_id : '',
+    dueAt: openLoan ? openLoan.due_at : '',
+    memberNo: member ? member.member_no : '',
+    memberName: member ? member.name : ''
+  };
+}
+
+// 웹앱용 대출/반납 — 사이드바 apiCheckout/apiReturn과 같은 패턴으로 executeWrite_·checkout_·return_을
+// 그대로 재사용한다(runApi_ 래핑은 doPost가 담당하므로 여기서 이중 래핑하지 않는다).
+// 작업자 식별은 registerByIsbn과 동일: Web App은 소유자 권한으로 실행되므로 payload.operator를
+// note에 남기는 건 프론트 몫(웹앱이 note에 '웹앱 · <operator>'를 담아 보낸다).
+function apiWebCheckout_(payload) {
+  return executeWrite_('CHECKOUT', payload || {}, function(actor, requestId, transaction) {
+    return checkout_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebReturn_(payload) {
+  return executeWrite_('RETURN', payload || {}, function(actor, requestId, transaction) {
+    return return_(payload || {}, actor, requestId, transaction);
+  });
 }
 
 function normalizeIsbn13Strict_(value) {

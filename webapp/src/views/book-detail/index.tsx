@@ -16,7 +16,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   return (
     <div className="panel" style={{ padding: 20 }}>
       <p>도서 상세는 곧 제공됩니다.</p>
-      <dl style={{ marginTop: 12, fontSize: 13, color: 'var(--ink-2)' }}>
+      <dl style={{ marginTop: 12, fontSize: 'var(--fs-sm)', color: 'var(--ink-2)' }}>
         <dt>titleId</dt>
         <dd className="mono">{titleId ?? '(없음)'}</dd>
         <dt style={{ marginTop: 6 }}>barcode</dt>

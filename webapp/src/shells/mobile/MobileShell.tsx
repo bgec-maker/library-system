@@ -1,4 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronRight, Settings } from 'lucide-react';
 import type { ShellContext, ToastKind, ViewId, ViewMeta } from '../../types';
 import { getViewMeta, mobileTabViews, moreMenuViews } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
@@ -37,19 +38,22 @@ function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
   }
   return (
     <ul className="m-more-list">
-      {items.map((meta) => (
-        <li key={meta.id}>
-          <button type="button" className="m-more-item" onClick={() => onOpen(meta.id)}>
-            <span className="m-more-icon" aria-hidden="true">
-              {meta.icon}
-            </span>
-            <span className="m-more-label">{meta.title}</span>
-            <span className="m-more-chevron" aria-hidden="true">
-              ›
-            </span>
-          </button>
-        </li>
-      ))}
+      {items.map((meta) => {
+        const Icon = meta.icon;
+        return (
+          <li key={meta.id}>
+            <button type="button" className="m-more-item" onClick={() => onOpen(meta.id)}>
+              <span className="m-more-icon" aria-hidden="true">
+                <Icon size={20} />
+              </span>
+              <span className="m-more-label">{meta.title}</span>
+              <span className="m-more-chevron" aria-hidden="true">
+                <ChevronRight size={20} />
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -158,7 +162,7 @@ export default function MobileShell() {
         <header className="m-shell-header">
           <h1 className="m-shell-title">{tabTitle}</h1>
           <button type="button" className="m-shell-settings" aria-label="설정" onClick={openSessionSettings}>
-            ⚙
+            <Settings size={20} aria-hidden />
           </button>
         </header>
         <main className="m-shell-main">

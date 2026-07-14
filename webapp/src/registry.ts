@@ -1,3 +1,4 @@
+import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, History, Search } from 'lucide-react';
 import type { ViewMeta } from './types';
 
 // ★ 단일 원천 — 셸(도크 아이콘·탭·창 목록)은 전부 이 배열을 읽어 렌더링한다.
@@ -6,7 +7,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'loan-return',
     title: '대출·반납',
-    icon: '🔄',
+    icon: ArrowLeftRight,
     roles: ['LIBRARIAN', 'STATION'],
     scan: 'focus',
     desktop: { min: [420, 620], single: true },
@@ -15,7 +16,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'register',
     title: '도서 등록',
-    icon: '📗',
+    icon: BookPlus,
     roles: ['LIBRARIAN'],
     scan: 'focus',
     desktop: { min: [420, 680], single: true },
@@ -24,7 +25,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'search',
     title: '통합 검색',
-    icon: '🔍',
+    icon: Search,
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [480, 560] },
@@ -33,7 +34,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'inventory',
     title: '장서 점검',
-    icon: '📦',
+    icon: ClipboardCheck,
     roles: ['LIBRARIAN'],
     scan: 'focus',
     desktop: { min: [560, 480], single: true },
@@ -42,7 +43,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'book-detail',
     title: '도서 상세',
-    icon: '📖',
+    icon: BookOpen,
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [420, 560] },
@@ -51,7 +52,7 @@ export const VIEW_REGISTRY: ViewMeta[] = [
   {
     id: 'recent-ops',
     title: '최근 처리',
-    icon: '🕘',
+    icon: History,
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [460, 420] },

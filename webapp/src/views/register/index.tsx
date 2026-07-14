@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BookPlus } from 'lucide-react';
 import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { useSession } from '../../services/session';
@@ -369,7 +370,9 @@ export default function RegisterView({ shell }: ViewProps) {
   return (
     <div className="reg-root">
       <header className="reg-header">
-        <h1>📗 도서 등록</h1>
+        <h1>
+          <BookPlus size={20} aria-hidden /> 도서 등록
+        </h1>
         <div className="reg-stats">
           오늘 <b>{todayCount}</b>권
         </div>

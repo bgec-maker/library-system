@@ -14,7 +14,7 @@ export default function SearchView({ shell }: ViewProps) {
   return (
     <div className="panel" style={{ padding: 20 }}>
       <p>통합 검색은 곧 제공됩니다.</p>
-      <p style={{ marginTop: 8, fontSize: 13, color: 'var(--ink-3)' }}>
+      <p style={{ marginTop: 8, fontSize: 'var(--fs-sm)', color: 'var(--ink-3)' }}>
         카탈로그 미러 검색 화면이 이 자리에 들어갈 예정입니다.
       </p>
     </div>

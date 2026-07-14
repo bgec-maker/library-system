@@ -12,6 +12,7 @@
     "verify": "npm run lint && npm run check-view-boundary && tsc -b --noEmit"
   },
   "dependencies": {
+    "lucide-react": "^1.24.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^4.5.5"

@@ -20,6 +20,14 @@
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
+  /* 타입 스케일 6단 — 컴포넌트는 font-size에 px 리터럴 대신 이 토큰만 쓴다. 최소 12px(--fs-xs). */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+
   --radius: 6px;
   --shadow-window: 0 8px 28px rgba(22, 24, 29, 0.28);
 }

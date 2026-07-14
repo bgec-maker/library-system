@@ -1,5 +1,6 @@
 /* base.css — 스킨(work.css/student.css) 변수만 참조하는 구조 스타일.
-   여기엔 색상 리터럴을 직접 쓰지 않는다 — 전부 var(--token). */
+   여기엔 색상 리터럴을 직접 쓰지 않는다 — 전부 var(--token).
+   font-size도 px 리터럴 대신 타입 스케일 토큰(--fs-*)만 쓴다. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root { height: 100%; }
@@ -13,8 +14,24 @@ body {
   overscroll-behavior: none;
 }
 
+/* 키보드 포커스 링 — 마우스 클릭에는 안 뜨고 키보드 탐색에만 뜬다. */
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+/* 시스템의 "동작 줄이기" 설정 존중 — 애니메이션·트랜지션을 사실상 끈다. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 button {
-  font: 600 15px var(--sans);
+  font: 600 var(--fs-md) var(--sans);
   padding: 12px 16px;
   border-radius: var(--radius);
   border: none;
@@ -29,7 +46,7 @@ button.warn { background: var(--brass); color: var(--ink); }
 button.danger { background: var(--fail); color: #fff; }
 
 input, select, textarea {
-  font: 15px var(--sans);
+  font: var(--fs-md) var(--sans);
   padding: 10px 12px;
   border: 1.5px solid var(--rule);
   border-radius: var(--radius);
@@ -39,7 +56,7 @@ input, select, textarea {
 
 label {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--ink-2);
   margin: 10px 0 4px;
@@ -61,18 +78,22 @@ label {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  /* 설치형 PWA에서 노치·홈 인디케이터에 안 가리도록 safe-area 반영 */
+  padding: calc(20px + env(safe-area-inset-top, 0px)) calc(20px + env(safe-area-inset-right, 0px))
+    calc(20px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
 }
 .session-gate-card {
   max-width: 420px;
   width: 100%;
   padding: 20px;
 }
-.session-gate-card h1 { font-size: 20px; margin-bottom: 6px; }
-.session-gate-sub { color: var(--ink-2); font-size: 13px; margin-bottom: 6px; }
+.session-gate-card h1 { font-size: var(--fs-xl); margin-bottom: 6px; }
+.session-gate-sub { color: var(--ink-2); font-size: var(--fs-sm); margin-bottom: 6px; }
 .session-gate-card input { width: 100%; margin-bottom: 4px; }
 .session-gate-card button { width: 100%; margin-top: 10px; }
 
+/* 기본 토스트 위치 — 셸별 오버라이드: 데스크톱=스캐너 도크 위(desktop.css),
+   모바일=탭바 위(mobile.css). */
 .toast-stack {
   position: fixed;
   right: 16px;
@@ -86,7 +107,7 @@ label {
   padding: 10px 14px;
   border-radius: var(--radius);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   box-shadow: var(--shadow-window);
   max-width: 320px;
 }

@@ -48,7 +48,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
               id="sg-token"
               type="text"
               value={draft.token}
-              placeholder="ScriptProperties의 MOBILE_REG_TOKEN"
+              placeholder="사서 선생님께 받은 공유 토큰"
               onChange={(e) => setDraft((d) => ({ ...d, token: e.target.value }))}
             />
             <label htmlFor="sg-operator">작업자 이름</label>
