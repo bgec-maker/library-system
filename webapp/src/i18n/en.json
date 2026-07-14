@@ -63,6 +63,9 @@
     },
     "mobileSummary": {
       "heading": "Library today"
+    },
+    "vizRow": {
+      "heading": "Insights"
     }
   },
   "print": {
@@ -242,6 +245,69 @@
         "popularEmpty": "No loans recorded this month.",
         "printTitle": "Grade {grade}, Class {classNo} homeroom report · {month}"
       }
+    },
+    "vizInsights": {
+      "cardLabel": "Collection insights",
+      "title": "Collection insights",
+      "subtitle": "Collection vs. loans treemap · turnover quadrant — todo/06"
+    }
+  },
+  "viz": {
+    "common": {
+      "fetchError": "Couldn't load the data — {message}",
+      "computedAt": "Computed at {time}",
+      "showTable": "View as table",
+      "hideTable": "Hide table"
+    },
+    "loanHeatmap": {
+      "title": "Loan calendar",
+      "subtitle": "Daily loan counts over the last year — when are we busy, by season and weekday",
+      "legendLow": "Low",
+      "legendHigh": "High",
+      "colDate": "Date",
+      "colCount": "Loans",
+      "tableCaption": "Daily loan counts over the last year",
+      "empty": "No loans recorded in the last year."
+    },
+    "categoryTreemap": {
+      "title": "Collection vs. loans treemap",
+      "subtitle": "Which subjects are well-stocked but underused?",
+      "copyPanelHeading": "Collection — copies held",
+      "loanPanelHeading": "Circulation — cumulative loans",
+      "colCategory": "Category",
+      "colCopyCount": "Copies",
+      "colLoanCount": "Cumulative loans",
+      "colRatio": "Turnover (loans/copies)",
+      "tableCaption": "Copies and loans by category",
+      "empty": "No categories to show.",
+      "actionButton": "Open dead-stock / purchase report"
+    },
+    "turnoverQuadrant": {
+      "title": "Turnover quadrant",
+      "subtitle": "Star / rookie / dormant / dead stock — the basis for weeding and duplicate purchases",
+      "axisLoan": "Loan count →",
+      "axisAge": "Time since acquired →",
+      "colLoanBucket": "Loan-count bucket",
+      "colAgeBucket": "Age bucket",
+      "colCount": "Copies",
+      "tableCaption": "Copies by loan-count × age bucket",
+      "totalLine": "{count} copies counted (excludes {skipped} with no acquisition date)",
+      "actionButton": "Open dead-stock / purchase report",
+      "quadrantStar": "Star",
+      "quadrantRookie": "Rookie",
+      "quadrantDormant": "Dormant",
+      "quadrantDead": "Dead",
+      "empty": "No copies to show."
+    },
+    "reservationPressure": {
+      "title": "Reservation pressure",
+      "subtitle": "What to buy right now",
+      "colTitle": "Title",
+      "colQueue": "Queue",
+      "colTrend": "Last 6 weeks",
+      "tableCaption": "Reservation queue by title",
+      "empty": "No titles currently have an active queue.",
+      "actionButton": "Open the most urgent title — {title}"
     }
   },
   "student": {

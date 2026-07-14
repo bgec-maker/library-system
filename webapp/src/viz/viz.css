@@ -1,0 +1,208 @@
+/* src/viz/viz.css — 수제 SVG 차트 4종 공용 스타일(docs/VIZ.md 구현 노트: "src/viz/에 —
+   views가 아니라 별도 계층, 셸·뷰 어디서든 재사용"). 색상 리터럴 금지 — 전부
+   var(--token)·var(--viz-seq-*)·var(--viz-div-*)만 참조(DESIGN.md 시각화 램프). */
+
+.viz-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viz-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.viz-title-group h3 {
+  font-size: var(--fs-md);
+  color: var(--deep);
+}
+
+.viz-subtitle {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.viz-empty,
+.viz-error {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+
+.viz-error {
+  color: var(--fail);
+}
+
+.viz-computed-at {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.viz-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.viz-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: var(--fs-sm);
+}
+
+/* 「표로 보기」 토글 — VIZ.md 접근성 요구(sr-only 표 대체 또는 토글 중 하나). */
+.viz-table-toggle {
+  padding: 6px 10px;
+  font-size: var(--fs-xs);
+}
+
+.viz-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.viz-table th,
+.viz-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+.viz-table th.num,
+.viz-table td.num {
+  text-align: right;
+}
+
+/* 화면에서는 숨기되 스크린리더에는 노출 — VIZ.md "sr-only 표 대체". */
+.viz-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── #1 대출 잔디 — 캘린더 히트맵 ─────────────────────────────────────── */
+.viz-heatmap-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.viz-heatmap-cell {
+  stroke: var(--panel);
+  stroke-width: 1;
+  rx: 2;
+}
+.viz-heatmap-month-label {
+  font-size: 9px;
+  fill: var(--ink-3);
+}
+.viz-legend-scale {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.viz-legend-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* ── #3 장서 vs 대출 트리맵 ──────────────────────────────────────────── */
+.viz-treemap-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.viz-treemap-heading {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.viz-treemap-rect {
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+.viz-treemap-label {
+  font-size: 10px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.viz-treemap-label-dim {
+  font-size: 9px;
+  fill: var(--ink-2);
+  pointer-events: none;
+}
+.viz-div-legend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ── #6 회전율 사분면 ────────────────────────────────────────────────── */
+.viz-quadrant-bubble {
+  fill: var(--deep);
+  fill-opacity: 0.78;
+}
+.viz-quadrant-axis-label {
+  font-size: 9px;
+  fill: var(--ink-3);
+}
+.viz-quadrant-quadrant-label {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--ink-2);
+}
+
+/* ── #7 예약 압력 ───────────────────────────────────────────────────── */
+.viz-sparkline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.viz-sparkline-row {
+  display: grid;
+  grid-template-columns: 1fr auto 72px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.viz-sparkline-row:last-child { border-bottom: none; }
+.viz-sparkline-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.viz-sparkline-queue {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--brass);
+  white-space: nowrap;
+}
+.viz-sparkline-path {
+  fill: none;
+  stroke: var(--deep);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.viz-sparkline-dot {
+  fill: var(--brass);
+}

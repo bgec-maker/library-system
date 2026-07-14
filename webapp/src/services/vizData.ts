@@ -1,0 +1,146 @@
+import { useEffect, useState } from 'react';
+import { apiCall } from './api';
+import {
+  mockCategoryTreemap,
+  mockLoanHeatmap,
+  mockReservationPressure,
+  mockTurnoverQuadrant
+} from '../mocks/viz';
+
+// FEATURES.md/VIZ.md 시각화 V1(todo/06) 데이터 계층 — services/reportData.ts와 같은
+// UNKNOWN_ACTION→샘플 폴백 규약을 재사용한다(SampleDataBadge.tsx 그대로 씀). 리포트처럼
+// 온디맨드가 아니라 "차트가 화면에 뜰 때 그 차트 하나만 조회"하는 패턴이라 useVizData 훅
+// 하나로 4종 모두를 커버한다(과설계 방지 — 대시보드처럼 5분 인터벌 자동 갱신은 두지 않는다:
+// VIZ_CACHE는 서버 일배치(dailyVizBatch)로만 하루 한 번 바뀌므로 폴링할 이유가 없다).
+//
+// school-patch-v1/Code.gs apiWebViz_()가 돌려주는 모양({type, computedAt, data})을 그대로
+// 옮긴 타입 — 백엔드 함수는 수정하지 않으므로(절대 규칙) data의 4가지 하위 타입도 그
+// 반환값(computeLoanHeatmapViz_/computeCategoryTreemapViz_/computeTurnoverQuadrantViz_/
+// computeReservationPressureViz_)에 맞춰져 있다.
+
+export type VizType = 'loan-heatmap' | 'category-treemap' | 'turnover-quadrant' | 'reservation-pressure';
+
+export interface VizDay {
+  /** yyyy-MM-dd */
+  date: string;
+  count: number;
+}
+
+export interface LoanHeatmapData {
+  days: VizDay[];
+}
+
+export interface CategoryTreemapEntry {
+  categoryCode: string;
+  categoryLabel: string;
+  copyCount: number;
+  loanCount: number;
+}
+
+export interface CategoryTreemapData {
+  categories: CategoryTreemapEntry[];
+}
+
+export interface TurnoverCell {
+  loanBucketIndex: number;
+  ageBucketIndex: number;
+  count: number;
+}
+
+export interface TurnoverQuadrantData {
+  /** 버킷 라벨 6단 — computeTurnoverQuadrantViz_ 그대로(예: '0회'…'11회+'). */
+  loanBuckets: string[];
+  /** 버킷 라벨 5단 — computeTurnoverQuadrantViz_ 그대로(예: '90일 미만'…'4년 이상'). */
+  ageBuckets: string[];
+  cells: TurnoverCell[];
+  totalCopies: number;
+  skippedNoAcquiredDate: number;
+}
+
+export interface ReservationPressureTitle {
+  titleId: string;
+  title: string;
+  queueLength: number;
+  /** 최근 6주 · 7일 창 단위 신규 예약 건수(오래된 순) — 스파크라인 원재료. */
+  trend: number[];
+}
+
+export interface ReservationPressureData {
+  titles: ReservationPressureTitle[];
+}
+
+export type VizDataMap = {
+  'loan-heatmap': LoanHeatmapData;
+  'category-treemap': CategoryTreemapData;
+  'turnover-quadrant': TurnoverQuadrantData;
+  'reservation-pressure': ReservationPressureData;
+};
+
+interface VizApiResponse<T> {
+  type: string;
+  computedAt: string;
+  data: T;
+}
+
+async function fetchViz<K extends VizType>(
+  type: K,
+  sampleData: VizDataMap[K]
+): Promise<{ data: VizDataMap[K]; sample: boolean; computedAt: string } | { error: string }> {
+  const res = await apiCall<VizApiResponse<VizDataMap[K]>>('viz', { type });
+  if (res.ok) return { data: res.data.data, sample: false, computedAt: res.data.computedAt };
+  if (res.error.code === 'UNKNOWN_ACTION' || res.error.code === 'VIZ_NOT_READY') {
+    // 둘 다 "지금 보여줄 진짜 데이터가 없다"는 뜻이라 프론트는 폴백 목적으로 같이 다룬다 —
+    // UNKNOWN_ACTION(재배포 전) · VIZ_NOT_READY(일배치 미실행)는 서버 쪽 원인이 다르므로
+    // apiWebViz_ 자체는 코드를 합치지 않는다(school-patch-v1/Code.gs 주석 참고).
+    return { data: sampleData, sample: true, computedAt: '' };
+  }
+  return { error: res.error.message || res.error.code };
+}
+
+const SAMPLE_BY_TYPE: { [K in VizType]: VizDataMap[K] } = {
+  'loan-heatmap': mockLoanHeatmap,
+  'category-treemap': mockCategoryTreemap,
+  'turnover-quadrant': mockTurnoverQuadrant,
+  'reservation-pressure': mockReservationPressure
+};
+
+export interface VizFetchState<T> {
+  loading: boolean;
+  data: T | null;
+  sample: boolean;
+  computedAt: string;
+  error: string | null;
+}
+
+/**
+ * 차트 하나(type)의 데이터를 마운트 시 1회 조회한다 — src/viz/의 각 차트 컴포넌트가
+ * VizLazyMount로 실제로 뷰포트에 들어올 때만 마운트되므로, 이 훅의 fetch도 자연히 그때
+ * 한 번만 실행된다("지연 로딩" 완료 조건의 후반부: fetch도 지연).
+ */
+export function useVizData<K extends VizType>(type: K): VizFetchState<VizDataMap[K]> {
+  const [state, setState] = useState<VizFetchState<VizDataMap[K]>>({
+    loading: true,
+    data: null,
+    sample: false,
+    computedAt: '',
+    error: null
+  });
+
+  useEffect(() => {
+    let alive = true;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    void fetchViz(type, SAMPLE_BY_TYPE[type]).then((outcome) => {
+      if (!alive) return;
+      if ('error' in outcome) {
+        setState({ loading: false, data: null, sample: false, computedAt: '', error: outcome.error });
+      } else {
+        setState({ loading: false, data: outcome.data, sample: outcome.sample, computedAt: outcome.computedAt, error: null });
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [type]);
+
+  return state;
+}

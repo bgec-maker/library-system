@@ -30,4 +30,24 @@
 
   --radius: 6px;
   --shadow-window: 0 8px 28px rgba(22, 24, 29, 0.28);
+
+  /* 시각화 램프(추가, VIZ 전용 — docs/VIZ.md·DESIGN.md "토큰" 절, src/viz/**가 참조).
+     색상 리터럴은 tokens/ 두 파일에만 존재한다는 원칙에 따라 여기서 직접 보간값을 굳힌다
+     (컴포넌트는 var(--viz-*)만 참조 — 임의 hex 금지). */
+  /* 순차(히트맵 등): paper -> deep 5단 보간. */
+  --viz-seq-1: #f2f0ea;
+  --viz-seq-2: #bcc3c2;
+  --viz-seq-3: #87959b;
+  --viz-seq-4: #516873;
+  --viz-seq-5: #1b3a4b;
+
+  /* 발산(±비교): fail <-> paper(중립, 3번째) <-> pass 5단 보간. */
+  --viz-div-1: #b3352c;
+  --viz-div-2: #d3938b;
+  --viz-div-3: #f2f0ea;
+  --viz-div-4: #89b59f;
+  --viz-div-5: #1f7a54;
+
+  /* 범주(≤6) — 기존 토큰을 이 순서로만 조합해 쓴다(차트마다 색 의미가 흔들리지 않게).
+     새 변수가 아니라 사용 순서 계약: deep · brass · pass · wait · ink-2 · fail. */
 }

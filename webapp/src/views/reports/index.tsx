@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, BookX, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
+import { ArrowLeft, BookX, ChartColumn, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
 import type { ShellContext, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { PrintDocument } from '../../components/PrintDocument';
@@ -11,6 +11,7 @@ import {
   type HomeroomReport,
   type NoLoanFinderReport
 } from '../../services/reportData';
+import { CategoryTreemap, TurnoverQuadrant, VizLazyMount } from '../../viz';
 import { t } from '../../i18n';
 import './reports.css';
 
@@ -25,6 +26,12 @@ import './reports.css';
 // 다른 학생의 미대출·연체가 노출될 경로 자체가 없다.
 
 type ReportTypeId = 'no-loan-finder' | 'homeroom-report' | 'weeding-recommend' | 'recall-notice' | 'donor-thanks';
+
+// todo/06 — 리포트 허브의 6번째 「허브 진입」 카드(docs/VIZ.md 구현 노트 "대시보드·reports에
+// 착륙"). report 액션의 type 파라미터(ReportTypeId)와는 무관한 별개 화면(viz 액션으로 조회)이라
+// apiWebReport_ 쪽 타입을 넓히지 않고 프론트 전용 식별자로만 둔다.
+type VizInsightsId = 'viz-insights';
+type SelectedPanelId = ReportTypeId | VizInsightsId;
 
 interface ReportTypeMeta {
   id: ReportTypeId;
@@ -48,13 +55,17 @@ function isReportTypeId(value: string): value is ReportTypeId {
   return REPORT_TYPES.some((r) => r.id === value);
 }
 
+function isSelectedPanelId(value: string): value is SelectedPanelId {
+  return isReportTypeId(value) || value === 'viz-insights';
+}
+
 function currentMonthDefault(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 interface TypeSelectorProps {
-  onSelect: (id: ReportTypeId) => void;
+  onSelect: (id: SelectedPanelId) => void;
 }
 
 function TypeSelector({ onSelect }: TypeSelectorProps) {
@@ -79,6 +90,35 @@ function TypeSelector({ onSelect }: TypeSelectorProps) {
             </button>
           );
         })}
+        {/* todo/06 — 6번째 「허브 진입」 카드: report 액션이 아니라 viz 액션(services/vizData.ts)을
+            쓰는 별개 화면이라 REPORT_TYPES 배열 자체에는 섞지 않았다. */}
+        <button type="button" className="reports-type-card" onClick={() => onSelect('viz-insights')}>
+          <ChartColumn size={20} aria-hidden />
+          <span className="reports-type-card-label">{t('views.reports.vizInsights.cardLabel')}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VizInsightsPanel({ shell }: { shell: ShellContext }) {
+  return (
+    <div>
+      <div className="no-print">
+        <h2>{t('views.reports.vizInsights.title')}</h2>
+        <p className="reports-summary-line">{t('views.reports.vizInsights.subtitle')}</p>
+      </div>
+      <div className="reports-viz-grid no-print">
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <CategoryTreemap onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <TurnoverQuadrant onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
       </div>
     </div>
   );
@@ -339,8 +379,8 @@ function HomeroomReportPanel({ shell }: HomeroomReportPanelProps) {
 }
 
 export default function ReportsView({ shell, params }: ViewProps) {
-  const requestedType = typeof params.type === 'string' && isReportTypeId(params.type) ? params.type : null;
-  const [selectedType, setSelectedType] = useState<ReportTypeId | null>(requestedType);
+  const requestedType = typeof params.type === 'string' && isSelectedPanelId(params.type) ? params.type : null;
+  const [selectedType, setSelectedType] = useState<SelectedPanelId | null>(requestedType);
 
   useEffect(() => {
     shell.setTitle(getViewMeta('reports')?.title ?? t('registry.reports.title'));
@@ -368,6 +408,7 @@ export default function ReportsView({ shell, params }: ViewProps) {
 
       {selectedType === 'no-loan-finder' && <NoLoanFinderPanel shell={shell} />}
       {selectedType === 'homeroom-report' && <HomeroomReportPanel shell={shell} />}
+      {selectedType === 'viz-insights' && <VizInsightsPanel shell={shell} />}
     </div>
   );
 }

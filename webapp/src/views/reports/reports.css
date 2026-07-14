@@ -95,3 +95,19 @@
   font-size: var(--fs-sm);
   color: var(--ink-2);
 }
+
+/* todo/06 — 「장서 시각화」 6번째 허브 카드(VizInsightsPanel). 차트 자체 스타일은
+   src/viz/viz.css(.viz-card 등), 여기는 리포트 허브 안에서의 배치만 담당한다. */
+.reports-viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.reports-viz-loading {
+  padding: 16px;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}

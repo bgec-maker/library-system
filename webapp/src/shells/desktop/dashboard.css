@@ -201,6 +201,31 @@
   gap: 10px;
 }
 
+/* todo/06 시각화 — 대출 잔디·예약 압력. 차트 자체 스타일은 src/viz/viz.css(.viz-card 등),
+   여기는 대시보드 안에서의 배치만 담당한다. */
+.dash-viz-section {
+  margin-top: 20px;
+}
+
+.dash-viz-section h2 {
+  font-size: var(--fs-md);
+  color: var(--deep);
+  margin-bottom: 10px;
+}
+
+.dash-viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.dash-viz-loading {
+  padding: 16px;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
 /* 마지막 백업 */
 .dash-footer {
   margin-top: 20px;

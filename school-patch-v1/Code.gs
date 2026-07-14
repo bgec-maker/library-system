@@ -28,6 +28,7 @@ var LIBRARY_MVP = Object.freeze({
     CONFIG: '17_CONFIG',
     OPERATIONS: '18_SYS_OPERATIONS',
     NOTIFICATIONS: '19_NOTIFICATION_QUEUE',
+    VIZ_CACHE: '20_VIZ_CACHE',
     BOOK_CACHE: '21_BOOK_CACHE'
   }),
   HEADERS: Object.freeze({
@@ -48,6 +49,7 @@ var LIBRARY_MVP = Object.freeze({
     '17_CONFIG': ['setting_key', 'setting_value', 'value_type', 'description', 'updated_at', 'updated_by'],
     '18_SYS_OPERATIONS': ['request_id', 'operation_type', 'status_code', 'target_type', 'target_id', 'payload_hash', 'started_at', 'completed_at', 'actor_id', 'error_code', 'error_message'],
     '19_NOTIFICATION_QUEUE': ['notification_id', 'member_id', 'event_code', 'channel_code', 'recipient', 'template_code', 'payload_json', 'scheduled_at', 'sent_at', 'status_code', 'retry_count', 'last_error', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
+    '20_VIZ_CACHE': ['viz_type', 'computed_at', 'payload_json'],
     '21_BOOK_CACHE': ['isbn13', 'title', 'subtitle', 'authors', 'publisher', 'published_year', 'page_count', 'cover_url', 'source', 'cached_at']
   })
 });
@@ -1560,6 +1562,7 @@ function installLibraryTriggers() {
     if (trigger.getHandlerFunction() === 'dailyLibraryMaintenance') ScriptApp.deleteTrigger(trigger);
   });
   ScriptApp.newTrigger('dailyLibraryMaintenance').timeBased().everyDays(1).atHour(4).create();
+  ScriptApp.newTrigger('dailyVizBatch').timeBased().everyDays(1).atHour(5).create();
   SpreadsheetApp.getUi().alert('트리거 설치 완료', '매일 오전 4시 전후에 예약 만료·상태 복구·대시보드 갱신을 실행합니다.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -1583,6 +1586,206 @@ function dailyLibraryMaintenance() {
     return { targetType: 'MAINTENANCE', targetId: formatDate_(now), expiredReservations: expiredCount, reconciledCopies: reconciled.changedCount };
   });
   refreshDashboard_();
+}
+
+// --------------------------- VIZ_CACHE 일배치(시각화 집계 캐시) ---------------------------
+//
+// VIZ.md 원칙 ① "집계는 서버 일배치 · doPost `viz`는 읽기만" — 이 트리거가 LOANS/COPIES/
+// TITLES/CATEGORIES/RESERVATIONS를 훑어 4개 차트 데이터를 미리 계산해 20_VIZ_CACHE 시트에
+// 적재하고, apiWebViz_()는 그 캐시 행을 읽기만 한다(클라이언트가 원장을 스캔하지 않는다).
+//
+// 20_VIZ_CACHE는 LOANS·MEMBERS·15_AUDIT_LOG 같은 업무 원장이 아니라 "당일 재계산 가능한
+// 파생 캐시"다 — 그래서 runVizDailyBatch_()가 매일 기존 4행을 지우고 새로 쓴다(append-only가
+// 아니라 rewrite). CLAUDE.md 절대 규칙 6번("행 삭제 금지 — 상태 코드로")·ADR-012는 감사·법적
+// 근거가 있는 업무 기록(대출·회원·감사 로그 등)에 적용되는 규칙이고, 언제든 원장에서 다시
+// 계산해낼 수 있는 읽기 전용 요약 캐시에는 해당하지 않는다 — 원장 자체의 행은 하나도 지우지
+// 않으며, 이 배치는 executeWrite_/checkout_/return_ 같은 보호된 업무 트랜잭션 경로를 거치지도
+// 않는다(순수 파생 캐시 유지보수이지 업무 트랜잭션이 아니다).
+function dailyVizBatch() {
+  runVizDailyBatch_();
+}
+
+function runVizDailyBatch_() {
+  var now = new Date();
+  var rows = [
+    ['loan-heatmap', now, JSON.stringify(computeLoanHeatmapViz_(now))],
+    ['category-treemap', now, JSON.stringify(computeCategoryTreemapViz_())],
+    ['turnover-quadrant', now, JSON.stringify(computeTurnoverQuadrantViz_(now))],
+    ['reservation-pressure', now, JSON.stringify(computeReservationPressureViz_(now))]
+  ];
+  var sheet = getRequiredSheet_(LIBRARY_MVP.SHEETS.VIZ_CACHE);
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  ensureSheetRows_(sheet, rows.length + 1);
+  sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.VIZ_CACHE);
+  return { computedAt: formatDateTime_(now), count: rows.length };
+}
+
+// #1 대출 잔디 — LOANS 일별 건수(최근 365일). 연도 아카이브 시트가 아직 없으므로(LIBRARY_MVP.SHEETS에
+// 아카이브 패턴 없음 — docs/ASSUMPTIONS.md todo/06 참고) 현재 살아 있는 10_LOANS 한 시트만 훑는다.
+var VIZ_LOAN_HEATMAP_DAYS_ = 365;
+
+function computeLoanHeatmapViz_(now) {
+  var startDate = addDays_(now, -(VIZ_LOAN_HEATMAP_DAYS_ - 1));
+  startDate.setHours(0, 0, 0, 0);
+  var countByDate = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(row) {
+    var checkedOut = asDate_(row.checked_out_at);
+    if (!checkedOut || checkedOut.getTime() < startDate.getTime()) return;
+    var key = formatDate_(checkedOut);
+    countByDate[key] = (countByDate[key] || 0) + 1;
+  });
+  var days = [];
+  for (var i = 0; i < VIZ_LOAN_HEATMAP_DAYS_; i++) {
+    var key = formatDate_(addDays_(startDate, i));
+    days.push({ date: key, count: countByDate[key] || 0 });
+  }
+  return { days: days };
+}
+
+// #3 장서 vs 대출 트리맵 — 06_CATEGORIES(활성) × 08_COPIES/10_LOANS. 서명 하나가 여러 카테고리에
+// 걸칠 수 있어(07_TITLE_CATEGORIES) 트리맵 면적이 어긋나지 않도록 서명당 "대표 카테고리" 하나만
+// 고른다(is_primary 우선, 없으면 처음 매핑된 카테고리 — docs/ASSUMPTIONS.md todo/06).
+function computeCategoryTreemapViz_() {
+  var categories = readTable_(LIBRARY_MVP.SHEETS.CATEGORIES).rows.filter(function(row) {
+    return row.status_code === 'ACTIVE';
+  });
+  var categoryById = indexBy_(categories, 'category_id');
+  var primaryCategoryByTitle = {};
+  readTable_(LIBRARY_MVP.SHEETS.TITLE_CATEGORIES).rows.forEach(function(row) {
+    if (!categoryById[row.category_id]) return; // 비활성 카테고리는 트리맵에서 제외
+    if (primaryCategoryByTitle[row.title_id] === undefined || truthy_(row.is_primary)) {
+      primaryCategoryByTitle[row.title_id] = row.category_id;
+    }
+  });
+
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.filter(function(row) { return row.status_code !== 'WITHDRAWN'; });
+  var copyById = indexBy_(copies, 'copy_id');
+
+  var copyCountByCategory = {};
+  copies.forEach(function(copy) {
+    var categoryId = primaryCategoryByTitle[copy.title_id];
+    if (categoryId) copyCountByCategory[categoryId] = (copyCountByCategory[categoryId] || 0) + 1;
+  });
+
+  var loanCountByCategory = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var copy = copyById[loan.copy_id];
+    var categoryId = copy && primaryCategoryByTitle[copy.title_id];
+    if (categoryId) loanCountByCategory[categoryId] = (loanCountByCategory[categoryId] || 0) + 1;
+  });
+
+  return {
+    categories: categories.map(function(cat) {
+      return {
+        categoryCode: cat.category_code || cat.category_id,
+        categoryLabel: cat.name_ko || cat.category_code || cat.category_id,
+        copyCount: copyCountByCategory[cat.category_id] || 0,
+        loanCount: loanCountByCategory[cat.category_id] || 0
+      };
+    }).sort(function(a, b) { return b.copyCount - a.copyCount; })
+  };
+}
+
+// #6 회전율 사분면 — 소장본별 대출횟수 × 입수경과. 5,000권 규모면 소장본 하나당 점 하나를
+// 셀에 그대로 담는 게 GAS 셀 용량(~50KB)을 위협할 수 있어(docs/ASSUMPTIONS.md todo/06),
+// (대출횟수 버킷 6단) × (경과일 버킷 5단) = 최대 30칸의 히스토그램 그리드로 집계한다 —
+// 소장본 수와 무관하게 항상 작다. 프론트는 각 칸을 버킷 중심 좌표의 점(크기=count)으로 그린다.
+var VIZ_TURNOVER_LOAN_BUCKETS_ = [
+  { label: '0회', max: 0 },
+  { label: '1회', max: 1 },
+  { label: '2회', max: 2 },
+  { label: '3~5회', max: 5 },
+  { label: '6~10회', max: 10 },
+  { label: '11회+', max: Infinity }
+];
+var VIZ_TURNOVER_AGE_BUCKETS_DAYS_ = [
+  { label: '90일 미만', max: 90 },
+  { label: '90일~1년', max: 365 },
+  { label: '1~2년', max: 730 },
+  { label: '2~4년', max: 1460 },
+  { label: '4년 이상', max: Infinity }
+];
+
+function vizBucketIndex_(value, buckets) {
+  for (var i = 0; i < buckets.length; i++) {
+    if (value <= buckets[i].max) return i;
+  }
+  return buckets.length - 1;
+}
+
+function computeTurnoverQuadrantViz_(now) {
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.filter(function(row) {
+    return row.status_code === 'AVAILABLE' || row.status_code === 'ON_LOAN' || row.status_code === 'HOLD_READY' || row.status_code === 'REPAIR';
+  });
+  var loanCountByCopy = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    loanCountByCopy[loan.copy_id] = (loanCountByCopy[loan.copy_id] || 0) + 1;
+  });
+
+  var grid = {};
+  var skippedNoAcquiredDate = 0;
+  copies.forEach(function(copy) {
+    var acquired = asDate_(copy.acquired_at);
+    if (!acquired) { skippedNoAcquiredDate++; return; }
+    var ageDays = Math.max(0, Math.floor((now.getTime() - acquired.getTime()) / 86400000));
+    var loanCount = loanCountByCopy[copy.copy_id] || 0;
+    var key = vizBucketIndex_(loanCount, VIZ_TURNOVER_LOAN_BUCKETS_) + '-' + vizBucketIndex_(ageDays, VIZ_TURNOVER_AGE_BUCKETS_DAYS_);
+    grid[key] = (grid[key] || 0) + 1;
+  });
+
+  var cells = Object.keys(grid).map(function(key) {
+    var parts = key.split('-');
+    return { loanBucketIndex: Number(parts[0]), ageBucketIndex: Number(parts[1]), count: grid[key] };
+  });
+
+  return {
+    loanBuckets: VIZ_TURNOVER_LOAN_BUCKETS_.map(function(b) { return b.label; }),
+    ageBuckets: VIZ_TURNOVER_AGE_BUCKETS_DAYS_.map(function(b) { return b.label; }),
+    cells: cells,
+    totalCopies: copies.length,
+    skippedNoAcquiredDate: skippedNoAcquiredDate
+  };
+}
+
+// #7 예약 압력 — 현재 대기열(WAITING·READY)이 있는 서명만 추린 뒤, 최근 6주를 7일 단위
+// 창으로 나눠 그 서명에 새로 걸린 예약 건수 추이(스파크라인 원재료)를 함께 담는다.
+var VIZ_RESERVATION_TREND_WINDOWS_ = 6;
+var VIZ_RESERVATION_TREND_WINDOW_DAYS_ = 7;
+var VIZ_RESERVATION_MAX_TITLES_ = 50;
+
+function computeReservationPressureViz_(now) {
+  var reservations = readTable_(LIBRARY_MVP.SHEETS.RESERVATIONS).rows;
+  var queueLengthByTitle = {};
+  reservations.forEach(function(row) {
+    if (row.status_code !== 'WAITING' && row.status_code !== 'READY') return;
+    queueLengthByTitle[row.title_id] = (queueLengthByTitle[row.title_id] || 0) + 1;
+  });
+
+  var windowMs = VIZ_RESERVATION_TREND_WINDOW_DAYS_ * 86400000;
+  var horizonStart = now.getTime() - VIZ_RESERVATION_TREND_WINDOWS_ * windowMs;
+  var trendByTitle = {};
+  reservations.forEach(function(row) {
+    if (!queueLengthByTitle[row.title_id]) return;
+    var requested = asDate_(row.requested_at);
+    if (!requested || requested.getTime() < horizonStart) return;
+    var windowIndex = Math.min(VIZ_RESERVATION_TREND_WINDOWS_ - 1, Math.floor((requested.getTime() - horizonStart) / windowMs));
+    if (!trendByTitle[row.title_id]) trendByTitle[row.title_id] = new Array(VIZ_RESERVATION_TREND_WINDOWS_).fill(0);
+    trendByTitle[row.title_id][windowIndex]++;
+  });
+
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var titles = Object.keys(queueLengthByTitle).map(function(titleId) {
+    return {
+      titleId: titleId,
+      title: (titleById[titleId] || {}).title || titleId,
+      queueLength: queueLengthByTitle[titleId],
+      trend: trendByTitle[titleId] || new Array(VIZ_RESERVATION_TREND_WINDOWS_).fill(0)
+    };
+  }).sort(function(a, b) { return b.queueLength - a.queueLength; }).slice(0, VIZ_RESERVATION_MAX_TITLES_);
+
+  return { titles: titles };
 }
 
 // --------------------------- Repository and common helpers ---------------------------
@@ -2298,6 +2501,7 @@ function doPost(e) {
       if (action === 'return') return apiWebReturn_(payload);
       if (action === 'dashboard') return apiWebDashboard_(payload);
       if (action === 'report') return apiWebReport_(payload);
+      if (action === 'viz') return apiWebViz_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2493,6 +2697,23 @@ function reportHomeroomClass_(payload) {
     overdueList: overdueList,
     popularBooks: popularBooks
   };
+}
+
+// 웹앱 시각화 허브(VIZ.md, todo/06)용 읽기 액션. 집계 자체는 dailyVizBatch()가 매일 미리
+// 20_VIZ_CACHE에 적재해 두고(위 "VIZ_CACHE 일배치" 절), 이 함수는 그 캐시 행을 읽어 그대로
+// 돌려줄 뿐이다(원장 재스캔 없음 — VIZ.md 원칙 ①). type 문자열은 프론트
+// webapp/src/services/vizData.ts와 정확히 일치해야 한다.
+//
+// UNKNOWN_ACTION(이 action을 아직 모르는 배포 전)과 VIZ_NOT_READY(action은 있지만 일배치가
+// 한 번도 안 돈 상태)는 원인이 다르므로 에러 코드를 하나로 합치지 않는다 — 프론트는 폴백
+// 목적으로만 둘을 같이 다룬다(services/vizData.ts 주석 참고).
+function apiWebViz_(payload) {
+  var type = cleanText_(payload && payload.type);
+  var validTypes = ['loan-heatmap', 'category-treemap', 'turnover-quadrant', 'reservation-pressure'];
+  if (validTypes.indexOf(type) === -1) fail_('VALIDATION_ERROR', '지원하지 않는 시각화 종류입니다: ' + type);
+  var row = readTable_(LIBRARY_MVP.SHEETS.VIZ_CACHE).rows.find(function(r) { return r.viz_type === type; });
+  if (!row) fail_('VIZ_NOT_READY', '아직 집계되지 않았습니다(일배치 미실행): ' + type);
+  return { type: type, computedAt: formatDateTime_(row.computed_at), data: JSON.parse(row.payload_json) };
 }
 
 function normalizeIsbn13Strict_(value) {

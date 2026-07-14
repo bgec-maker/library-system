@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
@@ -18,6 +18,7 @@ import {
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
+import { LoanHeatmap, ReservationPressure, VizLazyMount } from '../../viz';
 import { useWindowStore } from './useWindowStore';
 import './dashboard.css';
 
@@ -172,6 +173,26 @@ export default function DashboardBaseLayer() {
           </div>
         </section>
       </div>
+
+      {/* todo/06 시각화 V1 — 대출 잔디·예약 압력(캘린더/사분면 트리맵은 리포트 허브 쪽,
+          views/reports/index.tsx 「장서 시각화」 6번째 카드). 각 차트는 VizLazyMount로
+          뷰포트에 들어오기 전까지 마운트되지 않고(fetch도 그때 처음 실행), Suspense는
+          viz/index.ts의 React.lazy() JS 청크 로딩만 담당한다(완료 조건 "지연 로딩"). */}
+      <section className="dash-viz-section">
+        <h2>{t('dashboard.vizRow.heading')}</h2>
+        <div className="dash-viz-grid">
+          <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
+            <VizLazyMount>
+              <LoanHeatmap />
+            </VizLazyMount>
+          </Suspense>
+          <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
+            <VizLazyMount>
+              <ReservationPressure onNavigate={openWindow} />
+            </VizLazyMount>
+          </Suspense>
+        </div>
+      </section>
 
       <footer className="dash-footer">
         <span>{t('dashboard.lastBackup.label')}</span>

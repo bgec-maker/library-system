@@ -30,4 +30,17 @@
 
   --radius: 14px;
   --shadow-window: 0 8px 28px rgba(109, 63, 214, 0.22);
+
+  /* 시각화 램프 — work.css와 같은 변수명, 다른 값(DESIGN.md "같은 변수명, 다른 값"). */
+  --viz-seq-1: #fbf7ff;
+  --viz-seq-2: #d8c9f5;
+  --viz-seq-3: #b49beb;
+  --viz-seq-4: #916de0;
+  --viz-seq-5: #6d3fd6;
+
+  --viz-div-1: #e5484d;
+  --viz-div-2: #f0a0a6;
+  --viz-div-3: #fbf7ff;
+  --viz-div-4: #8dd0b5;
+  --viz-div-5: #1fa96a;
 }

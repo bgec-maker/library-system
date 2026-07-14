@@ -205,3 +205,94 @@
   디버그 표시용으로 쓰던 키인데, 이번 항목이 스텁을 실제 허브로 교체하면서 더 이상 쓰이지
   않는다(허브가 `params.type`을 직접 선반영하지, 문자열로 되돌려 보여주지 않는다). `comingSoon`
   키는 텍스트만 "허브 자체가 미구현"에서 "이 리포트 종류가 미구현"으로 좁혀 재사용했다.
+
+## todo/06 · 시각화 V1 (2026-07-15)
+
+- **`VIZ_CACHE` 시트 번호 = `20_VIZ_CACHE`**로 정했다 — `LIBRARY_MVP.SHEETS`의 기존 번호 접두사가
+  01~19·21까지 채워져 있고 `20`만 비어 있었다(`21_BOOK_CACHE`가 마지막).
+
+- **20_VIZ_CACHE는 "당일 재계산 가능한 파생 캐시"로 취급해 매일 4행을 지우고 다시 쓴다**
+  (`runVizDailyBatch_`, Code.gs). CLAUDE.md 절대 규칙 6번("행 삭제 금지 — 상태 코드로")·ADR-012는
+  대출·회원·감사 로그처럼 감사·법적 근거가 있는 업무 원장에 적용되는 규칙이고, 언제든 원장에서
+  다시 계산해낼 수 있는 읽기 전용 요약 캐시에는 해당하지 않는다고 판단했다 — 원장 자체의 행은
+  하나도 지우지 않으며, 이 배치는 `executeWrite_`/`checkout_`/`return_` 같은 보호된 업무
+  트랜잭션 경로도 거치지 않는다(순수 캐시 유지보수). Code.gs에도 같은 근거를 주석으로 남겼다.
+
+- **연도 아카이브 LOANS 시트가 아직 없다** — `computeLoanHeatmapViz_`는 `LIBRARY_MVP.SHEETS`에
+  아카이브 패턴(예: `LOANS_2025` 같은 키)이 없는 것을 확인하고 현재 살아 있는 `10_LOANS` 한
+  시트만 훑는다. 대출 이력이 몇 년 쌓여 `10_LOANS` 자체가 아주 커지면(수만 행) 이 함수의
+  선형 스캔 비용이 늘어난다 — 아카이브 정책이 생기면 이 함수도 "올해분 + 필요시 최근 아카이브
+  1개" 정도로 확장해야 한다.
+
+- **트리맵 집계에서 서명 하나는 "대표 카테고리" 하나에만 귀속**시켰다(`computeCategoryTreemapViz_`).
+  `07_TITLE_CATEGORIES`는 서명 하나가 여러 카테고리에 걸칠 수 있게 해 두지만, 트리맵은 면적의
+  합이 전체와 맞아야 의미가 있어 중복 계상을 피해야 한다. `is_primary`가 있으면 그 카테고리를,
+  없으면 처음 매핑된 카테고리를 쓴다. 비활성 카테고리(`status_code !== 'ACTIVE'`)로만 연결된
+  서명은 어느 분야에도 잡히지 않는다(트리맵에서 조용히 빠짐 — 별도 "미분류" 칸은 만들지 않았다).
+
+- **회전율 사분면은 (대출횟수 버킷 6단) × (입수경과 버킷 5단) = 최대 30칸 히스토그램으로
+  집계**해 GAS 셀 용량(~50KB)을 절대 위협하지 않게 했다(`computeTurnoverQuadrantViz_`,
+  `VIZ_TURNOVER_LOAN_BUCKETS_`/`VIZ_TURNOVER_AGE_BUCKETS_DAYS_`). 소장본 개별 좌표는 내려주지
+  않는다 — 5,000권이든 5만 권이든 페이로드 크기가 똑같다. 대신 프론트(`TurnoverQuadrant.tsx`)는
+  각 칸을 버킷 중심의 버블(반지름 ∝ √count)로 그린다. `acquired_at`이 비어 있는 소장본은
+  집계에서 제외하고 개수만 `skippedNoAcquiredDate`로 함께 내려 화면에 각주로 표시한다.
+
+- **"스타/신참/잠자는/죽은" 4분류 경계는 VIZ.md에 정의가 없어 프론트에서 임의 지정**했다
+  (`TurnoverQuadrant.tsx`의 `quadrantFor`): 입수 1년 미만(ageBucketIndex ≤ 1)은 "젊음", 그
+  이상은 "오래됨"으로 나누고, 젊은 쪽은 대출 3회 이상(loanBucketIndex ≥ 3)이면 스타·아니면
+  신참, 오래된 쪽은 대출 0회면 죽은·아니면 잠자는으로 분류했다. 4개 범주 색은 DESIGN.md
+  범주 고정 순서(deep·brass·pass·wait·ink-2·fail)에서 앞 4개를 정의 순서대로 배정했다
+  (스타=deep, 신참=brass, 잠자는=pass, 죽은=wait) — 순서가 고정이라는 규칙을 지키다 보니
+  "잠자는=pass(녹색 계열)"처럼 신호등 직관과는 살짝 어긋나는 배정이 생겼지만, "차트마다 색
+  의미가 흔들리지 않게"라는 규칙의 취지(위치별 고정 배정)를 우선했다.
+
+- **대출 잔디(`LoanHeatmap.tsx`)는 행동 버튼을 달지 않았다** — "언제 붐비나"는 순수 관찰용
+  질문이라 이 항목 범위 안에 자연스러운 이동 목적지가 없다(과거 근무 배치 화면 등은 아직 없음).
+  task 노트가 명시적으로 허용한 예외를 그대로 따랐다.
+
+- **트리맵·사분면의 행동 버튼은 둘 다 미구현 상태인 `weeding-recommend` 리포트로 연결**했다
+  (`onNavigate('reports', { type: 'weeding-recommend' })`). 이 리포트 본문은 아직
+  없지만(todo/09 몫) `views/reports/index.tsx`의 `REPORT_TYPES`에 `implemented:false`로 이미
+  등록되어 있어 실제로 열리는(placeholder를 보여주는) 경로다 — 죽은 링크가 아니라 "여기서 곧
+  구현될 예정" 화면으로 도착한다.
+
+- **예약 압력의 행동 버튼은 대기 인원 1위 서명의 `book-detail` 뷰로 연결**했다
+  (`onNavigate('book-detail', { titleId })`). `views/book-detail/index.tsx`가 아직 스텁이라
+  실제 서지 조회는 보여주지 못하지만(todo 후속 몫) 파라미터 계약(`titleId`)은 이미 그 스텁이
+  받는 모양과 일치한다.
+
+- **리포트 허브의 6번째 카드("장서 시각화")는 `REPORT_TYPES` 배열에 섞지 않고 별도
+  `viz-insights` 식별자로 분리**했다(`views/reports/index.tsx`). `report` 액션의 `type`
+  파라미터(`ReportTypeId`)와 `viz` 액션의 `type`(`VizType`)은 이름 공간이 다른 별개 계약이라
+  섞으면 오해를 부른다 — 리포트인 척하지 않는 명확히 다른 화면으로 분리했다.
+
+- **대시보드 착륙 지점 = 대출 잔디 + 예약 압력, 리포트 허브 착륙 지점 = 트리맵 + 사분면**으로
+  나눴다(task 노트의 제안을 그대로 채택). 전자 둘은 "매일 훑어보는 운영 신호"에 가깝고, 후자
+  둘은 "가끔 들여다보는 의사결정 자료"에 가까워 리포트 허브의 "허브 진입" 카드로 두는 편이
+  자연스럽다고 판단했다.
+
+- **`tokens/work.css`/`student.css`에 `--viz-seq-1~5`(순차)·`--viz-div-1~5`(발산) 5단 램프를
+  새로 추가**했다 — DESIGN.md는 순차 램프 변수명(`--viz-seq-1~5`)만 명시하고 발산 램프는
+  "fail↔paper↔pass"라는 끝점만 설명해 변수명을 정하지 않았으므로, 순차와 대칭적인 5단
+  구조(`--viz-div-1`=fail, `--viz-div-3`=paper·중립, `--viz-div-5`=pass)로 이름 붙였다. 값은
+  각 스킨의 기존 `paper`/`deep`/`fail`/`pass` 리터럴을 선형 RGB 보간해 두 파일에만 hex로
+  박아뒀다(DESIGN.md "색상 리터럴은 tokens/ 두 파일에만 존재"). 범주(≤6) 램프는 새 변수를
+  만들지 않고 기존 `--deep`/`--brass`/`--pass`/`--wait`/`--ink-2`/`--fail`을 그 순서 그대로
+  참조하는 방식으로 썼다(DashboardBaseLayer.tsx의 KPI 카드 6종이 이미 쓰던 관례와 동일).
+
+- **DESIGN.md가 "추가"라고 적어 둔 간격 토큰(`--sp-1~8`)은 `tokens/*.css` 어디에도 실제
+  정의돼 있지 않다** — 기존 gap임(todo/06 범위 밖). `src/viz/viz.css`는 이 토큰을 새로
+  도입하지 않고 `dashboard.css`/`reports.css`가 이미 쓰는 대로 일반 px 리터럴을 그대로
+  썼다(레이아웃 여백이며 DESIGN.md가 명시적으로 색 금지 대상으로 예시를 든 곳은 아니다) —
+  간격 토큰 정의 자체는 이번 항목의 스코프가 아니라고 판단해 손대지 않았다.
+
+- **트리맵 레이아웃은 완전한 squarify 알고리즘 대신 "누적합 절반 분할" slice-and-dice
+  변형**을 썼다(`layoutTreemap`, `CategoryTreemap.tsx`) — 카테고리가 최대 몇십 개 수준이라
+  packing 품질보다 구현 단순성·예측 가능성을 우선했다. aspect ratio가 극단적으로 나쁜 사각형이
+  생길 수 있지만 각 사각형에 `<title>` 툴팁 + sr-only 표로 정확한 값을 항상 확인할 수 있다.
+
+- **예약 압력의 추이(trend)는 최근 6주를 7일 창 단위로 집계**했다
+  (`computeReservationPressureViz_`, `VIZ_RESERVATION_TREND_WINDOWS_`/`_WINDOW_DAYS_`). VIZ.md는
+  "대기열 추이"라고만 쓰고 구간 길이를 명시하지 않아 스파크라인이 읽기 좋은 정도(6개 점)로
+  임의 지정했다. 대기열이 있는 서명이 50개를 넘으면 `VIZ_RESERVATION_MAX_TITLES_`로 상위
+  50개만 내려준다(대기 인원 내림차순).

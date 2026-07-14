@@ -63,6 +63,9 @@
     },
     "mobileSummary": {
       "heading": "오늘의 도서관"
+    },
+    "vizRow": {
+      "heading": "인사이트"
     }
   },
   "print": {
@@ -242,6 +245,69 @@
         "popularEmpty": "이 달 대출 기록이 없습니다.",
         "printTitle": "{grade}학년 {classNo}반 담임 리포트 · {month}"
       }
+    },
+    "vizInsights": {
+      "cardLabel": "장서 시각화",
+      "title": "장서 시각화",
+      "subtitle": "장서 vs 대출 트리맵 · 회전율 사분면 — todo/06"
+    }
+  },
+  "viz": {
+    "common": {
+      "fetchError": "데이터를 불러오지 못했습니다 — {message}",
+      "computedAt": "집계 시각 {time}",
+      "showTable": "표로 보기",
+      "hideTable": "표 숨기기"
+    },
+    "loanHeatmap": {
+      "title": "대출 잔디",
+      "subtitle": "최근 1년 일별 대출 건수 — 언제 붐비나, 시즌·요일 패턴",
+      "legendLow": "적음",
+      "legendHigh": "많음",
+      "colDate": "날짜",
+      "colCount": "대출 건수",
+      "tableCaption": "최근 1년 일별 대출 건수 표",
+      "empty": "최근 1년간 대출 기록이 없습니다."
+    },
+    "categoryTreemap": {
+      "title": "장서 vs 대출 트리맵",
+      "subtitle": "많이 갖췄는데 안 나가는 분야는?",
+      "copyPanelHeading": "장서 구성 — 소장 권수",
+      "loanPanelHeading": "대출 비중 — 누적 대출 건수",
+      "colCategory": "분야",
+      "colCopyCount": "소장 권수",
+      "colLoanCount": "누적 대출",
+      "colRatio": "회전율(대출/소장)",
+      "tableCaption": "분야별 소장·대출 표",
+      "empty": "표시할 분야가 없습니다.",
+      "actionButton": "죽은 장서·구매 추천 리포트로"
+    },
+    "turnoverQuadrant": {
+      "title": "회전율 사분면",
+      "subtitle": "스타·신참·잠자는·죽은 장서 — 폐기·복본의 근거",
+      "axisLoan": "대출횟수 →",
+      "axisAge": "입수 경과 →",
+      "colLoanBucket": "대출횟수 구간",
+      "colAgeBucket": "입수 경과 구간",
+      "colCount": "소장본 수",
+      "tableCaption": "대출횟수×입수경과 구간별 소장본 수 표",
+      "totalLine": "집계 대상 소장본 {count}권 (입수일 미상 {skipped}권 제외)",
+      "actionButton": "죽은 장서·구매 추천 리포트로",
+      "quadrantStar": "스타",
+      "quadrantRookie": "신참",
+      "quadrantDormant": "잠자는",
+      "quadrantDead": "죽은",
+      "empty": "표시할 소장본이 없습니다."
+    },
+    "reservationPressure": {
+      "title": "예약 압력",
+      "subtitle": "지금 사야 할 책",
+      "colTitle": "서명",
+      "colQueue": "대기 인원",
+      "colTrend": "최근 6주 추이",
+      "tableCaption": "서명별 예약 대기열 표",
+      "empty": "현재 대기열이 있는 서명이 없습니다.",
+      "actionButton": "가장 급한 책 상세 보기 — {title}"
     }
   },
   "student": {

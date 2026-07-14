@@ -20,7 +20,7 @@
 - [x] 03 camera-on-demand
 - [x] 04 dashboard-baselayer
 - [x] 05 reports-r1
-- [ ] 06 viz-v1
+- [x] 06 viz-v1
 - [ ] 07 integration-checkpoint
 - [ ] 08 catalog + DataTable
 - [ ] 09 r1-remaining + en 완역
