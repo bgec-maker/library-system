@@ -2502,6 +2502,8 @@ function doPost(e) {
       if (action === 'dashboard') return apiWebDashboard_(payload);
       if (action === 'report') return apiWebReport_(payload);
       if (action === 'viz') return apiWebViz_(payload);
+      if (action === 'catalogSync') return apiWebCatalogSync_(payload);
+      if (action === 'recentOps') return apiWebRecentOps_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2714,6 +2716,161 @@ function apiWebViz_(payload) {
   var row = readTable_(LIBRARY_MVP.SHEETS.VIZ_CACHE).rows.find(function(r) { return r.viz_type === type; });
   if (!row) fail_('VIZ_NOT_READY', '아직 집계되지 않았습니다(일배치 미실행): ' + type);
   return { type: type, computedAt: formatDateTime_(row.computed_at), data: JSON.parse(row.payload_json) };
+}
+
+// --------------------------- 웹앱 catalog(장서 대장) 청크 동기화(ADR-024, todo/08) ---------------------------
+//
+// 🔴 서버 페이지네이션이 아니다 — GAS엔 부분 읽기가 없어 "페이지마다 시트 전체 스캔"은 할당량
+// 폭탄이 된다(ADR-024). 대신 클라이언트(webapp/src/services/catalog.ts)가 IndexedDB에 COPIES
+// 단위 미러를 만들고, 이 액션은 그 미러를 채우는 "청크 배달부" 역할만 한다 — 한 번 호출에 최대
+// CATALOG_SYNC_MAX_LIMIT_행만 내려주고 hasMore로 더 있음을 알린다. 정렬·필터·페이지 자체는
+// 전부 클라이언트가 미러에서 처리(이 함수는 그 요청을 아예 받지 않는다).
+//
+// 델타 커서: TITLES/COPIES 둘 다 이미 updated_at·row_version 컬럼이 있으므로(HEADERS 확인됨)
+// 새 catalogVersion 카운터를 만들지 않는다. 클라이언트는 이전 응답의 serverTime을 다음 호출의
+// afterUpdatedAt으로 그대로 돌려보낸다(자기 시계가 아니라 서버 시계를 커서로 씀 — 클럭 스큐로
+// 인한 델타 누락 방지). "그 소장본이 바뀜" 판정은 COPIES.updated_at·TITLES.updated_at 둘 중
+// 더 최신 것(effective)을 기준으로 한다 — 소장본 자체는 안 변해도 서명 정보가 바뀌면 미러가
+// 갱신돼야 하기 때문.
+var CATALOG_SYNC_MAX_LIMIT_ = 1000;
+
+function apiWebCatalogSync_(payload) {
+  payload = payload || {};
+  var since = payload.afterUpdatedAt ? parseOptionalDate_(payload.afterUpdatedAt) : null;
+  var limit = CATALOG_SYNC_MAX_LIMIT_;
+  if (payload.limit !== undefined && payload.limit !== null && payload.limit !== '') {
+    var requested = nonNegativeInteger_(payload.limit, '한도');
+    if (requested > 0 && requested < CATALOG_SYNC_MAX_LIMIT_) limit = requested;
+  }
+
+  var now = new Date();
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var authorById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.AUTHORS).rows, 'author_id');
+  var categoryById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.CATEGORIES).rows, 'category_id');
+
+  // title_id -> 저자 표시명 배열(sort_order 순) — 05_TITLE_AUTHORS -> 04_AUTHORS 조인.
+  var authorNamesByTitle = {};
+  readTable_(LIBRARY_MVP.SHEETS.TITLE_AUTHORS).rows
+    .slice()
+    .sort(function(a, b) { return Number(a.sort_order || 0) - Number(b.sort_order || 0); })
+    .forEach(function(ta) {
+      var author = authorById[ta.author_id];
+      if (!author) return;
+      (authorNamesByTitle[ta.title_id] || (authorNamesByTitle[ta.title_id] = [])).push(author.display_name || '');
+    });
+
+  // title_id -> 대표(primary) 분류 category_id — 07_TITLE_CATEGORIES -> 06_CATEGORIES 조인.
+  // is_primary가 여러 개 없다는 전제하에 마지막 primary가 이기고, primary가 하나도 없으면
+  // 처음 만난 분류를 폴백으로 쓴다(분류 미배정보다 아무 분류나 보여주는 편이 화면상 낫다).
+  var primaryCategoryIdByTitle = {};
+  readTable_(LIBRARY_MVP.SHEETS.TITLE_CATEGORIES).rows.forEach(function(tc) {
+    var isPrimary = truthy_(tc.is_primary);
+    if (isPrimary || !primaryCategoryIdByTitle[tc.title_id]) primaryCategoryIdByTitle[tc.title_id] = tc.category_id;
+  });
+
+  // copy_id -> { count, last } — 10_LOANS에서 대출횟수·최근대출일 집계(카탈로그 열 "대출횟수"·
+  // "최근대출"). LOANS는 상태 변이 테이블이라(ADR-005 개정) 반납 여부와 무관하게 행 자체가
+  // "그 소장본이 몇 번 대출됐는가"의 사건 이력으로 쓸 수 있다.
+  var loanStatsByCopy = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var stat = loanStatsByCopy[loan.copy_id] || (loanStatsByCopy[loan.copy_id] = { count: 0, last: null });
+    stat.count++;
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (checkedOut && (!stat.last || checkedOut.getTime() > stat.last.getTime())) stat.last = checkedOut;
+  });
+
+  var candidates = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.map(function(copy) {
+    var title = titleById[copy.title_id] || {};
+    var copyUpdated = asDate_(copy.updated_at);
+    var titleUpdated = asDate_(title.updated_at);
+    var effective = copyUpdated && titleUpdated
+      ? (copyUpdated.getTime() >= titleUpdated.getTime() ? copyUpdated : titleUpdated)
+      : (copyUpdated || titleUpdated);
+    return { copy: copy, title: title, effective: effective };
+  }).filter(function(item) {
+    return !since || (item.effective && item.effective.getTime() > since.getTime());
+  });
+
+  // updated_at 오름차순 — since 커서로 다음 호출이 안전하게 이어받을 수 있는 재개형(resumable)
+  // 정렬. 동시각 충돌은 copy_id로 안정 정렬한다.
+  candidates.sort(function(a, b) {
+    var at = a.effective ? a.effective.getTime() : 0;
+    var bt = b.effective ? b.effective.getTime() : 0;
+    return at - bt || String(a.copy.copy_id).localeCompare(String(b.copy.copy_id));
+  });
+
+  var page = candidates.slice(0, limit);
+  var rows = page.map(function(item) {
+    var copy = item.copy;
+    var title = item.title;
+    var categoryId = primaryCategoryIdByTitle[copy.title_id];
+    var category = categoryId ? categoryById[categoryId] : null;
+    var stat = loanStatsByCopy[copy.copy_id] || { count: 0, last: null };
+    return {
+      copyId: copy.copy_id,
+      barcode: copy.barcode,
+      titleId: copy.title_id,
+      title: title.title || '',
+      authors: (authorNamesByTitle[copy.title_id] || []).join(' · '),
+      classification: category ? (category.name_ko || category.category_code || '') : '',
+      statusCode: copy.status_code || '',
+      loanCount: stat.count,
+      lastLoanAt: stat.last ? formatDate_(stat.last) : '',
+      shelfCode: copy.shelf_code || '',
+      acquiredAt: copy.acquired_at ? formatDate_(copy.acquired_at) : '',
+      updatedAt: item.effective ? formatDateTime_(item.effective) : ''
+    };
+  });
+
+  return {
+    rows: rows,
+    hasMore: candidates.length > page.length,
+    // 클라이언트가 다음 호출의 afterUpdatedAt으로 그대로 돌려보낼 서버 시각(클럭 스큐 방지).
+    // toClient_(runApi_)가 JSON 왕복시키므로 Date는 자동으로 ISO 문자열이 된다.
+    serverTime: now,
+    // 전체 소장본 수 — 실제 델타 건수가 아니라 "동기화 중 N/전체" 진행률 표시용 힌트.
+    totalCopies: readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.length
+  };
+}
+
+// --------------------------- 웹앱 최근 처리(recent-ops, todo/08) ---------------------------
+//
+// 15_AUDIT_LOG는 executeWrite_ 성공 트랜잭션마다 writeAudit_()가 이미 채워온 이력 시트다(모든
+// 쓰기 액션 공통 경로) — 이 액션은 그 시트를 읽기 전용으로 조회해 최신순으로 잘라 돌려줄 뿐,
+// 새 쓰기·새 시트가 없다.
+var RECENT_OPS_DEFAULT_LIMIT_ = 100;
+var RECENT_OPS_MAX_LIMIT_ = 500;
+
+function apiWebRecentOps_(payload) {
+  payload = payload || {};
+  var limit = RECENT_OPS_DEFAULT_LIMIT_;
+  if (payload.limit !== undefined && payload.limit !== null && payload.limit !== '') {
+    var requested = nonNegativeInteger_(payload.limit, '한도');
+    if (requested > 0) limit = requested;
+  }
+  if (limit > RECENT_OPS_MAX_LIMIT_) limit = RECENT_OPS_MAX_LIMIT_;
+
+  var rows = readTable_(LIBRARY_MVP.SHEETS.AUDIT).rows
+    .slice()
+    .sort(function(a, b) {
+      var at = asDate_(a.occurred_at);
+      var bt = asDate_(b.occurred_at);
+      return (bt ? bt.getTime() : 0) - (at ? at.getTime() : 0);
+    })
+    .slice(0, limit)
+    .map(function(row) {
+      return {
+        logId: row.log_id,
+        occurredAt: formatDateTime_(row.occurred_at),
+        actionCode: row.action_code || '',
+        entityType: row.entity_type || '',
+        entityId: row.entity_id || '',
+        summary: row.summary || '',
+        actorId: row.actor_id || ''
+      };
+    });
+
+  return { rows: rows };
 }
 
 function normalizeIsbn13Strict_(value) {

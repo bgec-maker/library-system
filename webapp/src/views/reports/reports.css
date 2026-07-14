@@ -111,3 +111,25 @@
   color: var(--ink-3);
   font-size: var(--fs-sm);
 }
+
+/* todo/08 — 담임 리포트 온스크린 미리보기의 상호작용형 DataTable 구획(정렬·필터 가능).
+   인쇄 대상(.print-root 안 .print-table)과는 별개 렌더 경로 — 여기는 no-print라 인쇄에는
+   안 나간다(styles/print.css .no-print). 표 자체의 시각 규칙은 DataTable.css가 전담한다. */
+.reports-datatable-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.reports-datatable-section h3 {
+  font-size: var(--fs-md);
+  color: var(--deep);
+  margin-top: 10px;
+}
+.reports-datatable-section h3:first-of-type {
+  margin-top: 0;
+}

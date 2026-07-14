@@ -5,9 +5,13 @@ import type { ShellContext, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { PrintDocument } from '../../components/PrintDocument';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
+import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import {
   fetchHomeroomReport,
   fetchNoLoanFinderReport,
+  type HomeroomLoanStatusRow,
+  type HomeroomOverdueRow,
+  type HomeroomPopularBook,
   type HomeroomReport,
   type NoLoanFinderReport
 } from '../../services/reportData';
@@ -209,6 +213,41 @@ function NoLoanFinderPanel({ shell }: NoLoanFinderPanelProps) {
   );
 }
 
+// todo/08 「reports 목록을 DataTable로 이관」 — 담임 리포트의 표형 목록 4개(대출 현황·미대출
+// 명단·연체 목록·인기책) 온스크린 미리보기를 공용 DataTable로 그린다(정렬·필터 가능, 완료 조건
+// "중복 제거 증명": DataTable 자체가 유일한 표 구현이고 여기서 다시 구현하지 않는다). 인쇄
+// 대상(PrintDocument 안 print-table)은 이 절과 완전히 분리된 기존 경로 그대로 — 손대지 않는다
+// (styles/print.css 헤더 주석·DESIGN.md "인쇄" 절 예외). i18n 헤더 문자열은 이미 print-table이
+// 쓰는 것과 같은 키를 재사용한다(DESIGN.md "같은 행동 같은 이름 관통", 새 키를 만들지 않음).
+//
+// loanStatus·noLoanList는 둘 다 HomeroomLoanStatusRow라 같은 열 정의를 공유한다(대출 0건인
+// 학생 목록이 곧 noLoanList이므로 같은 컬럼 모양) — R1-1(미대출 학생 발굴)의 반별 그룹 명단과는
+// 다르게, 이 4개는 개별 필드(번호·이름·대출건수 등)를 가진 진짜 표 데이터라 DataTable에 맞는다
+// (docs/ASSUMPTIONS.md todo/08 참고, R1-1 쪽은 그대로 명단 형태로 남겨둔다).
+const homeroomLoanStatusColumns: DataTableColumn<HomeroomLoanStatusRow>[] = [
+  { key: 'studentNo', header: t('views.reports.homeroom.colSeat'), sortable: true, numeric: true, mono: true, mobilePrimary: true },
+  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, mobileSecondary: true },
+  { key: 'loanCount', header: t('views.reports.homeroom.colLoanCount'), sortable: true, numeric: true }
+];
+
+const homeroomOverdueColumns: DataTableColumn<HomeroomOverdueRow>[] = [
+  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, mobilePrimary: true },
+  { key: 'title', header: t('views.reports.homeroom.colBookTitle'), sortable: true, mobileSecondary: true },
+  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true },
+  {
+    key: 'overdueDays',
+    header: t('views.reports.homeroom.colOverdueDays'),
+    sortable: true,
+    numeric: true,
+    render: (row) => t('views.reports.homeroom.overdueDaysValue', { days: row.overdueDays })
+  }
+];
+
+const homeroomPopularColumns: DataTableColumn<HomeroomPopularBook>[] = [
+  { key: 'title', header: t('views.reports.homeroom.colBookTitle'), sortable: true, mobilePrimary: true },
+  { key: 'loanCount', header: t('views.reports.homeroom.colLoanCount'), sortable: true, numeric: true }
+];
+
 interface HomeroomReportPanelProps {
   shell: ShellContext;
 }
@@ -280,6 +319,56 @@ function HomeroomReportPanel({ shell }: HomeroomReportPanelProps) {
           </div>
         )}
       </div>
+
+      {result && (
+        <div className="no-print reports-datatable-section">
+          <p className="reports-summary-line">{t('views.reports.homeroom.interactivePreviewHint')}</p>
+
+          <h3>{t('views.reports.homeroom.loanStatusHeading')}</h3>
+          <DataTable<HomeroomLoanStatusRow>
+            columns={homeroomLoanStatusColumns}
+            rows={result.data.loanStatus}
+            rowKey={(row) => row.memberNo}
+            platform={shell.platform}
+            emptyHint={t('views.reports.homeroom.noLoanEmpty')}
+            csvFileName="homeroom-loan-status.csv"
+            defaultPageSize={25}
+          />
+
+          <h3>{t('views.reports.homeroom.noLoanHeading')}</h3>
+          <DataTable<HomeroomLoanStatusRow>
+            columns={homeroomLoanStatusColumns}
+            rows={result.data.noLoanList}
+            rowKey={(row) => row.memberNo}
+            platform={shell.platform}
+            emptyHint={t('views.reports.homeroom.noLoanEmpty')}
+            csvFileName="homeroom-no-loan.csv"
+            defaultPageSize={25}
+          />
+
+          <h3>{t('views.reports.homeroom.overdueHeading')}</h3>
+          <DataTable<HomeroomOverdueRow>
+            columns={homeroomOverdueColumns}
+            rows={result.data.overdueList}
+            rowKey={(row) => `${row.memberNo}-${row.title}-${row.dueAtText}`}
+            platform={shell.platform}
+            emptyHint={t('views.reports.homeroom.overdueEmpty')}
+            csvFileName="homeroom-overdue.csv"
+            defaultPageSize={25}
+          />
+
+          <h3>{t('views.reports.homeroom.popularBooksHeading')}</h3>
+          <DataTable<HomeroomPopularBook>
+            columns={homeroomPopularColumns}
+            rows={result.data.popularBooks}
+            rowKey={(row) => row.title}
+            platform={shell.platform}
+            emptyHint={t('views.reports.homeroom.popularEmpty')}
+            csvFileName="homeroom-popular.csv"
+            defaultPageSize={25}
+          />
+        </div>
+      )}
 
       {result && (
         <div className="print-preview-frame">

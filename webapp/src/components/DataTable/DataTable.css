@@ -1,0 +1,221 @@
+/* components/DataTable/DataTable.css — DESIGN.md 「테이블」 절 그대로.
+   행높이 40px · 구분선은 헤어라인 --rule · zebra 금지(종이 위 괘선 느낌) · 정렬 화살표 --brass ·
+   활성 정렬 열 헤더 --deep · 숫자 열 우측 정렬 · 등록번호 등은 .mono(base.css 기존 클래스 재사용).
+   이 파일은 도메인 전용 값을 두지 않는다 — catalog·recent-ops·reports 어디서 써도 같은 모습. */
+
+.data-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.data-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.data-table-search {
+  flex: 1 1 auto;
+  min-width: 160px;
+  max-width: 320px;
+}
+
+.data-table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.data-table-csv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.data-table-error {
+  background: var(--fail);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+}
+
+.data-table-loading,
+.data-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+/* ── 데스크톱 표 ──────────────────────────────────────────────────────── */
+.data-table-scroll {
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  max-height: 70vh;
+}
+
+.data-table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.data-table-grid thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--ink-2);
+  text-align: left;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+  z-index: 1;
+}
+.data-table-grid thead th.is-numeric {
+  text-align: right;
+}
+.data-table-grid thead th.is-sorted {
+  color: var(--deep);
+}
+
+.data-table-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-height: auto;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+.data-table-sort-btn:active {
+  transform: none;
+}
+.data-table-sort-btn svg {
+  color: var(--brass);
+}
+
+/* zebra 금지 — 배경은 항상 --panel, hover만 paper 톤(DESIGN.md). */
+.data-table-grid tbody td {
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.data-table-grid tbody td.is-numeric {
+  text-align: right;
+}
+.data-table-grid tbody tr.is-clickable {
+  cursor: pointer;
+}
+.data-table-grid tbody tr.is-clickable:hover {
+  background: var(--paper);
+}
+
+.data-table-no-match td {
+  text-align: center;
+  color: var(--ink-3);
+  height: 60px;
+}
+
+/* ── 모바일 카드 변환(가로 스크롤 지양, FRONTEND.md) ─────────────────── */
+.data-table-cards {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.data-table-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.data-table-card.is-clickable {
+  cursor: pointer;
+}
+.data-table-card-primary {
+  font-weight: 700;
+  font-size: var(--fs-md);
+}
+.data-table-card-secondary {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  margin-top: 2px;
+}
+.data-table-card-rest {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+}
+.data-table-card-row {
+  display: contents;
+}
+.data-table-card-row dt {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  margin: 0;
+}
+.data-table-card-row dd {
+  font-size: var(--fs-sm);
+  text-align: right;
+  margin: 0;
+}
+.data-table-card-no-match {
+  text-align: center;
+  color: var(--ink-3);
+  padding: 24px 0;
+  list-style: none;
+}
+
+/* ── Paginator — 44px 최소 터치 타깃(DESIGN.md) ──────────────────────── */
+.data-table-paginator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.data-table-paginator-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.data-table-paginator-size label {
+  margin: 0;
+}
+.data-table-paginator-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.data-table-page-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.data-table-paginator-status {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+}

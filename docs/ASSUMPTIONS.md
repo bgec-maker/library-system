@@ -296,3 +296,76 @@
   "대기열 추이"라고만 쓰고 구간 길이를 명시하지 않아 스파크라인이 읽기 좋은 정도(6개 점)로
   임의 지정했다. 대기열이 있는 서명이 50개를 넘으면 `VIZ_RESERVATION_MAX_TITLES_`로 상위
   50개만 내려준다(대기 인원 내림차순).
+
+## todo/08 · 장서 대장 + 공용 DataTable (2026-07-15)
+
+- **카탈로그 IndexedDB 미러를 COPY 단위(1행 = 소장본 1건)로 재설계**했다 — v1 스텁은
+  title 중심(`copies` 중첩 배열)이었지만, FRONTEND.md의 catalog 열 목록(등록번호·서명·저자·
+  분류·상태·대출횟수·최근대출·서가·입수일)에서 barcode·상태·서가·입수일이 전부 소장본
+  단위 값이라 title 중심 구조로는 표현할 수 없다. `services/catalog.ts`의 `CatalogCopyRow`가
+  제목·저자·분류를 이미 조인해서 펼쳐 넣은 평면 구조다. IndexedDB 스토어 이름도 `titles` →
+  `copies`로 바뀌어 `DB_VERSION`을 1→2로 올렸다(`onupgradeneeded`에서 구 스토어를 지운다 —
+  재동기화로 복구되는 캐시일 뿐이므로 안전).
+
+- **서버 동기화 액션 이름을 `syncCatalog`(v1 스텁 표기)에서 `catalogSync`로 확정**했다 —
+  ADR-024 원문이 정확히 이 이름("catalogSync 청크 동기화")을 쓰고 있어 그대로 따랐다.
+
+- **델타 커서는 새 `catalogVersion` 카운터를 만들지 않고 기존 `TITLES`/`COPIES`의
+  `updated_at` 컬럼을 그대로 썼다** — task 노트가 명시한 대로 HEADERS 배열에 이미 있는
+  컬럼이라 스키마 변경이 필요 없었다. 클라이언트는 자기 시계가 아니라 서버 응답의
+  `serverTime`을 다음 호출의 `afterUpdatedAt`으로 그대로 돌려보낸다(클럭 스큐로 인한 델타
+  누락 방지) — 이 값은 IndexedDB `meta` 스토어에 저장하고 localStorage는 쓰지 않았다(이미
+  열려 있는 같은 DB 커넥션에 커서를 같이 두는 편이 저장소 종류를 하나 더 늘리는 것보다
+  단순하다고 판단).
+
+- **`apiWebCatalogSync_`가 응답에 `totalCopies`(COPIES 시트 전체 행 수)를 추가로 얹었다** —
+  todo 노트의 "동기화 중… N/5000" 예시 진행률 표시를 실제로 구현하려면 전체 개수가 필요한데,
+  서버가 이미 COPIES 테이블을 읽고 있으므로 `.rows.length`를 얹는 데 추가 비용이 거의 없다.
+  이 필드는 ADR-024가 요구하는 최소 응답 계약(`rows`·`hasMore`·`serverTime`)에 더해진 것일 뿐
+  다른 의미를 갖지 않는다.
+
+- **catalog 열의 "상태"는 서버가 라벨을 만들어 내려주지 않고 원본 status_code
+  문자열(`AVAILABLE`/`ON_LOAN`/…)을 그대로 돌려주고, 프런트(`views/catalog/index.tsx`의
+  `STATUS_LABEL_KEYS`)가 i18n으로 매핑**한다 — `loan-return`(`apiCopyStatus_`)·`10_LOANS`
+  등 기존 웹앱 액션도 전부 이 방식(원본 코드 반환 + 프론트 매핑)이라 CODEBOOK 조인을 서버에
+  새로 추가하지 않고 기존 관례를 따랐다.
+
+- **catalog 뷰 아이콘은 `Library`(lucide-react)를 선택**했다 — task 노트가 제안한 `Library`/
+  `BookMarked` 중 `BookMarked`는 이미 `student/my-shelf`(다른 번들, 다른 표면)에서 쓰이고
+  있어 헷갈리지 않지만, 완전히 새 아이콘을 쓰는 편이 더 명확하다고 판단했다.
+
+- **`views/search/index.tsx`·`views/inventory/index.tsx`는 이번 항목 범위 밖으로 남겨두고
+  syncCatalog를 catalogSync로 갱신하는 주석 수정만** 했다 — 두 뷰 모두 todo/08 목록에 없고
+  각각 통합 검색·장서 점검이라는 별도 항목의 몫이다. 실 구현은 앞으로
+  `services/catalog.ts`(useCatalogSync/getCatalogState)를 그대로 재사용하면 되도록
+  주석에 남겨 뒀다.
+
+- **`views/recent-ops/index.tsx`는 자동 갱신 싱글턴 스토어(`dashboardData.ts` 패턴) 대신
+  reportData.ts류의 "열 때 한 번 조회 + 수동 새로고침" 패턴을 택했다** — 최근 처리는
+  대시보드처럼 상시 응시하는 화면이 아니라 필요할 때 열어보는 목록이라 5분 자동 갱신·
+  트랜잭션 후 구독까지는 과설계라고 판단했다. `apiWebRecentOps_`의 기본 한도는 100건
+  (서버 상한 500건)으로, 화면은 그중 최근 100건을 DataTable로 보여주고 정렬·필터·CSV는
+  전부 그 100건 안에서 로컬 처리한다.
+
+- **담임 리포트(R1-2)의 4개 표형 목록(대출 현황·미대출 명단·연체 목록·인기책)을 DataTable로
+  이관**하되, **`.print-root`/`.print-table`로 가는 인쇄 경로는 손대지 않았다** — 온스크린
+  "정렬·필터 가능한 표" 구획(`no-print`, 인쇄 시 숨김)을 새로 추가하고 기존 인쇄 미리보기
+  프레임은 그대로 아래에 남겨, 인쇄 결과물이 이 항목 이전과 바이트 단위로 동일하다.
+  `noLoanList`는 `loanStatus`와 같은 `HomeroomLoanStatusRow` 모양이라 같은 열 정의를
+  공유했다(별도 컬럼 세트를 만들지 않음 — "표 UI 중복 금지"). 반면 **R1-1(미대출 학생
+  발굴)의 반별 그룹 이름 목록은 그대로 뒀다** — FEATURES.md 자신이 "숫자가 아니라 명단"이라고
+  명시한 그룹핑 구조라 표 형태(행=레코드 1개)에 자연스럽게 맞지 않는다고 판단했다(task
+  노트가 명시적으로 이 경계를 확인해 달라고 요청한 부분이기도 하다).
+
+- **DataTable 자체의 내장 카피(빈/로딩/오류·페이지네이터 라벨 등)도 `t()`로 이관**했다 —
+  `src/components/DataTable/**`는 `check-i18n-literals.mjs`/뷰 경계 린트의 검사 대상(`views/**·
+  shells/**·student/**`)이 아니지만, task 노트가 "기존 프로젝트 관례에 맞춘다"고 명시했고
+  실제로 한/영 전환 시 표 안 문자열만 한국어로 고정되는 건 이상하므로 그대로 따랐다. 새
+  `components.dataTable.*` 네임스페이스를 만들어 도메인 뷰의 `views.*` 네임스페이스와
+  분리했다.
+
+- **CSV는 현재 필터·정렬이 적용된 전체 데이터셋(현재 페이지가 아니라)을 내보낸다** — task
+  노트의 "currently-loaded (not just currently-visible-page) dataset" 문구를 "필터로 걸러낸
+  뒤 정렬까지 반영된 전체 배열"로 해석했다. 필터를 안 걸었으면 로드된 전체(5,000행급도 포함)가
+  그대로 나간다.
+  50개만 내려준다(대기 인원 내림차순).

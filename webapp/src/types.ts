@@ -10,6 +10,7 @@ export type ViewId =
   | 'search'
   | 'book-detail'
   | 'inventory'
+  | 'catalog'
   | 'recent-ops'
   | 'reports';
 

@@ -21,6 +21,7 @@
     "register": { "title": "도서 등록" },
     "search": { "title": "통합 검색" },
     "inventory": { "title": "장서 점검" },
+    "catalog": { "title": "장서 대장" },
     "bookDetail": { "title": "도서 상세" },
     "recentOps": { "title": "최근 처리" },
     "reports": { "title": "리포트" }
@@ -105,6 +106,19 @@
       "scanTabLabel": "스캔",
       "moreEmpty": "표시할 항목이 없습니다.",
       "tabBarLabel": "주요 화면"
+    }
+  },
+  "components": {
+    "dataTable": {
+      "searchPlaceholder": "검색…",
+      "exportCsv": "CSV 내보내기",
+      "emptyDefault": "표시할 항목이 없습니다.",
+      "noMatch": "검색 조건에 맞는 항목이 없습니다.",
+      "errorPrefix": "불러오지 못했습니다 — {message}",
+      "pageSizeLabel": "표시 개수",
+      "prevPage": "이전 페이지",
+      "nextPage": "다음 페이지",
+      "pageStatus": "{page} / {totalPages} 페이지 (총 {total}건)"
     }
   },
   "views": {
@@ -200,11 +214,64 @@
       "comingSoon": "장서 점검은 곧 제공됩니다.",
       "comingSoonDetail": "스캔 대조 화면이 이 자리에 들어갈 예정입니다."
     },
+    "catalog": {
+      "col": {
+        "barcode": "등록번호",
+        "title": "서명",
+        "authors": "저자",
+        "classification": "분류",
+        "status": "상태",
+        "loanCount": "대출횟수",
+        "lastLoanAt": "최근대출",
+        "shelf": "서가",
+        "acquiredAt": "입수일"
+      },
+      "status": {
+        "available": "대출가능",
+        "onLoan": "대출중",
+        "holdReady": "예약대기",
+        "repair": "수선중",
+        "lost": "분실",
+        "withdrawn": "폐기"
+      },
+      "empty": "장서 미러가 비어 있습니다 — 동기화를 기다려 주세요.",
+      "searchPlaceholder": "등록번호·서명·저자로 검색",
+      "syncing": "동기화 중… {count}/{total}건"
+    },
     "bookDetail": {
       "comingSoon": "도서 상세는 곧 제공됩니다."
     },
     "recentOps": {
-      "comingSoon": "최근 처리 목록은 곧 제공됩니다."
+      "refresh": "새로고침",
+      "empty": "최근 처리 내역이 없습니다.",
+      "searchPlaceholder": "구분·요약·처리자로 검색",
+      "col": {
+        "occurredAt": "처리 시각",
+        "action": "구분",
+        "entityType": "대상 유형",
+        "entityId": "대상 ID",
+        "summary": "요약",
+        "actor": "처리자"
+      },
+      "action": {
+        "checkout": "대출",
+        "return": "반납",
+        "renew": "연장",
+        "reserve": "예약",
+        "cancelReservation": "예약 취소",
+        "registerMember": "회원 등록",
+        "updateMember": "회원 정보 수정",
+        "registerTitle": "서지 등록",
+        "registerCopy": "소장본 등록",
+        "registerByIsbn": "ISBN 등록",
+        "markLoanLost": "분실 처리",
+        "payFine": "변상금 납부",
+        "updateCopyStatus": "소장본 상태 변경",
+        "reconcileCopyStatus": "소장본 상태 정합",
+        "upsertStaff": "직원 계정 관리",
+        "updatePolicy": "정책 변경",
+        "dailyMaintenance": "일일 자동 관리"
+      }
     },
     "reports": {
       "comingSoon": "다음 항목에서 구현됩니다.",
@@ -225,6 +292,7 @@
       },
       "homeroom": {
         "title": "담임 리포트",
+        "interactivePreviewHint": "정렬·필터 가능한 표 — 인쇄 결과는 아래 미리보기를 따릅니다.",
         "gradeLabel": "학년",
         "classNoLabel": "반",
         "monthLabel": "월",

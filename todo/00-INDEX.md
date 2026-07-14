@@ -22,7 +22,7 @@
 - [x] 05 reports-r1
 - [x] 06 viz-v1
 - [x] 07 integration-checkpoint
-- [ ] 08 catalog + DataTable
+- [x] 08 catalog + DataTable
 - [ ] 09 r1-remaining + en 완역
 
 ## waiting/ (게이트 열리면 큐로 승격 — 사용자만 승격 가능)

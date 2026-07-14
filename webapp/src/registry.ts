@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, FileText, History, Search } from 'lucide-react';
+import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -15,6 +15,7 @@ const TITLE_KEYS: Record<ViewId, string> = {
   register: 'registry.register.title',
   search: 'registry.search.title',
   inventory: 'registry.inventory.title',
+  catalog: 'registry.catalog.title',
   'book-detail': 'registry.bookDetail.title',
   'recent-ops': 'registry.recentOps.title',
   reports: 'registry.reports.title'
@@ -55,6 +56,18 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'focus',
     desktop: { min: [560, 480], single: true },
+    mobile: {}
+  },
+  {
+    // FRONTEND.md 「catalog(장서 대장) 뷰」(ADR-024) — 정본은 IndexedDB 미러, 서버는 catalogSync
+    // 청크 동기화만. 데이터 밀도가 높은 표라 desktop.min을 다른 뷰보다 넉넉히 준다. 모바일
+    // 탭 슬롯 없음 — inventory·recent-ops·reports와 같은 「더보기」 경로로 도달한다.
+    id: 'catalog',
+    title: t(TITLE_KEYS.catalog),
+    icon: Library,
+    roles: ['LIBRARIAN'],
+    scan: 'none',
+    desktop: { min: [720, 560] },
     mobile: {}
   },
   {

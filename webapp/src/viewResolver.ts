@@ -9,6 +9,7 @@ export const VIEW_COMPONENTS: Record<ViewId, LazyExoticComponent<ComponentType<V
   register: lazy(() => import('./views/register')),
   search: lazy(() => import('./views/search')),
   inventory: lazy(() => import('./views/inventory')),
+  catalog: lazy(() => import('./views/catalog')),
   'book-detail': lazy(() => import('./views/book-detail')),
   'recent-ops': lazy(() => import('./views/recent-ops')),
   reports: lazy(() => import('./views/reports'))

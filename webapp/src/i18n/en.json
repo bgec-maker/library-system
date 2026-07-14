@@ -21,6 +21,7 @@
     "register": { "title": "Register Book" },
     "search": { "title": "Search" },
     "inventory": { "title": "Inventory Check" },
+    "catalog": { "title": "Catalog" },
     "bookDetail": { "title": "Book Detail" },
     "recentOps": { "title": "Recent Activity" },
     "reports": { "title": "Reports" }
@@ -105,6 +106,19 @@
       "scanTabLabel": "Scan",
       "moreEmpty": "Nothing to show here.",
       "tabBarLabel": "Primary navigation"
+    }
+  },
+  "components": {
+    "dataTable": {
+      "searchPlaceholder": "Search…",
+      "exportCsv": "Export CSV",
+      "emptyDefault": "Nothing to show.",
+      "noMatch": "No rows match your search.",
+      "errorPrefix": "Couldn't load — {message}",
+      "pageSizeLabel": "Rows per page",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "pageStatus": "Page {page} of {totalPages} ({total} total)"
     }
   },
   "views": {
@@ -200,11 +214,64 @@
       "comingSoon": "Inventory check is coming soon.",
       "comingSoonDetail": "The scan-reconciliation screen will live here."
     },
+    "catalog": {
+      "col": {
+        "barcode": "Barcode",
+        "title": "Title",
+        "authors": "Authors",
+        "classification": "Category",
+        "status": "Status",
+        "loanCount": "Loans",
+        "lastLoanAt": "Last loan",
+        "shelf": "Shelf",
+        "acquiredAt": "Acquired"
+      },
+      "status": {
+        "available": "Available",
+        "onLoan": "On loan",
+        "holdReady": "Hold ready",
+        "repair": "In repair",
+        "lost": "Lost",
+        "withdrawn": "Withdrawn"
+      },
+      "empty": "The catalog mirror is empty — waiting for sync.",
+      "searchPlaceholder": "Search by barcode, title, or author",
+      "syncing": "Syncing… {count}/{total}"
+    },
     "bookDetail": {
       "comingSoon": "Book detail is coming soon."
     },
     "recentOps": {
-      "comingSoon": "Recent activity is coming soon."
+      "refresh": "Refresh",
+      "empty": "No recent activity.",
+      "searchPlaceholder": "Search by action, summary, or staff",
+      "col": {
+        "occurredAt": "Time",
+        "action": "Action",
+        "entityType": "Entity type",
+        "entityId": "Entity ID",
+        "summary": "Summary",
+        "actor": "Staff"
+      },
+      "action": {
+        "checkout": "Checkout",
+        "return": "Return",
+        "renew": "Renewal",
+        "reserve": "Reservation",
+        "cancelReservation": "Reservation cancelled",
+        "registerMember": "Member registered",
+        "updateMember": "Member updated",
+        "registerTitle": "Title registered",
+        "registerCopy": "Copy registered",
+        "registerByIsbn": "Registered by ISBN",
+        "markLoanLost": "Marked lost",
+        "payFine": "Fine paid",
+        "updateCopyStatus": "Copy status changed",
+        "reconcileCopyStatus": "Copy status reconciled",
+        "upsertStaff": "Staff account updated",
+        "updatePolicy": "Policy updated",
+        "dailyMaintenance": "Daily maintenance"
+      }
     },
     "reports": {
       "comingSoon": "Implemented in a later item.",
@@ -225,6 +292,7 @@
       },
       "homeroom": {
         "title": "Homeroom report",
+        "interactivePreviewHint": "Sortable and filterable — the printed report follows the preview below.",
         "gradeLabel": "Grade",
         "classNoLabel": "Class",
         "monthLabel": "Month",
