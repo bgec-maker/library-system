@@ -23,6 +23,14 @@
     "bookDetail": { "title": "도서 상세" },
     "recentOps": { "title": "최근 처리" }
   },
+  "camera": {
+    "start": "카메라 시작",
+    "stop": "카메라 끄기",
+    "continuousMode": "연속 모드",
+    "continuousModeHint": "유휴 자동 종료 없이 계속 켜 둡니다 — 점심시간 등 연속 스캔용.",
+    "idleWarning": "스캐너가 10초 후 꺼집니다.",
+    "offHint": "카메라가 꺼져 있습니다 — 스캔하려면 켜세요."
+  },
   "shell": {
     "desktop": {
       "minimizedSuffix": " (최소화됨)",
@@ -34,6 +42,8 @@
       "cameraPreparing": "카메라 준비 중…",
       "cameraError": "카메라 오류",
       "idle": "대기 중",
+      "scannerStart": "시작",
+      "scannerStop": "종료",
       "pinPin": "이 창에 스캔 고정 (전역 1개만 가능)",
       "pinUnpin": "스캔 고정 해제",
       "scanReceiving": "스캔 수신",
@@ -99,7 +109,7 @@
       "diagCopySuccess": "진단 로그를 클립보드에 복사했습니다.",
       "diagCopyFailure": "클립보드 복사에 실패했습니다.",
       "failedListHeading": "실패 목록 — 재시도 필요",
-      "scanHint": "스캐너가 활성화되어 있습니다. ISBN(EAN-13) 바코드를 스캔하세요.",
+      "scanHint": "카메라가 켜져 있으면 ISBN(EAN-13) 바코드를 스캔하세요.",
       "manualEntryButton": "수동 입력",
       "manualIsbnLabel": "ISBN-13 직접 입력",
       "lookupButton": "조회",

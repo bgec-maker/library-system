@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/scanBus';
 import { apiCall, newRequestId } from '../../services/api';
 import { useSession } from '../../services/session';
+import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { intlLocaleTag, t } from '../../i18n';
 import './loan-return.css';
 
@@ -413,6 +414,8 @@ export default function LoanReturnView({ shell }: ViewProps) {
         </h1>
         <span className="lr-header-hint">{t('views.loanReturn.hint')}</span>
       </header>
+
+      <ScanCameraStart viewId="loan-return" />
 
       <div className="lr-slots">
         <div className={`lr-slot${book ? ' filled' : ''}`}>

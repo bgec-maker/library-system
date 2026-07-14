@@ -3,6 +3,7 @@ import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { getViewMeta } from '../../registry';
 import { subscribeScan } from '../../services/scanBus';
+import { cameraSession } from '../../services/cameraSession';
 import { useLocale } from '../../i18n';
 import { Dock } from './Dock';
 import { Window } from './Window';
@@ -28,6 +29,22 @@ export default function DesktopShell() {
       }),
     [openWindow]
   );
+
+  // ADR-020 "단축키 S" 시작 트리거 — 셸 계층에서만(뷰가 아니라) 전역으로 건다. 입력 요소에
+  // 포커스가 있을 때는 타이핑 중 'S'를 가로채면 안 되므로 무시한다. 이미 켜져 있으면 끄고,
+  // 꺼져 있으면 켠다(위젯의 종료 버튼과 같은 cameraSession.stop()/start() 호출).
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      if (cameraSession.getStatus().running) cameraSession.stop();
+      else cameraSession.start('shortcut');
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="desktop-shell">

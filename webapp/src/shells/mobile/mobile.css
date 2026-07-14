@@ -193,6 +193,16 @@
   color: #fff;
 }
 
+/* ── 더보기: 연속 모드 핀(ADR-020) ────────────────────────────────────── */
+.m-more-continuous-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+}
+
 /* ── 더보기 목록 ───────────────────────────────────────────────────── */
 .m-more-list {
   list-style: none;

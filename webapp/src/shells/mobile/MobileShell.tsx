@@ -4,7 +4,7 @@ import type { ShellContext, ToastKind, ViewId, ViewMeta } from '../../types';
 import { getViewMeta, mobileTabViews, moreMenuViews } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
 import { useSession } from '../../services/session';
-import { cameraService } from '../../services/camera';
+import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
 import { setScanRoute, subscribeScan } from '../../services/scanBus';
 import { pushToast } from '../../services/toastBus';
 import { ToastHost } from '../../components/ToastHost';
@@ -57,10 +57,28 @@ function LocaleRow() {
   );
 }
 
+// 연속 모드 핀 — FRONTEND.md "연속 모드... 모바일에서도 접근 가능해야". 데스크톱 위젯의 체크박스와
+// 같은 cameraSession.setContinuous()를 호출한다. 더보기 화면에 언어 토글과 나란히 둔다.
+function CameraContinuousRow() {
+  const [session, setSession] = useState<CameraSessionStatus>(() => cameraSession.getStatus());
+
+  useEffect(() => cameraSession.onStatus(setSession), []);
+
+  return (
+    <div className="m-more-locale" role="group" aria-label={t('camera.continuousMode')}>
+      <span className="m-more-locale-label">{t('camera.continuousMode')}</span>
+      <label className="m-more-continuous-toggle" title={t('camera.continuousModeHint')}>
+        <input type="checkbox" checked={session.continuous} onChange={(e) => cameraSession.setContinuous(e.target.checked)} />
+      </label>
+    </div>
+  );
+}
+
 function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
   return (
     <>
       <LocaleRow />
+      <CameraContinuousRow />
       {items.length === 0 ? (
         <p className="m-more-empty">{t('shell.mobile.moreEmpty')}</p>
       ) : (
@@ -167,10 +185,14 @@ export default function MobileShell() {
   }, [effectiveViewId, scanFocusActive]);
 
   useEffect(() => {
-    // 모바일은 배터리·발열 고려해 스캔 관심 화면일 때만 카메라를 켠다(데스크톱처럼 상시 가동 아님).
+    // ADR-020: 모바일도 이제 자동 시작하지 않는다 — 시작은 뷰 자체가 심어 둔 "카메라 시작" 버튼
+    // (components/ScanCameraStart.tsx, 뷰가 scan:'focus' + 유효 라우트일 때 렌더)이
+    // cameraSession.start()를 호출해서 이뤄진다. 이 effect가 남겨서 하는 일은 "이탈 시 즉시
+    // 종료" 하나뿐: scanFocusActive가 true였다가 false로 바뀌는 순간(탭 전환·뒤로가기) cleanup이
+    // 실행되어, 그 화면에서 카메라가 켜져 있었다면 유휴 유예 없이 바로 끈다(배터리·발열, 연속
+    // 모드 핀과도 무관 — cameraSession.stop()은 항상 무조건 끈다).
     if (!scanFocusActive) return;
-    cameraService.acquire();
-    return () => cameraService.release();
+    return () => cameraSession.stop();
   }, [scanFocusActive]);
 
   useEffect(

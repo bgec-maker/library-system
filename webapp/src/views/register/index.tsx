@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { useSession } from '../../services/session';
 import { apiCall, newRequestId, onApiLog, getRecentApiLog, type ApiCallLogEntry } from '../../services/api';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
+import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { intlLocaleTag, t } from '../../i18n';
 import './register.css';
 
@@ -393,6 +394,7 @@ export default function RegisterView({ shell }: ViewProps) {
 
       {screen === 'scan' && (
         <section className="reg-scan panel">
+          <ScanCameraStart viewId="register" />
           <p className="reg-scanHint">{t('views.register.scanHint')}</p>
           {!manualOpen ? (
             <button type="button" className="ghost" onClick={() => setManualOpen(true)}>

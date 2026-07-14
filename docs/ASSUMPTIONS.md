@@ -52,3 +52,40 @@
 - **`registry.ts`의 `title` 필드는 마이그레이션 범위에 포함**시켰다(todo가 "your judgement"로
   위임한 항목). 도크 tooltip·탭 라벨·창 타이틀바에 실제로 렌더되는 UI 문자열이라 범위에서
   제외할 이유가 없다고 판단했다.
+
+## todo/03 · 카메라 온디맨드 (2026-07-15)
+
+- **모바일 "탭 진입 시 시작 버튼"은 셸 레벨 오버레이가 아니라, 데스크톱 "뷰 버튼"과 같은
+  `components/ScanCameraStart.tsx` 컴포넌트를 뷰 파일(loan-return/inventory/register) 안에
+  한 번만 심는 방식으로 통합**했다. 처음엔 MobileShell.tsx가 `.m-shell-main` 위에 오버레이를
+  직접 렌더하는 안을 검토했지만, StackNav의 push 오버레이(`.m-stack-overlay`, `position:absolute;
+  inset:0; z-index:20`)가 스택 화면(예: 더보기→장서 점검)일 때 `.m-shell-main` 전체를 덮어버려서
+  그 안에 있는 셸 레벨 오버레이가 안 보이게 되는 문제가 있었다. FRONTEND.md의 "같은 뷰 파일이 두
+  셸에서 렌더" 원칙을 이용해 뷰 안에 버튼을 심으면 데스크톱 창이든 모바일 탭이든 스택 push
+  화면이든 항상 그 뷰와 같은 DOM 위치에 나타나 z-index 경합이 원천적으로 없다. 데스크톱
+  ScannerDockWidget(위젯 클릭)과 DesktopShell의 단축키 S는 이 컴포넌트와 무관하게 별도 트리거로
+  구현했다 — "위젯/뷰 버튼/단축키 S" 셋이 서로 다른 코드 경로임을 유지하기 위해서다.
+
+- **연속 모드 핀은 `stop()`(수동 종료·모바일 이탈)을 막지 않는다** — `cameraSession.stop()`은
+  `continuous` 값과 무관하게 항상 즉시 끈다. 연속 모드가 막는 건 오직 "유휴 3분 자동 종료"
+  타이머뿐이다. ADR-020 문구("모바일 = ... 이탈 시 종료")가 예외 없이 "이탈 시"라고 못박았고,
+  위젯의 수동 종료 버튼도 사용자가 명시적으로 누른 행동이라 핀 여부와 무관하게 존중해야 한다고
+  판단했다. 또한 **연속 모드 핀 상태 자체는 `stop()`/`start()` 사이클을 넘어 유지**된다(껐다 다시
+  켜도 핀은 그대로) — 사용자가 명시적으로 체크박스를 풀기 전까진 "이번 세션 내내 연속" 의도로
+  해석했다.
+
+- **데스크톱 단축키 S는 (시작 전용이 아니라) 토글**로 구현했다(꺼져 있으면 켜고, 켜져 있으면
+  끈다). todo 원문이 "calls cameraSession.start()/toggles it"로 둘 다 허용했고, 토글 쪽이 위젯의
+  수동 종료 버튼과 기능이 중복되지 않으면서 단축키 하나로 켜고 끄는 자연스러운 UX라고 판단했다.
+  가드는 `e.metaKey/ctrlKey/altKey`가 눌려 있거나 `document.activeElement`/이벤트 타깃이
+  input·textarea·contenteditable일 때 무시하도록 했다(폼 입력 중 'S' 타이핑을 가로채지 않기 위해).
+
+- **`register.tsx`의 기존 `scanHint`("스캐너가 활성화되어 있습니다...") 문구를 카메라 상태와
+  무관하게 항상 참인 문장**("카메라가 켜져 있으면 ISBN 바코드를 스캔하세요")으로 바꿨다.
+  `cameraSession` 상태를 이 뷰에서 또 한 번 구독해 조건부로 문구를 바꾸는 대신(그 로직은 이미
+  `ScanCameraStart` 안에 있다), 문구 자체를 상태 독립적으로 만들어 중복 구독을 피했다.
+
+- **`camera.*` i18n 키는 `views/register.*`·`shell.desktop.*`처럼 화면별로 쪼개지 않고 최상위
+  `camera` 네임스페이스 하나로 모았다** — 위젯(shells/desktop)·뷰 버튼(components, 3개 뷰에서
+  재사용)·모바일 더보기(shells/mobile)가 전부 같은 문구("카메라 시작"·"연속 모드" 등)를 공유해야
+  해서, 셸/뷰별로 흩어놓으면 같은 뜻의 키가 3~4벌 중복될 뻔했다.

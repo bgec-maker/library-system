@@ -114,3 +114,15 @@ label {
 .toast.success { background: var(--pass); }
 .toast.error { background: var(--fail); }
 .toast.info { background: var(--deep); }
+
+/* components/ScanCameraStart.tsx — 카메라 온디맨드(ADR-020) "뷰 버튼" 시작 트리거. 뷰 파일이
+   두 셸에서 그대로 렌더되므로(FRONTEND.md) 데스크톱 창·모바일 탭/스택 화면 어디서나 같은 모습. */
+.scan-camera-start {
+  margin: 10px 0;
+}
+.scan-camera-start button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}

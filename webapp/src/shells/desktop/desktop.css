@@ -320,6 +320,21 @@
   color: var(--ink-2);
 }
 
+.scanner-dock__actionBtn {
+  width: 100%;
+}
+
+.scanner-dock__continuous {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
 /* ── 토스트 위치(데스크톱) — 우하단 스캐너 도크 위 ─────────────────────── */
 .desktop-shell .toast-stack {
   right: 16px;
