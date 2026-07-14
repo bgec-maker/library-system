@@ -1,6 +1,8 @@
 # PATCH_SPEC.md — MVP 패키지 학교화 패치 명세
 
-> 대상: `mvp-package/` (Code.gs 2,179줄 · Sidebar.html · 19시트 워크북)
+〔🔄 2026-07-15 상태 배너 — repo-cleanup(ADR-022)〕 **P1·P2·P4·P5·P6 완료** (school-patch-v1 반영, 실기기 검증 🅿 대기) · **P3·P7 잔여** (Phase 2, docs/ROADMAP.md 트랙 E). 원본 `mvp-package/`는 트리에서 제거되었고 참조는 git 히스토리에서.
+
+> 대상: `mvp-package/` (Code.gs 2,179줄 · Sidebar.html · 19시트 워크북) — **작업 트리에서는 `school-patch-v1/`이 현행판을 계승** (원본은 git 히스토리)
 > 근거: `DECISIONS.md` ADR-016 (패키지 채택), ADR-017 (다국어)
 > 원칙: **검증된 로직(보호·멱등·보상·예약)은 건드리지 않는다. 도메인·성능·비상경로만 고친다.**
 

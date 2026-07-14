@@ -15,7 +15,7 @@
 - 새 doPost 액션은 사용자가 새 버전 배포 전까지 서버에 없다 → **「샘플 데이터」 배지 폴백 필수** (배지 없는 목데이터 = 가짜 성공 = 위반)
 
 ## 큐 (위에서부터)
-- [ ] 01 repo-cleanup
+- [x] 01 repo-cleanup
 - [ ] 02 perf-ci + i18n 기반
 - [ ] 03 camera-on-demand
 - [ ] 04 dashboard-baselayer
