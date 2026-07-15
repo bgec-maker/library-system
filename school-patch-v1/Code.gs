@@ -2528,6 +2528,8 @@ function doPost(e) {
       if (action === 'payFine') return apiWebPayFine_(payload);
       if (action === 'unpaidFines') return apiWebUnpaidFines_(payload);
       if (action === 'inventoryScan') return apiWebInventoryScan_(payload);
+      if (action === 'registerTitle') return apiWebRegisterTitle_(payload);
+      if (action === 'registerCopy') return apiWebRegisterCopy_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -3635,4 +3637,33 @@ function registerByIsbn_(payload, actor, requestId, transaction) {
     titleId: title.title_id, title: title.title, isbn: isbn,
     created: created, copyCount: copyCount, barcodes: barcodes, operator: operator
   };
+}
+
+// 웹앱용 무ISBN 수동 등록 + 복본 일괄 발급(todo/16 「등록 확장」) — 위 apiWeb* 함수들과 정확히
+// 같은 패턴(executeWrite_로 감싸 멱등·감사 로그를 얻는다, doPost가 이미 바깥 runApi_ 1겹을
+// 제공하므로 이중 래핑하지 않음). registerTitle_/registerCopy_/prepareCopyPayload_ 본문은 이
+// 항목에서 전혀 수정하지 않는다(절대 규칙) — payload 키도 그 함수들이 이미 기대하는 이름을
+// 그대로 쓴다(title/isbn(생략 가능)/authors/categoryCodes/createCopy+복본 필드 /
+// titleKey+복본 필드).
+//
+// registerByIsbn_(위)이 ISBN 있는 경로에서 이미 registerTitle_(createCopy:false)+registerCopy_
+// 반복을 "한 executeWrite_ 트랜잭션 안"에서 쓰는 것과 달리, 이 두 함수는 웹앱이 "무ISBN 등록
+// 1건"과 "복본 N개 중 1개"를 각각 독립된 웹 요청으로 보내게 하기 위한 것이다. 복본 일괄 발급은
+// 프론트가 apiWebRegisterCopy_를 N번 순차 호출한다(Promise.all이 아니라 하나씩 await) — 이유
+// 둘: (1) executeWrite_ 안 withWriteLock_이 모든 쓰기를 서버에서 이미 직렬화하므로 N번 순차
+// 호출이어야 매번 진짜 "다음 순번" 바코드(nextNumericCode_)를 받는다(병렬 호출도 락 때문에
+// 결과적으로 순서대로 처리되긴 하지만, 그러면 "몇 번째 요청이 몇 번째 바코드를 받았는지"가
+// 클라이언트 쪽에서 뒤섞여 진행률 표시·부분 실패 시 "몇 권까지 성공했는지"를 알 수 없게 된다),
+// (2) "발급 중 3/5" 같은 실시간 진행률 표시와 부분 실패 시 "이미 발급된 것은 그대로 두고 나머지만
+// 재시도"를 프론트가 구현하려면 각 호출의 성공/실패를 즉시 알아야 한다.
+function apiWebRegisterTitle_(payload) {
+  return executeWrite_('CREATE_TITLE', payload || {}, function(actor, requestId, transaction) {
+    return registerTitle_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebRegisterCopy_(payload) {
+  return executeWrite_('CREATE_COPY', payload || {}, function(actor, requestId, transaction) {
+    return registerCopy_(payload || {}, actor, requestId, transaction);
+  });
 }

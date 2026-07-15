@@ -7,6 +7,7 @@ import { apiCall, newRequestId, onApiLog, getRecentApiLog, type ApiCallLogEntry 
 import { publishDataChange } from '../../services/dataChangeBus';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
+import { operatorNoteFor } from '../../services/operatorNote';
 import { intlLocaleTag, t } from '../../i18n';
 import './register.css';
 
@@ -43,6 +44,26 @@ interface RegisterByIsbnResult {
   copyCount: number;
 }
 
+// registerTitle_(school-patch-v1/Code.gs ~818)의 반환 모양 그대로 — 무ISBN 수동 등록(todo/16)이
+// createCopy:true로 함께 만든 첫 소장본의 barcode/copyId도 여기 실려온다.
+interface RegisterTitleResult {
+  titleId: string;
+  title: string;
+  isbn?: string;
+  copyId?: string;
+  barcode?: string;
+}
+
+// registerCopy_(school-patch-v1/Code.gs ~895)의 반환 모양 — 복본 일괄 발급(todo/16)이 이
+// 응답의 barcode 하나씩을 순차로 쌓는다.
+interface RegisterCopyResult {
+  copyId?: string;
+  barcode: string;
+  titleId?: string;
+  title?: string;
+  holdReady?: boolean;
+}
+
 type BookCondition = 'GOOD' | 'FAIR' | 'DAMAGED';
 
 // apiCall()의 payload 파라미터는 Record<string, unknown>이라 인덱스 시그니처가 필요하다
@@ -62,9 +83,35 @@ type RegisterPayload = {
   requestId: string;
 } & Record<string, unknown>;
 
+// 무ISBN 수동 등록(todo/16) payload — registerTitle_이 그대로 기대하는 키만 담는다. isbn은
+// 아예 넣지 않는다(payload.isbn 생략 시 normalizeIsbn_이 빈 문자열을 돌려줄 뿐 서버는 이 경로를
+// 전혀 구분하지 않는다 — "ISBN 없는 서지"는 그냥 isbn13이 빈 서지다).
+type ManualRegisterPayload = {
+  operator: string;
+  title: string;
+  subtitle: string;
+  authors: string;
+  publisher: string;
+  publishedYear: string;
+  categoryCodes: string;
+  description: string;
+  condition: BookCondition;
+  createCopy: true;
+  note: string;
+  requestId: string;
+} & Record<string, unknown>;
+
+type RegisterAction = 'registerByIsbn' | 'registerTitle';
+
 interface FailedEntry {
   requestId: string;
-  payload: RegisterPayload;
+  action: RegisterAction;
+  // 실패 목록 표시용으로 필요한 최소 정보만 최상위에 꺼내둔다(payload는 두 액션이 서로 다른
+  // 모양이라 유니온으로 두면 FailedList가 title/isbn을 꺼낼 때 unknown이 되어 JSX에 못 넣는다
+  // — DataTable 등 다른 곳의 관례처럼 "표시용 필드는 평평하게" 원칙을 따른다).
+  title: string;
+  isbn: string;
+  payload: Record<string, unknown>;
   reason: string;
 }
 
@@ -79,7 +126,22 @@ interface FormState {
   condition: BookCondition;
 }
 
-type Screen = 'scan' | 'lookup' | 'confirm' | 'saving' | 'result';
+// 무ISBN 수동 등록 전용 폼 — 사이드바 titleForm(Sidebar.html ~364)이 보여주는 필드 중 모바일
+// 한 화면에 맞는 부분집합(서명·저자 필수, 부제/출판사/발행년/분류코드/설명은 선택). ISBN
+// 조회 결과가 없으니 FormState(ISBN 흐름 전용)와 필드 구성이 달라 별도 타입으로 둔다 —
+// FormState를 확장하면 ISBN 흐름의 검증 로직(title만 필수)까지 손대야 해서 오히려 위험하다.
+interface ManualFormState {
+  title: string;
+  subtitle: string;
+  authors: string;
+  publisher: string;
+  publishedYear: string;
+  categoryCodes: string;
+  description: string;
+  condition: BookCondition;
+}
+
+type Screen = 'scan' | 'lookup' | 'confirm' | 'manualConfirm' | 'saving' | 'result';
 
 const EMPTY_FORM: FormState = {
   title: '',
@@ -89,6 +151,17 @@ const EMPTY_FORM: FormState = {
   publishedYear: '',
   pageCount: '',
   copyCount: '1',
+  condition: 'GOOD'
+};
+
+const EMPTY_MANUAL_FORM: ManualFormState = {
+  title: '',
+  subtitle: '',
+  authors: '',
+  publisher: '',
+  publishedYear: '',
+  categoryCodes: '',
+  description: '',
   condition: 'GOOD'
 };
 
@@ -185,13 +258,132 @@ function FailedList({ entries, onRetry }: { entries: FailedEntry[]; onRetry: (en
       {entries.map((entry) => (
         <div className="reg-failRow" key={entry.requestId}>
           <span>
-            {entry.payload.title || entry.payload.isbn} — {entry.reason}
+            {entry.title || entry.isbn} — {entry.reason}
           </span>
           <button type="button" onClick={() => onRetry(entry)}>
             {t('common.retry')}
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+// 복본 일괄 발급(todo/16 「등록 확장」) — "이 책 N권" 요청을 apiWebRegisterCopy_(action:
+// 'registerCopy') N번 순차 호출로 처리한다. 한 화면에서 title+최초 소장본 등록 직후(ISBN 경로든
+// 무ISBN 수동 경로든) 또는 "복본으로 추가"로 기존 서지에 붙었을 때나 모두 result 화면에 이미
+// titleId가 있으므로, 이 패널 하나가 세 경우 전부를 커버한다(각기 다른 화면을 새로 만들지
+// 않는다).
+//
+// 순차 호출: 서버 executeWrite_ 안 withWriteLock_이 모든 쓰기를 이미 직렬화하지만, 그와 별개로
+// 프론트가 하나씩 await해야만 "몇 번째 요청까지 성공했는지"를 안정적으로 추적해 실시간 진행률
+// ("3/5 발급 중…")과 부분 실패 시 "이미 발급된 것은 남겨두고 나머지만 재시도"를 구현할 수
+// 있다(Promise.all이면 어느 것이 실패했는지는 알아도 "몇 권째까지"는 알 수 없다).
+function BulkCopyPanel({
+  titleId,
+  operator,
+  onIssued
+}: {
+  titleId: string;
+  operator: string;
+  onIssued: (issuedCount: number) => void;
+}) {
+  const [countInput, setCountInput] = useState('5');
+  const [issued, setIssued] = useState<string[]>([]);
+  const [target, setTarget] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const runTo = useCallback(
+    async (newTarget: number) => {
+      setBusy(true);
+      setError('');
+      setTarget(newTarget);
+      let codes = issued;
+      const startedAt = codes.length;
+      for (let i = codes.length; i < newTarget; i++) {
+        const requestId = newRequestId();
+        const res = await apiCall<RegisterCopyResult>('registerCopy', {
+          titleKey: titleId,
+          operator,
+          note: operatorNoteFor(operator),
+          requestId
+        });
+        if (!res.ok) {
+          setIssued(codes);
+          setError(res.error.message || t('common.unknownError'));
+          setBusy(false);
+          if (codes.length > startedAt) onIssued(codes.length - startedAt);
+          return;
+        }
+        codes = [...codes, res.data.barcode];
+        setIssued(codes);
+      }
+      setBusy(false);
+      if (codes.length > startedAt) onIssued(codes.length - startedAt);
+    },
+    [issued, operator, titleId, onIssued]
+  );
+
+  const remaining = target - issued.length;
+  const canStartFresh = !busy && remaining <= 0;
+
+  return (
+    <div className="reg-bulkPanel panel">
+      <h2>{t('views.register.bulkHeading')}</h2>
+
+      {canStartFresh && (
+        <div className="reg-row2">
+          <div>
+            <label htmlFor="regBulkCount">{t('views.register.bulkCountLabel')}</label>
+            <input
+              id="regBulkCount"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={50}
+              value={countInput}
+              onChange={(e) => setCountInput(e.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void runTo(issued.length + Math.max(1, Math.min(50, Number(countInput) || 1)))}
+          >
+            {t('views.register.bulkIssueButton')}
+          </button>
+        </div>
+      )}
+
+      {busy && (
+        <div className="reg-bulkProgress">
+          <div className="reg-spinner" aria-hidden="true" />
+          <span>{t('views.register.bulkProgress', { done: issued.length, total: target })}</span>
+        </div>
+      )}
+
+      {!busy && error && remaining > 0 && (
+        <>
+          <div className="reg-errBanner" role="alert">
+            {t('views.register.bulkPartialError', { done: issued.length, total: target, reason: error })}
+          </div>
+          <button type="button" onClick={() => void runTo(target)}>
+            {t('views.register.bulkRetryRemaining', { remaining })}
+          </button>
+        </>
+      )}
+
+      {issued.length > 0 && (
+        <div className="reg-bulkIssued">
+          <h3>{t('views.register.bulkIssuedHeading', { count: issued.length })}</h3>
+          <p className="reg-bulkPencilHint">{t('views.register.bulkPencilHint')}</p>
+          <div className="reg-bulkList mono">
+            {issued.map((code) => (
+              <div key={code}>{code}</div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -216,6 +408,9 @@ export default function RegisterView({ shell }: ViewProps) {
 
   const [manualOpen, setManualOpen] = useState(false);
   const [manualValue, setManualValue] = useState('');
+
+  // 무ISBN 수동 등록(todo/16) — 위 lookup/form(ISBN 흐름 전용)과 분리된 자체 상태.
+  const [manualForm, setManualForm] = useState<ManualFormState>(EMPTY_MANUAL_FORM);
 
   const [errorBanner, setErrorBanner] = useState('');
   const [todayCount, setTodayCount] = useState<number>(readTodayCount);
@@ -285,7 +480,10 @@ export default function RegisterView({ shell }: ViewProps) {
       const reason = res.error.message || t('common.unknownError');
       setErrorBanner(t('views.register.errorSaveFailed', { reason }));
       setFailedList((prev) => {
-        const next = [...prev.filter((f) => f.requestId !== requestId), { requestId, payload, reason }];
+        const next = [
+          ...prev.filter((f) => f.requestId !== requestId),
+          { requestId, action: 'registerByIsbn' as const, title: payload.title, isbn: payload.isbn, payload, reason }
+        ];
         writeFailedList(next);
         return next;
       });
@@ -305,6 +503,49 @@ export default function RegisterView({ shell }: ViewProps) {
     setResult({ ...res.data, requestId });
     setScreen('result');
     // FRONTEND.md 대시보드 갱신 트리거 "트랜잭션 후" — dashboardData가 구독해 재조회한다.
+    publishDataChange();
+  }, []);
+
+  // 무ISBN 수동 등록(todo/16) 저장 — submitRegister와 같은 실패/성공 뼈대(진단 로그·실패
+  // 목록·오늘 카운터·result 화면·publishDataChange)를 따르지만 다른 action('registerTitle')과
+  // 다른 응답 모양(barcodes 배열이 아니라 barcode 하나)이라 별도 함수로 둔다.
+  const submitManualRegister = useCallback(async (requestId: string, payload: ManualRegisterPayload) => {
+    setErrorBanner('');
+    setScreen('saving');
+    const res = await apiCall<RegisterTitleResult>('registerTitle', payload);
+    if (!res.ok) {
+      const reason = res.error.message || t('common.unknownError');
+      setErrorBanner(t('views.register.errorSaveFailed', { reason }));
+      setFailedList((prev) => {
+        const next = [
+          ...prev.filter((f) => f.requestId !== requestId),
+          { requestId, action: 'registerTitle' as const, title: payload.title, isbn: '', payload, reason }
+        ];
+        writeFailedList(next);
+        return next;
+      });
+      setScreen('manualConfirm');
+      return;
+    }
+    setFailedList((prev) => {
+      const next = prev.filter((f) => f.requestId !== requestId);
+      writeFailedList(next);
+      return next;
+    });
+    setTodayCount((prev) => {
+      const next = prev + 1;
+      writeTodayCount(next);
+      return next;
+    });
+    setResult({
+      titleId: res.data.titleId,
+      title: res.data.title,
+      barcodes: res.data.barcode ? [res.data.barcode] : [],
+      created: true,
+      copyCount: 1,
+      requestId
+    });
+    setScreen('result');
     publishDataChange();
   }, []);
 
@@ -338,13 +579,53 @@ export default function RegisterView({ shell }: ViewProps) {
     await submitRegister(requestId, payload);
   }, [lookup, form, operator, submitRegister]);
 
+  // 무ISBN 수동 등록(todo/16) 저장 — 사이드바 titleForm과 같은 서버 로직(registerTitle_)을
+  // 그대로 쓰되, 이 폼은 서명·저자만 필수(handleSave의 title-only 필수 검증과 다르다 — ISBN
+  // 흐름은 여기서 손대지 않는다).
+  const handleManualSave = useCallback(async () => {
+    const title = manualForm.title.trim();
+    const authors = manualForm.authors.trim();
+    if (!title) {
+      setErrorBanner(t('views.register.errorTitleRequired'));
+      return;
+    }
+    if (!authors) {
+      setErrorBanner(t('views.register.errorAuthorsRequired'));
+      return;
+    }
+    if (!operator) {
+      setErrorBanner(t('views.register.errorNoOperator'));
+      return;
+    }
+    const requestId = newRequestId();
+    const payload: ManualRegisterPayload = {
+      operator,
+      title,
+      subtitle: manualForm.subtitle.trim(),
+      authors,
+      publisher: manualForm.publisher.trim(),
+      publishedYear: manualForm.publishedYear.trim(),
+      categoryCodes: manualForm.categoryCodes.trim(),
+      description: manualForm.description.trim(),
+      condition: manualForm.condition,
+      createCopy: true,
+      note: operatorNoteFor(operator),
+      requestId
+    };
+    await submitManualRegister(requestId, payload);
+  }, [manualForm, operator, submitManualRegister]);
+
   const retryFailed = useCallback(
     (entry: FailedEntry) => {
       // 재시도는 항상 같은 requestId — 서버 멱등(requestId)이 중복 저장을 흡수한다.
       // 자동 재시도는 하지 않는다: 사용자가 버튼을 눌러야만 여기 도달한다.
-      void submitRegister(entry.requestId, entry.payload);
+      if (entry.action === 'registerTitle') {
+        void submitManualRegister(entry.requestId, entry.payload as ManualRegisterPayload);
+      } else {
+        void submitRegister(entry.requestId, entry.payload as RegisterPayload);
+      }
     },
-    [submitRegister]
+    [submitRegister, submitManualRegister]
   );
 
   function handleCancel() {
@@ -355,12 +636,31 @@ export default function RegisterView({ shell }: ViewProps) {
     setScreen('scan');
   }
 
+  function handleManualCancel() {
+    setManualForm(EMPTY_MANUAL_FORM);
+    setErrorBanner('');
+    setScreen('scan');
+  }
+
   function handleNext() {
     setLookup(null);
     setResult(null);
     setForm(EMPTY_FORM);
+    setManualForm(EMPTY_MANUAL_FORM);
     setScreen('scan');
   }
+
+  // 복본 일괄 발급(todo/16) 완료 콜백 — submitRegister/submitManualRegister의 성공 경로와 같은
+  // 두 가지 부수효과(오늘 카운터·대시보드 갱신 트리거)를 그대로 따른다. 부분 실패라도 실제로
+  // 발급된 권수(issuedCount)만큼은 반영한다 — 이미 만들어진 소장본을 통계에서 숨기지 않는다.
+  const handleBulkIssued = useCallback((issuedCount: number) => {
+    setTodayCount((prev) => {
+      const next = prev + issuedCount;
+      writeTodayCount(next);
+      return next;
+    });
+    publishDataChange();
+  }, []);
 
   async function handleCopyDiagLog() {
     const text = JSON.stringify(diagLog, null, 2);
@@ -430,6 +730,102 @@ export default function RegisterView({ shell }: ViewProps) {
               </div>
             </div>
           )}
+          {!manualOpen && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setManualForm(EMPTY_MANUAL_FORM);
+                setErrorBanner('');
+                setScreen('manualConfirm');
+              }}
+            >
+              {t('views.register.manualRegisterButton')}
+            </button>
+          )}
+        </section>
+      )}
+
+      {screen === 'manualConfirm' && (
+        <section className="reg-confirm">
+          <div className="reg-confirmForm panel">
+            <div className="reg-titleRow">
+              <span className="reg-srcTag">{t('views.register.manualFormHeading')}</span>
+            </div>
+
+            <label htmlFor="regMTitle">{t('views.register.labelTitle')}</label>
+            <input
+              id="regMTitle"
+              value={manualForm.title}
+              onChange={(e) => setManualForm((f) => ({ ...f, title: e.target.value }))}
+            />
+
+            <label htmlFor="regMAuthors">{t('views.register.labelAuthorsRequired')}</label>
+            <input
+              id="regMAuthors"
+              value={manualForm.authors}
+              onChange={(e) => setManualForm((f) => ({ ...f, authors: e.target.value }))}
+            />
+
+            <label htmlFor="regMSubtitle">{t('views.register.labelSubtitle')}</label>
+            <input
+              id="regMSubtitle"
+              value={manualForm.subtitle}
+              onChange={(e) => setManualForm((f) => ({ ...f, subtitle: e.target.value }))}
+            />
+
+            <div className="reg-row2">
+              <div>
+                <label htmlFor="regMPublisher">{t('views.register.labelPublisher')}</label>
+                <input
+                  id="regMPublisher"
+                  value={manualForm.publisher}
+                  onChange={(e) => setManualForm((f) => ({ ...f, publisher: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label htmlFor="regMYear">{t('views.register.labelYear')}</label>
+                <input
+                  id="regMYear"
+                  inputMode="numeric"
+                  value={manualForm.publishedYear}
+                  onChange={(e) => setManualForm((f) => ({ ...f, publishedYear: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <label htmlFor="regMCategory">{t('views.register.labelCategoryCodes')}</label>
+            <input
+              id="regMCategory"
+              value={manualForm.categoryCodes}
+              onChange={(e) => setManualForm((f) => ({ ...f, categoryCodes: e.target.value }))}
+            />
+
+            <label htmlFor="regMDescription">{t('views.register.labelDescription')}</label>
+            <textarea
+              id="regMDescription"
+              value={manualForm.description}
+              onChange={(e) => setManualForm((f) => ({ ...f, description: e.target.value }))}
+            />
+
+            <label htmlFor="regMCondition">{t('views.register.labelCondition')}</label>
+            <select
+              id="regMCondition"
+              value={manualForm.condition}
+              onChange={(e) => setManualForm((f) => ({ ...f, condition: e.target.value as BookCondition }))}
+            >
+              <option value="GOOD">{t('views.register.conditionGood')}</option>
+              <option value="FAIR">{t('views.register.conditionFair')}</option>
+              <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
+            </select>
+
+            <button type="button" onClick={() => void handleManualSave()}>
+              {t('common.save')}
+            </button>
+            <button type="button" className="ghost" onClick={handleManualCancel}>
+              {t('views.register.cancelAndRescan')}
+            </button>
+          </div>
         </section>
       )}
 
@@ -573,6 +969,10 @@ export default function RegisterView({ shell }: ViewProps) {
             {t('views.register.nextScan')}
           </button>
         </section>
+      )}
+
+      {screen === 'result' && result && result.titleId && (
+        <BulkCopyPanel titleId={result.titleId} operator={operator} onIssued={handleBulkIssued} />
       )}
 
       <FailedList entries={failedList} onRetry={retryFailed} />

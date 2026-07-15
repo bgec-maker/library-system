@@ -1016,3 +1016,71 @@
   모호해진다. 그래서 `reservingTitleId`(전역 상태 하나)가 채워져 있으면 나머지 모든 행의
   「예약」 버튼을 비활성화한다 — book-detail(서지 하나짜리 화면이라 이 문제 자체가 없음)과
   달리 search는 목록 화면이라 이 조율이 필요했다.
+
+## todo/16 · 등록 확장 (2026-07-15)
+
+- **무ISBN 수동 등록을 기존 `confirm` 화면에 조건부 렌더링을 끼워넣는 대신 새 화면
+  (`Screen = 'manualConfirm'`)으로 분리**했다. `confirm` 화면은 `screen === 'confirm' && lookup`
+  가드로 시작해 `lookup.isbn`·`lookup.coverUrl`·`lookup.source`·`dupVisible`(ISBN 조회 시점
+  중복 판정) 등 ISBN 흐름 전용 상태를 곳곳에서 참조한다. 여기에 "ISBN 없음" 분기를 섞으면
+  ISBN 흐름 자체의 조건문이 더 복잡해져 "오늘과 똑같이 동작해야 한다"는 절대 요구를 깨뜨릴
+  위험이 커진다. 대신 무ISBN 전용 상태(`manualForm: ManualFormState`, `EMPTY_MANUAL_FORM`)와
+  전용 저장 경로(`submitManualRegister`→`registerTitle` 액션)를 완전히 분리해서, 기존
+  `lookup`/`form`/`submitRegister`/`handleSave`/`beginLookup` 중 단 한 줄도 고치지 않고 새
+  화면을 얹었다(diff에서 확인 가능 — 기존 함수 본문은 전부 그대로, `retryFailed`의 분기 추가와
+  `handleNext`/`FailedEntry` 타입 확장만 공유 지점). 대신 시각적 언어(같은 `.reg-confirmForm`·
+  `.reg-row2`·`.reg-srcTag` 클래스, 같은 라벨·버튼 배치)는 그대로 재사용해 "다른 화면인데
+  다르게 안 보이는" 상태를 노렸다.
+- **무ISBN 폼 필드는 사이드바 `titleForm`(`school-patch-v1/Sidebar.html` ~364행)의 부분집합만
+  노출**한다 — 서명·저자(필수) + 부제·출판사·발행년·분류 코드(`categoryCodes`, 쉼표 구분)·설명
+  (선택). 사이드바가 더 갖고 있는 판차(edition)·언어 코드·분류기호(classificationNo)·키워드는
+  뺐다 — 데스크톱 사이드바는 사서가 앉아서 정식으로 입력하는 자리지만, 이 화면은 "폰 한 화면"
+  이라는 todo의 완료 조건 자체가 입력 항목 밀도보다 손 빠른 등록을 우선한다고 읽었다. 뺀
+  필드들은 모두 `registerTitle_`이 이미 기본값(빈 문자열/`KOR`)으로 처리하므로 서버 쪽엔 아무
+  영향이 없다 — 나중에 필요해지면 폼에 입력 한 줄만 추가하면 된다.
+- **"복본 추가"(복본 일괄 발급) 패널을 별도 화면 없이 `result` 화면 하나에 통합**했다. todo
+  본문이 든 세 가지 진입 상황(① ISBN 경로로 새 서지+최초 소장본을 막 만든 직후, ② 무ISBN
+  수동 경로로 막 만든 직후, ③ ISBN 조회가 이미 있는 서지임을 알아 "복본으로 추가"를 거쳐 저장한
+  직후) 전부 `registerByIsbn_`/`registerTitle_`의 반환값에 `titleId`가 항상 실려 있고, 세 경우
+  모두 저장 성공 후 도달하는 화면이 이미 하나(`screen === 'result'`)로 합쳐져 있었다. 그래서
+  새 화면을 만들지 않고 `BulkCopyPanel`을 그 화면 아래 항상 붙였다 — 세 진입 경로를 구분하는
+  코드 자체가 필요 없어졌다(모두 `result.titleId`만 본다).
+- **"이 책 N권"의 N은 "이번에 새로 몇 권"이지 "총 몇 권"이 아니다** — 사용자가 입력창에 5를
+  넣고 발급을 누르면 지금까지 이 패널에서 이미 발급한 개수와 무관하게 5개가 새로 추가된다
+  (`BulkCopyPanel.runTo(issued.length + N)`). 부분 실패 후 "나머지 M개 재시도" 버튼만은 예외로
+  같은 목표(`target`)를 그대로 재요청한다 — todo 문구 "이미 발급된 것은 그대로 두고 나머지만
+  재시도"를 그대로 구현하려면 실패 시점의 목표를 기억해야 하기 때문이다.
+- **순차 호출(await 하나씩) — `Promise.all` 아님**. 서버 `executeWrite_`의 `withWriteLock_`이
+  모든 쓰기를 어차피 직렬화하므로 병렬로 쏴도 서버는 결국 순서대로 처리해 바코드가 서로
+  충돌하지는 않는다. 하지만 그러면 클라이언트 쪽에서 "몇 번째 요청이 성공/실패했는지"가
+  뒤섞여 실시간 진행률("3/5 발급 중…")과 부분 실패 시 "몇 권까지 확정됐는지"를 신뢰성 있게
+  보여줄 수 없다 — 이 UI 요구 자체가 순차 호출을 강제한다(`school-patch-v1/Code.gs`의
+  `apiWebRegisterCopy_` 주석에도 같은 근거를 남겼다).
+- **인쇄 연동은 이번 항목에서 넣지 않았다(스코프 밖으로 명시적으로 결정)** — todo 본문이
+  "당신 판단"이라고 남긴 지점. `shell.print()`/`PrintDocument`(`components/PrintDocument.tsx`)를
+  쓰려면 `libraryName`이 필요한데, 기존 사용처(inventory·reports)는 전부 `useDashboardData()`를
+  이미 구독 중인 화면이었다. register 뷰는 지금까지 대시보드 데이터를 전혀 참조하지 않는
+  의도적으로 가벼운 화면이고(`services/api.ts`·`scanBus`·`session`만 의존), 이 패널 하나를
+  위해 새 의존을 들이는 건 "발급된 바코드를 폰 화면에서 바로 보고 연필로 옮겨 적는다"는 이
+  기능의 실제 사용 동선(사서가 책과 폰을 나란히 두고 한 권씩 옮겨 적음 — 인쇄물을 들고 서가를
+  도는 동선이 아님)에 비해 이득보다 번들 비용·복잡도가 크다고 판단했다. 큰 굵은 모노스페이스
+  목록(`.reg-bulkList`, `clamp(1.1rem, 4.5vw, 1.6rem)`)으로 화면 자체의 가독성을 높이는 쪽으로
+  todo의 "연필 기입용" 요구를 충족했다. 나중에 "발급 목록을 인쇄해서 서가 담당끼리 나눠 든다"는
+  요구가 실제로 나오면 그때 `PrintDocument`를 얹으면 된다.
+- **웹앱 전용 wrapper의 `operationType` 문자열은 사이드바 wrapper와 다르게 새로 지었다**
+  (`apiWebRegisterTitle_`→`'CREATE_TITLE'`, `apiWebRegisterCopy_`→`'CREATE_COPY'` vs 사이드바
+  `apiRegisterTitle`/`apiRegisterCopy`의 `'REGISTER_TITLE'`/`'REGISTER_COPY'`) — todo 본문이
+  `apiWebRegisterTitle_`에 대해 `'CREATE_TITLE'`을 명시했고, 대칭을 위해 `apiWebRegisterCopy_`도
+  같은 명명 규칙(`CREATE_*`)으로 지었다. `executeWrite_`의 멱등 검사는 `requestId`가 실제로
+  같을 때만 `operationType` 일치를 요구하므로(`newRequestId()`가 매 호출 새 UUID를 만든다) 이
+  문자열이 사이드바 쪽과 달라도 충돌 가능성은 없다 — 다만 `18_SYS_OPERATIONS` 시트에서 폰 등록
+  기록과 사이드바 등록 기록을 구분해 조회하려는 사람에게는 오히려 도움이 된다(위쪽
+  `registerByIsbn_`도 자기 고유의 `'REGISTER_BY_ISBN'`을 쓰는 것과 같은 관례).
+- **`FailedEntry`의 `payload`를 `RegisterPayload | ManualRegisterPayload` 유니온이 아니라
+  `Record<string, unknown>` + 평평한 `title`/`isbn`/`action` 필드로 재구성**했다 — 실패 목록
+  UI(`FailedList`)는 표시에 `title`/`isbn`만 있으면 되는데, 유니온으로 두면
+  `ManualRegisterPayload`에는 `isbn` 키가 없어(`& Record<string, unknown>`로 흡수되긴 하지만)
+  `entry.payload.isbn`의 타입이 `unknown`이 되어 JSX 자식으로 못 넣는다. 재시도
+  (`retryFailed`)는 `entry.action`으로 분기해 `submitRegister`/`submitManualRegister` 중 맞는
+  쪽에 `payload`를 `as` 캐스트해 넘긴다 — 두 액션의 payload 모양은 서로 다르지만 저장이 실제로
+  일어나는 지점(각 `submit*` 함수)은 이미 타입이 확정된 자리라 캐스트가 안전하다.

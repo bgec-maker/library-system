@@ -230,7 +230,21 @@
       "errorInvalidIsbn": "Not a valid ISBN-13 (13 digits starting with 978/979, including check digit).",
       "errorSaveFailed": "Save failed — {reason} (try again or retry from the failed list)",
       "errorTitleRequired": "Title is required.",
-      "errorNoOperator": "No operator info — enter your login details in Settings."
+      "errorAuthorsRequired": "Authors are required.",
+      "errorNoOperator": "No operator info — enter your login details in Settings.",
+      "manualRegisterButton": "Register without ISBN",
+      "manualFormHeading": "Register a title without ISBN",
+      "labelAuthorsRequired": "Authors * (comma-separated)",
+      "labelCategoryCodes": "Category codes (comma-separated, optional)",
+      "labelDescription": "Description",
+      "bulkHeading": "Issue additional copies",
+      "bulkCountLabel": "How many more of this book? (1–50)",
+      "bulkIssueButton": "Issue",
+      "bulkProgress": "Issuing {done}/{total}…",
+      "bulkPartialError": "Stopped after {done}/{total} — {reason}",
+      "bulkRetryRemaining": "Retry remaining {remaining}",
+      "bulkIssuedHeading": "Issued barcodes ({count})",
+      "bulkPencilHint": "Copy each number onto its book in pencil"
     },
     "search": {
       "queryPlaceholder": "Search by title, author, or barcode — Korean initials work too (e.g. ㅊㅅㅈ)",

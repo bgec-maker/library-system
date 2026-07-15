@@ -230,7 +230,21 @@
       "errorInvalidIsbn": "올바른 ISBN-13이 아닙니다 (978/979로 시작하는 13자리, 체크숫자 포함).",
       "errorSaveFailed": "저장 실패 — {reason} (다시 시도하거나 실패 목록에서 재시도하세요)",
       "errorTitleRequired": "서명은 필수입니다.",
-      "errorNoOperator": "작업자 정보가 없습니다 — 설정에서 로그인 정보를 입력하세요."
+      "errorAuthorsRequired": "저자는 필수입니다.",
+      "errorNoOperator": "작업자 정보가 없습니다 — 설정에서 로그인 정보를 입력하세요.",
+      "manualRegisterButton": "ISBN 없이 수동 등록",
+      "manualFormHeading": "ISBN 없이 서지 등록",
+      "labelAuthorsRequired": "저자 * (쉼표로 구분)",
+      "labelCategoryCodes": "분류 코드 (쉼표로 구분, 선택)",
+      "labelDescription": "설명",
+      "bulkHeading": "복본 추가 발급",
+      "bulkCountLabel": "이 책 몇 권 더? (1~50)",
+      "bulkIssueButton": "발급",
+      "bulkProgress": "{done}/{total} 발급 중…",
+      "bulkPartialError": "{done}/{total} 발급 후 오류 — {reason}",
+      "bulkRetryRemaining": "나머지 {remaining}권 재시도",
+      "bulkIssuedHeading": "발급된 등록번호 ({count}건)",
+      "bulkPencilHint": "각 번호를 해당 책에 연필로 옮겨 적으세요"
     },
     "search": {
       "queryPlaceholder": "서명·저자·등록번호로 검색 — 초성도 가능(예: ㅊㅅㅈ)",
