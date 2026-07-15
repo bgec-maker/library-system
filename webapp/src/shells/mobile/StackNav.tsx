@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
+import { ViewErrorBoundary } from '../../components/ViewErrorBoundary';
 import { t } from '../../i18n';
 
 // FRONTEND.md '모바일 셸 — 탭 + 스택': book-detail 같은 push 전용 뷰(registry의 mobile.tab이 없는 뷰)를
@@ -139,9 +140,16 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
         <span className="m-stack-spacer" aria-hidden="true" />
       </header>
       <div className="m-stack-body">
-        <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
-          <Comp shell={shell} params={top.params} />
-        </Suspense>
+        {/* todo/25 — 뷰 크래시가 탭바·스택 전체가 아니라 이 화면 하나만 죽이게 격리한다.
+            key={top.key}는 스택 항목마다 이미 고유(위 push()에서 발급)하므로, 뒤로 갔다 다른
+            화면으로 넘어가면 이전 화면의 크래시 상태가 새 화면으로 새지 않고 바운더리째
+            새로 만들어진다. "창" 개념이 없는 모바일이라 onReopen 없이 내부 리마운트만으로
+            충분하다(Window.tsx의 onReopen과 대응). */}
+        <ViewErrorBoundary key={top.key}>
+          <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
+            <Comp shell={shell} params={top.params} />
+          </Suspense>
+        </ViewErrorBoundary>
       </div>
     </div>
   );

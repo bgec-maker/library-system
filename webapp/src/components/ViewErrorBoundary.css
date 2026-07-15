@@ -1,0 +1,43 @@
+/* components/ViewErrorBoundary.css — todo/25 뷰 크래시 폴백. 새 시각 언어를 만들지 않는다
+   (DESIGN.md): 중앙 정렬 레이아웃은 DataTable.css의 .data-table-empty와 같은 결, 아이콘 색은
+   dash-error/reports-error가 이미 쓰는 --fail 강조를 재사용. 카드 테두리는 .panel(base.css)
+   그대로. */
+.view-error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 160px;
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+}
+
+.view-error-boundary-icon {
+  color: var(--fail);
+}
+
+.view-error-boundary-message {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.view-error-boundary-detail {
+  max-width: 480px;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+
+.view-error-boundary-detail summary {
+  cursor: pointer;
+}
+
+.view-error-boundary-detail pre {
+  margin-top: var(--sp-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  font-family: var(--mono);
+}

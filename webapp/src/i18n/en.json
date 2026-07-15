@@ -137,6 +137,11 @@
       "prevPage": "Previous page",
       "nextPage": "Next page",
       "pageStatus": "Page {page} of {totalPages} ({total} total)"
+    },
+    "viewErrorBoundary": {
+      "message": "This screen ran into an error.",
+      "reopen": "Reopen",
+      "detailSummary": "Error details"
     }
   },
   "views": {

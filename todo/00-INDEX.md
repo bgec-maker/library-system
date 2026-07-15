@@ -29,7 +29,7 @@
 - [x] 22 sidebar-i18n — 사이드바 한/영 (P7)
 - [x] 23 annual-reset — 리셋 마법사 + 학생 CSV + LOANS 아카이브
 - [x] 24 annual-report — R3 연간 운영 보고서
-- [ ] 25 hygiene — operator 서버 주입 + 에러 바운더리 + 오프라인 큐 검증
+- [x] 25 hygiene — operator 서버 주입 + 에러 바운더리 + 오프라인 큐 검증
 - [ ] 26 settings-view — 정책·설정 읽기 + 무결성 점검 버튼
 - [ ] 27 e2e-ci — Playwright 스모크 CI 상주
 

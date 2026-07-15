@@ -3,6 +3,7 @@ import { ChevronRight, Settings } from 'lucide-react';
 import type { ShellContext, ToastKind, ViewId, ViewMeta } from '../../types';
 import { getViewMeta, mobileTabViews, moreMenuViews } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
+import { ViewErrorBoundary } from '../../components/ViewErrorBoundary';
 import { useSession } from '../../services/session';
 import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
 import { setScanRoute, subscribeScan } from '../../services/scanBus';
@@ -278,9 +279,14 @@ export default function MobileShell() {
           {activeTabId === 'more' ? (
             <MoreMenuScreen items={moreList} onOpen={handleMoreOpen} />
           ) : (
-            <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
-              {ActiveComp && <ActiveComp shell={tabShell} params={activeTabParams} />}
-            </Suspense>
+            // todo/25 — StackNav.tsx와 같은 이유로 활성 탭 뷰도 격리한다: 탭 전환 시 activeTabId가
+            // 바뀌므로 key={activeTabId}만으로 이전 탭의 크래시 상태가 다음 탭으로 새지 않는다
+            // (StackNav의 key={top.key}와 같은 결 — "창" 개념이 없어 onReopen 불필요).
+            <ViewErrorBoundary key={activeTabId}>
+              <Suspense fallback={<div className="m-shell-loading">{t('common.loading')}</div>}>
+                {ActiveComp && <ActiveComp shell={tabShell} params={activeTabParams} />}
+              </Suspense>
+            </ViewErrorBoundary>
           )}
         </main>
         <StackNav ref={stackNavRef} onOpen={openFn} toast={toastFn} onDepthChange={handleStackDepthChange} />

@@ -3247,19 +3247,42 @@ function apiCopyStatus_(payload) {
   };
 }
 
+// 웹앱 쓰기 액션 공통 — todo/25 위생 항목 1. 프론트(api.ts apiCall())가 모든 쓰기 요청에
+// payload.operator를 자동으로 실어 보내지만, 그 값을 note에 남기는 걸 개별 화면이 깜빡해도(기존
+// 관례처럼 operatorNoteFor()/operatorNote() 호출을 빠뜨려도) 감사 로그에 작업자가 남도록 서버
+// 쪽에서 한 번 더 보장하는 안전망이다. 순수 함수(GAS 전용 API 미사용, cleanText_ 등 다른 헬퍼도
+// 참조하지 않음)라 이 함수만 따로 복사해 plain node로 격리 검증 가능하다(docs/ASSUMPTIONS.md
+// `## todo/25` 참고 — services/choseong.ts 알고리즘을 node -e로 독립 검증했던 것과 같은 방식).
+// checkout_/return_ 등 보호 대상 함수는 이 함수의 존재 자체를 모른다 — 아래 11개 apiWeb* 래퍼가
+// executeWrite_를 부르기 "직전"에만 payload를 한 번 통과시킨다(래퍼 본문 1줄 추가, 보호 함수
+// 무수정). payload.note에 operator 문자열이 이미 부분 문자열로 들어있으면(프론트가 이미
+// operatorNoteFor()로 채워 보낸 경우) 그대로 두고 중복 추가하지 않는다.
+function ensureOperatorNote_(payload) {
+  var operator = typeof payload.operator === 'string' ? payload.operator.trim() : '';
+  if (!operator) return payload;
+  var note = typeof payload.note === 'string' ? payload.note : '';
+  if (note.indexOf(operator) !== -1) return payload;
+  payload.note = note ? (note + ' · ' + operator) : operator;
+  return payload;
+}
+
 // 웹앱용 대출/반납 — 사이드바 apiCheckout/apiReturn과 같은 패턴으로 executeWrite_·checkout_·return_을
 // 그대로 재사용한다(runApi_ 래핑은 doPost가 담당하므로 여기서 이중 래핑하지 않는다).
 // 작업자 식별은 registerByIsbn과 동일: Web App은 소유자 권한으로 실행되므로 payload.operator를
-// note에 남기는 건 프론트 몫(웹앱이 note에 '웹앱 · <operator>'를 담아 보낸다).
+// note에 남기는 건 1차로 프론트 몫이다(웹앱이 note에 '웹앱 · <operator>'를 담아 보낸다) —
+// todo/25부터는 위 ensureOperatorNote_가 그 값을 executeWrite_ 직전에 한 번 더 보장하는
+// 서버 쪽 2차 안전망을 더한다.
 function apiWebCheckout_(payload) {
-  return executeWrite_('CHECKOUT', payload || {}, function(actor, requestId, transaction) {
-    return checkout_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('CHECKOUT', payload, function(actor, requestId, transaction) {
+    return checkout_(payload, actor, requestId, transaction);
   });
 }
 
 function apiWebReturn_(payload) {
-  return executeWrite_('RETURN', payload || {}, function(actor, requestId, transaction) {
-    return return_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('RETURN', payload, function(actor, requestId, transaction) {
+    return return_(payload, actor, requestId, transaction);
   });
 }
 
@@ -3269,14 +3292,16 @@ function apiWebReturn_(payload) {
 // cancelReservation_ 본문은 이 항목에서 전혀 수정하지 않는다(절대 규칙) — payload 키(memberKey·
 // titleKey / reservationId)도 그 함수들이 이미 기대하는 이름을 그대로 쓴다.
 function apiWebReserve_(payload) {
-  return executeWrite_('RESERVE', payload || {}, function(actor, requestId, transaction) {
-    return reserve_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('RESERVE', payload, function(actor, requestId, transaction) {
+    return reserve_(payload, actor, requestId, transaction);
   });
 }
 
 function apiWebCancelReservation_(payload) {
-  return executeWrite_('CANCEL_RESERVATION', payload || {}, function(actor, requestId, transaction) {
-    return cancelReservation_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('CANCEL_RESERVATION', payload, function(actor, requestId, transaction) {
+    return cancelReservation_(payload, actor, requestId, transaction);
   });
 }
 
@@ -3292,20 +3317,23 @@ function apiWebCancelReservation_(payload) {
 // 결과를 웹앱 화면에 드러내는 일이다(프론트가 markLost 응답의 replacementFineAmount로 안내
 // 토스트를 띄운다 — services/loanActionsData.ts·views/book-detail/index.tsx 참고).
 function apiWebRenew_(payload) {
-  return executeWrite_('RENEW', payload || {}, function(actor, requestId, transaction) {
-    return renew_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('RENEW', payload, function(actor, requestId, transaction) {
+    return renew_(payload, actor, requestId, transaction);
   });
 }
 
 function apiWebMarkLost_(payload) {
-  return executeWrite_('MARK_LOAN_LOST', payload || {}, function(actor, requestId, transaction) {
-    return markLoanLost_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('MARK_LOAN_LOST', payload, function(actor, requestId, transaction) {
+    return markLoanLost_(payload, actor, requestId, transaction);
   });
 }
 
 function apiWebPayFine_(payload) {
-  return executeWrite_('PAY_FINE', payload || {}, function(actor, requestId, transaction) {
-    return payFine_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('PAY_FINE', payload, function(actor, requestId, transaction) {
+    return payFine_(payload, actor, requestId, transaction);
   });
 }
 
@@ -3315,8 +3343,9 @@ function apiWebPayFine_(payload) {
 // 추가하는 함수라(기존 함수 수정 금지 규칙과 무관, 순수 추가) 별도 "손대지 않는다" 주석이
 // 필요 없다 — payload 키는 updateCopyStatus_와 동일하게 copyKey(바코드 또는 copy_id) 하나뿐.
 function apiWebInventoryScan_(payload) {
-  return executeWrite_('INVENTORY_SCAN', payload || {}, function(actor, requestId, transaction) {
-    return inventoryScan_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('INVENTORY_SCAN', payload, function(actor, requestId, transaction) {
+    return inventoryScan_(payload, actor, requestId, transaction);
   });
 }
 
@@ -4505,14 +4534,16 @@ function registerByIsbn_(payload, actor, requestId, transaction) {
 // (2) "발급 중 3/5" 같은 실시간 진행률 표시와 부분 실패 시 "이미 발급된 것은 그대로 두고 나머지만
 // 재시도"를 프론트가 구현하려면 각 호출의 성공/실패를 즉시 알아야 한다.
 function apiWebRegisterTitle_(payload) {
-  return executeWrite_('CREATE_TITLE', payload || {}, function(actor, requestId, transaction) {
-    return registerTitle_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('CREATE_TITLE', payload, function(actor, requestId, transaction) {
+    return registerTitle_(payload, actor, requestId, transaction);
   });
 }
 
 function apiWebRegisterCopy_(payload) {
-  return executeWrite_('CREATE_COPY', payload || {}, function(actor, requestId, transaction) {
-    return registerCopy_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('CREATE_COPY', payload, function(actor, requestId, transaction) {
+    return registerCopy_(payload, actor, requestId, transaction);
   });
 }
 
@@ -4632,8 +4663,9 @@ function enrichBibliographicBatch_(payload, actor, requestId, transaction) {
 // 호출해도 기본 상한(200건)으로 동작). 26번 항목 이전에는 아래 runBibliographicEnrichment()
 // (사이드바 관리 메뉴)로 오늘 바로 실행/시연할 수 있다.
 function apiWebEnrichBibliographic_(payload) {
-  return executeWrite_('ENRICH_BIBLIOGRAPHIC', payload || {}, function(actor, requestId, transaction) {
-    return enrichBibliographicBatch_(payload || {}, actor, requestId, transaction);
+  payload = ensureOperatorNote_(payload || {});
+  return executeWrite_('ENRICH_BIBLIOGRAPHIC', payload, function(actor, requestId, transaction) {
+    return enrichBibliographicBatch_(payload, actor, requestId, transaction);
   });
 }
 

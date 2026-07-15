@@ -1885,3 +1885,175 @@
   재사용**했다. 회수 쪽지(R1-4)처럼 형태가 완전히 다른 레이아웃(절취선 등)이 필요하지 않다고
   판단했다 — 이 리포트는 담임 리포트(R1-2)와 마찬가지로 "표+요약 문단"의 조합으로 충분히
   표현되는 문서라 `styles/print.css`를 건드리지 않았다.
+
+---
+
+## todo/25 · 위생 묶음 (2026-07-15)
+
+세 항목 모두 "기존에 검증된 흐름을 건드리지 않고 안전망만 얹는다"는 같은 원칙을 공유한다 —
+각각 판단 근거를 남긴다.
+
+### 항목 1 — operator 서버 강제
+
+`Code.gs`에 새 순수 함수 `ensureOperatorNote_`(3260행대)를 추가하고, 이미 존재하던 11개
+`apiWeb*` 쓰기 래퍼(`apiWebCheckout_`·`apiWebReturn_`·`apiWebReserve_`·
+`apiWebCancelReservation_`·`apiWebRenew_`·`apiWebMarkLost_`·`apiWebPayFine_`·
+`apiWebInventoryScan_`·`apiWebRegisterTitle_`·`apiWebRegisterCopy_`·
+`apiWebEnrichBibliographic_`)에 `payload = ensureOperatorNote_(payload || {});` 한 줄씩만
+추가했다 — `checkout_`/`return_`/`reserve_`/`cancelReservation_`/`renew_`/`markLoanLost_`/
+`payFine_`/`registerTitle_`/`registerCopy_`/`executeWrite_`(VERIFY.md 보호 목록)는 전부
+무수정이다. `apiRegisterByIsbn_`(4451행대, `registerByIsbn_` 호출)은 이 11개 목록에 없다 —
+`grep -n "executeWrite_("`로 전체 호출부를 확인했고, 그 함수는 이미 `registerByIsbn_` 내부에서
+`requiredText_(payload.operator, ...)`로 operator를 필수값으로 강제하는 자기 완결적 경로라
+`ensureOperatorNote_`이 손댈 이유도, 이중 주입 위험도 없다. `absorbManualEntries_`(todo/21)·
+`graduateStudents_`/`promoteAllStudents_`(todo/23)도 `apiWeb*` 래퍼를 거치지 않고
+`executeWrite_`를 직접 부르는 별도 경로라 이번 항목과 무관하다(각자 이미 확립된 note 관례를
+그대로 유지).
+
+`ensureOperatorNote_` 자체는 GAS 전용 API를 전혀 참조하지 않는 순수 함수라 통째로 복사해
+`node`로 격리 검증했다(입출력 쌍은 커밋 메시지에 남긴다) — `services/choseong.ts` 알고리즘을
+`node -e`로 독립 검증했던 것과 같은 방식.
+
+프론트 쪽은 `services/api.ts`의 `apiCall()`(190·206행)이 `useSession`에서 `operator`를 함께
+꺼내 `body = { action, token, operator, ...payload }`로 만든다 — `...payload`가 뒤에 오므로
+이미 `payload.operator`를 직접 채워 보내는 화면(`views/register/index.tsx`의 `registerByIsbn`
+흐름 등)은 기존 값이 그대로 이긴다. `views/loan-return/index.tsx`·`services/operatorNote.ts`의
+기존 `operatorNoteFor()`/`operatorNote()` 호출은 전혀 건드리지 않았다 — 이제 "화면이 note에
+operator를 깜빡 안 넣어도" 서버(`ensureOperatorNote_`)와 프론트(자동 `body.operator`) 두 겹
+안전망이 남는다.
+
+### 항목 2 — React ErrorBoundary
+
+새 컴포넌트 `components/ViewErrorBoundary.tsx`(클래스 컴포넌트 — 에러 바운더리는 훅으로 만들
+수 없다)를 추가하고, 뷰 컴포넌트가 실제로 마운트되는 **세 곳** 전부를 이걸로 감쌌다. 사용자가
+미리 준 조사는 두 곳(Window.tsx·StackNav.tsx)만 짚었지만, 구현 중 `grep -rn
+"VIEW_COMPONENTS\["`로 재확인하니 `shells/mobile/MobileShell.tsx`(267행, 활성 탭 뷰
+`ActiveComp`)가 세 번째 마운트 지점이었다 — 탭 화면은 StackNav보다 더 자주 보이는 모바일의
+주 화면이라 빠뜨리면 이번 항목의 목표("뷰 크래시가 셸 전체를 못 죽인다")가 모바일 탭에서는
+지켜지지 않는다. 그래서 세 곳 모두 감쌌다:
+
+- **`shells/desktop/Window.tsx`(229~243행)**: `<div className="window-body">` 안, `<Suspense>`
+  바깥을 `<ViewErrorBoundary onReopen={...}>`로 감쌌다. 렌더 트리는
+  `DesktopShell → windows.map(w => <Window key={w.id}>) → 이 바운더리 → Suspense → ViewComponent`
+  다. 바운더리가 `ViewComponent`의 자손 트리에서 던진 예외만 잡는다는 게 React 에러 바운더리의
+  기본 계약이다 — `getDerivedStateFromError`/`componentDidCatch`는 오직 **자신의 `children`
+  서브트리**에서 발생한 예외에만 반응하고, 그 예외는 그 바운더리에서 멈춘다(부모로 다시
+  던져지지 않는다). `DesktopShell`은 `windows` 배열을 `.map`으로 순회해 창마다 **독립된**
+  `<Window>`·`<ViewErrorBoundary>` 인스턴스를 만들므로, 창 A의 `ViewComponent`가 던진 예외는
+  창 A의 바운더리에서 멈추고 창 B의 `<Window>`(다른 React 서브트리, 형제 컴포넌트)에도, 그
+  둘의 공통 부모인 `DesktopShell`이 그리는 `<Dock>`에도 전파될 수 없다 — React가 예외를
+  부모로 전파하는 유일한 경로는 "이 서브트리를 감싸는 가장 가까운 에러 바운더리를 찾아
+  위로 리스로우"뿐인데, 창 A의 트리 안에 바운더리가 이미 있으므로 거기서 잡히고 멈춘다.
+  "다시 열기" 버튼(`handleReopen`)은 (1) `onReopen`으로 넘긴 `closeWindow(win.id)` +
+  `openWindow(win.viewId, win.params)`를 실행해 이 창을 완전히 새 창으로 교체하고(같은
+  `useWindowStore` 메커니즘, 병렬 닫기/열기 경로 신설 없음), (2) 바운더리 자신의 `resetKey`도
+  올려 둔다.
+- **`shells/mobile/StackNav.tsx`(142~152행)**: `<div className="m-stack-body">` 안을
+  `<ViewErrorBoundary key={top.key}>`로 감쌌다. `top.key`는 `push()`가 발급하는 스택 항목별
+  고유값(93행대)이라, 스택 최상단이 바뀌면(뒤로가기·새 push) React가 `key`가 바뀐 걸 보고
+  이전 `ViewErrorBoundary` 인스턴스를 폐기하고 새로 만든다 — 크래시 상태가 다음 화면으로 새지
+  않는다. `StackNav`는 스택 최상단 1개만 렌더하고(`if (stack.length === 0) return null`) 이
+  컴포넌트 자체가 `MobileShell`이 그리는 헤더(`m-stack-header`)와 형제가 아니라 그 헤더를
+  포함한 `m-stack-overlay` 안에 함께 있으므로, 안(바운더리 안)에서 난 예외가 바깥의
+  `m-stack-header`(뒤로가기 버튼)까지 지우지 않는다는 것도 같은 "바운더리는 자신의 children만
+  본다"는 계약으로 보장된다.
+- **`shells/mobile/MobileShell.tsx`(278~289행, 새로 찾은 세 번째 지점)**: 활성 탭 렌더를
+  `<ViewErrorBoundary key={activeTabId}>`로 감쌌다 — StackNav와 같은 논리(탭 전환 시
+  `activeTabId`가 바뀌어 바운더리가 통째로 재생성된다). 이 바운더리는 `<main
+  className="m-shell-main">` 안에만 있고, `<TabBar>`(하단 탭바)·`<StackNav>`·`<ToastHost>`는
+  전부 `m-shell` 트리에서 이 바운더리의 형제이므로 탭 뷰의 크래시가 탭바 자체를 지우지
+  않는다(탭바가 살아있어야 다른 탭으로 이동해 벗어날 수 있다).
+
+**수동 검증 절차** (이 환경엔 브라우저가 없어 직접 실행할 수 없다 — 데모 리허설 절차,
+todo/23 ASSUMPTIONS 항목과 같은 형식):
+  1. `npm run dev`로 개발 서버를 띄운다.
+  2. 아무 뷰(예: `views/catalog/index.tsx`) 최상단에 임시로 `if (Math.random() < 2) throw new
+     Error('디버그용 강제 크래시');`를 렌더 본문에 넣는다(항상 참이라 렌더마다 던짐).
+  3. **데스크톱**: 그 뷰를 창으로 연다 → 그 창 안에만 "이 화면에서 오류가 발생했습니다" +
+     "다시 열기" 버튼이 보이고, 도크·이미 열려 있던 다른 창들은 그대로 정상 동작하는지 확인.
+     "다시 열기" 클릭 → 창이 닫혔다 같은 뷰로 새 창이 열리는지(그래도 임시 throw가 남아있으면
+     다시 같은 폴백이 뜨는 게 정상 — throw를 지우기 전까지는 계속 크래시해야 맞다) 확인.
+  4. **모바일 폭**(또는 실제 모바일 UA): 그 뷰가 탭이면 탭을 누르고, push 전용 뷰면 다른
+     화면에서 열어(`shell.open`) → 탭바/헤더 뒤로가기 버튼은 그대로 있고 본문에만 폴백이
+     보이는지 확인. 탭인 경우 다른 탭으로 전환했다가 되돌아오면(또는 push인 경우 뒤로 갔다
+     다시 열면) `key` 교체로 바운더리가 재생성돼 다시 시도되는지 확인.
+  5. 임시 throw를 제거하고 원래대로 렌더되는지 확인한 뒤 되돌린다.
+
+### 항목 3 — 오프라인 큐 실전 검증
+
+**죽은 코드 발견(정직하게 기록)**: `services/offlineQueue.ts`가 내보내는
+`enqueueAndSend`/`flushQueue`/`getPendingCount`/`getPendingEntries`/`onQueueChange` 중 어느
+것도 이 파일 밖에서 호출되지 않는다 — `grep -rn "enqueueAndSend\|flushQueue\|getPendingCount\|
+getPendingEntries\|onQueueChange" webapp/src`로 확인했고, 매치는 전부 `offlineQueue.ts` 자기
+자신(정의·`window.addEventListener('online', ...)` 내부 호출)뿐이다. 실제 쓰기 화면
+(`loan-return/index.tsx` 등)은 `apiCall`/`retryApiCall`을 직접 부르고 UI 상태를
+`pushOp`/`patchOp`로 로컬 관리한다 — 이 큐 모듈을 전혀 거치지 않는다. **이 모듈은 고립된
+상태로는 맞게 구현돼 있지만(아래 트레이스 참고), 아직 어디에도 배선되지 않았다.** 이 항목의
+범위는 "실전 검증"이지 배선이 아니므로(이미 검증된 checkout_/return_ 등 핵심 흐름에 새 경로를
+꽂는 건 별도 판단이 필요한 행동 변경 — 회귀 위험), **의도적으로 배선하지 않는다.** 어디에·언제
+꽂을지는 향후 별도 todo가 결정할 일로 남긴다.
+
+**모듈 자체의 정합성 트레이스** (실행 중인 브라우저 없이 코드 재독으로 확인):
+
+- **적재가 네트워크 시도보다 먼저 일어난다.** `enqueueAndSend`(63~78행)는
+  `await put(entry)`(IndexedDB 쓰기) + `await notify()`를 `apiCall()` 호출보다 먼저 실행한다
+  — 그 사이 탭이 죽거나 iOS가 저장소를 비우기 전에 크래시해도, 요청은 이미 IndexedDB에
+  영속돼 있다(메모리에만 있다가 유실되는 창이 없다).
+- **"적재 즉시 전송을 시도"(파일 상단 3~4행 주석)가 실제로 구현돼 있다.** `put()` 직후 바로
+  `apiCall<T>(action, payload)`를 호출한다 — 큐에 넣고 `flushQueue()`(온라인 이벤트)를
+  기다리기만 하는 게 아니라, 적재한 그 자리에서 즉시 한 번 보낸다. 이게 iOS의 "미사용 7일 후
+  저장소 축출" 위험과 맞물리는 이유: 온라인 상태에서 정상 호출된 요청은 성공하면 바로
+  `remove()`돼 큐에 "미사용 채로" 남지 않는다 — 축출 위험에 노출되는 건 오직 그 즉시 전송이
+  실패한(오프라인 등) 요청뿐이고, 그 요청들은 정의상 "다음 온라인 복귀까지는 어차피 못 보낸다"는
+  본질적 제약이 있어 이 설계가 할 수 있는 최선이다.
+- **성공(`result.ok`) 또는 네트워크 이외 사유 실패는 큐에서 제거한다.** `enqueueAndSend`
+  71~76행·`flushQueue` 84~85행 둘 다 `if (result.ok || result.error.code !== 'NETWORK_ERROR')
+  await remove(entry.id)` — 서버가 실제로 응답했지만 거부한 요청(예: `VALIDATION_ERROR`,
+  `MEMBER_SUSPENDED` 등 정상적 업무 규칙 거부)을 무한 재전송하지 않는다(파일 73행 주석 그대로:
+  "같은 requestId 무한 재전송은 정책상 금지, 사람이 다시 트리거해야 한다"). 큐에 남는 것은
+  오직 `NETWORK_ERROR`(서버에 닿지도 못한 경우)뿐이라 "온라인 복귀 시 재전송"이라는 큐의
+  존재 이유와 정확히 일치한다.
+- **재전송 시 서버 멱등이 중복을 흡수한다.** `enqueueAndSend`의 `entry.payload`(원본
+  `payload.requestId` 포함)를 그대로 IndexedDB에 저장하고, `flushQueue()`도 같은
+  `entry.payload`를 그대로 `apiCall()`에 넘긴다 — 적재 시점과 재전송 시점 사이에 `requestId`가
+  바뀌지 않는다. 이 requestId 재사용이 `executeWrite_`의 기존 멱등 체계(`payload_hash` 비교 +
+  `COMPLETED`면 `idempotent: true` 반환, 2500행대, 무수정)와 만나 "오프라인 중 실제로는 서버에
+  닿아 처리됐는데 클라이언트만 실패로 착각한 요청"까지도 중복 실행 없이 안전하게 흡수된다 —
+  이 멱등 로직 자체는 이번 항목에서 새로 검증한 게 아니라 기존에 이미 검증된 것을 그대로
+  신뢰한다.
+- **H3(2026-07-15, api.ts 진단 필드 추가) 이후에도 이 계약이 유지된다.** H3는 POST가
+  `fetch()` 단계에서 죽었을 때(`outcome === 'network'`) `READ_ONLY_ACTIONS`(api.ts 81~93행)에
+  속한 액션에 한해서만 GET 재시도를 붙였다. `offlineQueue.ts`가 다루는 11개 `apiWeb*` 쓰기
+  액션(`checkout`/`return`/`reserve`/`cancelReservation`/`renew`/`markLost`/`payFine`/
+  `inventoryScan`/`registerTitle`/`registerCopy`/`enrichBibliographic`)은 전부
+  `READ_ONLY_ACTIONS`에 없다(`grep -n` 목록 대조 확인) — 즉 쓰기 액션은 `performFetch`가
+  `fetch()` 자체에서 실패한 경우 항상 `resultCode: 'NETWORK_ERROR'`를 그대로 반환하고(GET
+  재시도 분기를 절대 타지 않는다), `offlineQueue.ts`의 `result.error.code !== 'NETWORK_ERROR'`
+  체크가 H3 이전과 똑같이 동작한다. H3가 새로 나눈 `network`/`timeout`/`error` 세 갈래 중
+  `timeout`(`CLIENT_TIMEOUT`, `AbortController` 타임아웃)과 `error`(HTTP는 왔지만
+  `ok:false`/파싱 실패)는 둘 다 `NETWORK_ERROR`가 아니므로 큐 쪽에서는 여전히 "제거 대상"으로
+  본다 — 이건 H3 이전부터 있던 동작이고, "서버가 어떤 형태로든 응답은 했다(또는 응답이 왔다고
+  볼 만한 실패다)면 무한 재전송하지 않는다"는 기존 정책과 일치해 회귀가 아니다.
+
+**수동 검증 절차**(이 큐가 실제로 배선되기 전까지는 브라우저 콘솔에서 이 모듈만 독립적으로
+확인하는 절차 — 배선 이후엔 실제 쓰기 화면으로 재현):
+  1. 개발자 도구 콘솔에서 `import('/src/services/offlineQueue.ts')`로 모듈을 불러온 뒤(또는
+     이미 배선된 화면이 생기면 그 화면에서), Network 탭을 **Offline**으로 전환한다(실제 폰
+     비행기 모드가 더 정확하지만 DevTools로도 `fetch()` 실패를 재현할 수 있다).
+  2. `enqueueAndSend('checkout', { requestId: crypto.randomUUID(), copyKey: '<테스트
+     바코드>', memberKey: '<테스트 회원번호>' })`를 호출 → 반환된 Promise가 `ok:false,
+     error.code:'NETWORK_ERROR'`로 resolve되는지, `getPendingCount()`가 1을 반환하는지 확인
+     (IndexedDB Application 탭에서 `lib-offline-queue` DB의 `requests` 스토어에 그 항목이
+     실제로 있는지도 확인).
+  3. Network 탭을 **Online**으로 되돌린다 → `window`의 `online` 이벤트가 발화해
+     `flushQueue()`가 자동 호출된다 — 잠시 후 `getPendingCount()`가 0으로 돌아오는지, 시트에
+     실제로 그 대출 1건만 생겼는지(중복 2건이 아닌지) 확인.
+  4. 같은 `requestId`로 2단계를 한 번 더 실행(수동 멱등 확인) → 서버가
+     `{ idempotent: true, ... }`를 반환하고 시트에 새 행이 추가되지 않는지 확인.
+  5. (iOS 실기기가 있다면) 오프라인 상태로 2단계를 실행한 뒤 앱을 완전히 종료하고 7일을
+     기다리는 대신, iOS 설정의 "저장 공간" 정리 또는 사파리 개발자 도구로 강제 축출을 흉내
+     — 축출 전에 상태가 온라인으로 바뀌어 즉시 전송·제거가 이미 끝나 있었는지, 혹은 축출
+     시나리오 자체가 "오프라인 상태가 7일 이상 지속"이라는, 이 도서관 앱의 실사용 패턴상 거의
+     발생하지 않는 극단값인지를 함께 판단 근거로 남긴다(이 자체가 이번 항목이 배선하지 않기로
+     한 이유 중 하나이기도 하다 — 실제 배선 전에 먼저 "언제 큐에 태울지" 정책을 정해야
+     한다).

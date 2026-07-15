@@ -137,6 +137,11 @@
       "prevPage": "이전 페이지",
       "nextPage": "다음 페이지",
       "pageStatus": "{page} / {totalPages} 페이지 (총 {total}건)"
+    },
+    "viewErrorBoundary": {
+      "message": "이 화면에서 오류가 발생했습니다.",
+      "reopen": "다시 열기",
+      "detailSummary": "오류 상세"
     }
   },
   "views": {

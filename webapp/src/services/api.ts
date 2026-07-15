@@ -187,7 +187,7 @@ export async function apiCall<T = unknown>(
   action: string,
   payload: Record<string, unknown> = {}
 ): Promise<ApiResult<T>> {
-  const { apiUrl, token } = useSession.getState();
+  const { apiUrl, token, operator } = useSession.getState();
   const requestId = typeof payload.requestId === 'string' ? payload.requestId : undefined;
   const payloadPreview = redactedPreview(payload);
   const startedAt = Date.now();
@@ -198,7 +198,12 @@ export async function apiCall<T = unknown>(
     return { ok: false, data: null, error: { code: 'NO_API_URL', message } };
   }
 
-  const body = { action, token, ...payload };
+  // todo/25 위생 항목 1 — Code.gs ensureOperatorNote_(3260행대 신규 추가, 순수 함수)의 프론트
+  // 짝: 모든 쓰기 요청 body에 operator를 자동으로 실어 보낸다. 이미 payload.operator를 직접
+  // 채워 보내는 화면(register/index.tsx의 registerByIsbn 등, requiredText_로 서버가 필수
+  // 요구)은 스프레드가 뒤에 와서 그 값이 그대로 이긴다 — 이 줄은 "깜빡한 화면"을 위한 안전망일
+  // 뿐, 이미 명시적으로 보내는 값을 덮어쓰지 않는다.
+  const body = { action, token, operator, ...payload };
   const postController = new AbortController();
   const postTimer = setTimeout(() => postController.abort(), TIMEOUT_MS);
   let postAttempt: FetchAttempt<T>;

@@ -4,6 +4,7 @@ import { Minus, PanelLeft, PanelRight, Pin, X } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
+import { ViewErrorBoundary } from '../../components/ViewErrorBoundary';
 import { pushToast } from '../../services/toastBus';
 import { subscribeLocale, t } from '../../i18n';
 import {
@@ -226,9 +227,19 @@ export function Window({ win }: WindowProps) {
         </button>
       </div>
       <div className="window-body">
-        <Suspense fallback={<div className="window-loading">{t('common.loading')}</div>}>
-          <ViewComponent shell={shell} params={win.params} />
-        </Suspense>
+        {/* todo/25 — 뷰 크래시가 이 창 하나만 죽이고 도크·다른 창은 살아남게 격리한다. "다시
+            열기"는 closeWindow/openWindow(이미 이 파일이 쓰는 useWindowStore 메커니즘 그대로)로
+            같은 뷰·params의 새 창을 연다 — 병렬 닫기/열기 경로를 새로 만들지 않는다. */}
+        <ViewErrorBoundary
+          onReopen={() => {
+            closeWindow(win.id);
+            openWindow(win.viewId, win.params);
+          }}
+        >
+          <Suspense fallback={<div className="window-loading">{t('common.loading')}</div>}>
+            <ViewComponent shell={shell} params={win.params} />
+          </Suspense>
+        </ViewErrorBoundary>
       </div>
       {RESIZE_DIRS.map((dir) => (
         <div key={dir} className={`window-resize window-resize--${dir}`} onPointerDown={onResizePointerDown(dir)} />
