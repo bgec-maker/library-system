@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search } from 'lucide-react';
+import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search, SlidersHorizontal } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -19,7 +19,8 @@ const TITLE_KEYS: Record<ViewId, string> = {
   'book-detail': 'registry.bookDetail.title',
   'recent-ops': 'registry.recentOps.title',
   reports: 'registry.reports.title',
-  reservations: 'registry.reservations.title'
+  reservations: 'registry.reservations.title',
+  settings: 'registry.settings.title'
 };
 
 export const VIEW_REGISTRY: ViewMeta[] = [
@@ -121,6 +122,20 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [640, 520] },
+    mobile: {}
+  },
+  {
+    // 설정(settings, todo/26) — POLICIES/CONFIG 읽기 전용 열람 + 무결성 점검·서지 보강 실행
+    // 버튼. LIBRARIAN 전용(STATION 세션엔 아예 노출되지 않음, viewsForRole()의 roles 필터가
+    // 유일한 접근 통제 지점 — 별도 가드를 새로 만들지 않는다). 아이콘은 SlidersHorizontal —
+    // MobileShell.tsx의 기어(Settings, 접속 설정 다이얼로그를 여는 셸 버튼)와 혼동되지 않도록
+    // 의도적으로 다른 아이콘을 골랐다(docs/ASSUMPTIONS.md `## todo/26` 참고).
+    id: 'settings',
+    title: t(TITLE_KEYS.settings),
+    icon: SlidersHorizontal,
+    roles: ['LIBRARIAN'],
+    scan: 'none',
+    desktop: { min: [560, 560] },
     mobile: {}
   }
 ];

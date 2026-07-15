@@ -1,0 +1,119 @@
+/* views/settings/settings.css — 설정 뷰(todo/26) 화면 배치만 담당(색상 리터럴 없음, 전부
+   var(--token)). 표 자체의 시각 규칙은 components/DataTable/DataTable.css가 전담한다. */
+
+.settings-view {
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-note {
+  padding: 14px 16px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.settings-error {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--fail);
+  color: #fff;
+  font-size: var(--fs-sm);
+}
+
+.settings-section {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.settings-section-head h2 {
+  font-size: var(--fs-lg);
+  color: var(--deep);
+}
+.settings-section-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-section-head-actions button {
+  padding: 6px 10px;
+  min-height: 32px;
+  font-size: var(--fs-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-status-block h2 {
+  font-size: var(--fs-md);
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.settings-trigger-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-trigger-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+.settings-trigger-list li.is-ok svg { color: var(--pass); }
+.settings-trigger-list li.is-warn svg { color: var(--fail); }
+.settings-trigger-status {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.settings-hint {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+.settings-action-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.settings-action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+.settings-action-card h3 {
+  font-size: var(--fs-md);
+  color: var(--ink);
+}
+.settings-action-card button {
+  align-self: flex-start;
+  min-height: 44px;
+}
+.settings-result {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

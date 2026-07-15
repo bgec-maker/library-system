@@ -2057,3 +2057,72 @@ getPendingEntries\|onQueueChange" webapp/src`로 확인했고, 매치는 전부 
      발생하지 않는 극단값인지를 함께 판단 근거로 남긴다(이 자체가 이번 항목이 배선하지 않기로
      한 이유 중 하나이기도 하다 — 실제 배선 전에 먼저 "언제 큐에 태울지" 정책을 정해야
      한다).
+
+## todo/26 · 설정 뷰 (2026-07-15)
+
+- **"마지막 백업" 표시는 이번 항목에서 뺐다 — 실제 백업 메커니즘이 없고, 대안(DriveApp 최종
+  수정 시각)은 새 OAuth 스코프를 요구했기 때문이다.** `grep -ri "backup\|백업"`을 이 코드베이스
+  전체에 돌려도 0건이다 — 대출·반납·등록 같은 트랜잭션 로그(15_AUDIT_LOG)는 있지만, 스프레드시트
+  자체를 주기적으로 복제·스냅샷하는 절차는 어디에도 구현돼 있지 않다. 초안은
+  `DriveApp.getFileById(getSpreadsheet_().getId()).getLastUpdated()`(파일 최종 수정 시각)를
+  "최근 수정 시각"이라는 정직한 라벨로 대신 보여주려 했으나, 이 호출에 필요한 Drive API
+  OAuth 스코프가 `appsscript.json`의 기존 5개 스코프(`spreadsheets.currentonly` ·
+  `script.container.ui` · `script.scriptapp` · `userinfo.email` ·
+  `script.external_request`)에 전혀 없었다 — `DriveApp`은 `SpreadsheetApp`과 별개 API 표면이라
+  컨테이너 바인딩 스프레드시트라도 별도 스코프 선언 없이는 호출 시 예외가 난다. 새 스코프
+  추가(`drive.readonly`, 최소 권한으로 선택)는 다음 Code.gs 재배포 시 스크립트 소유자에게
+  추가 권한 재동의 화면을 띄우는, 사용자가 미리 알지 못한 범위 확장이라 판단해 커밋 전에
+  AskUserQuestion으로 직접 물었다 — 사용자가 "최근 수정 시각 기능은 빼고 나머지만 커밋"을
+  선택했다. 그래서 `apiWebSettingsOverview_`에서 `lastModifiedText` 필드·DriveApp 호출을
+  전부 제거하고 `appsscript.json`의 스코프 추가도 되돌렸다 — 이 화면은 이제 POLICIES/CONFIG
+  읽기·트리거 설치 여부·무결성 점검·서지 보강 4가지만 제공한다. "마지막 백업"이 정말 필요하면
+  향후 별도 todo로 스코프 확장 여부를 다시 논의한다.
+
+- **doPost의 "추가만" 예외를 doGet의 내부 read 디스패치 if-chain에도 똑같이 적용**했다 —
+  task 노트는 "`READ_ONLY_ACTIONS`(api.ts)·`GET_ALLOWED_ACTIONS_`(Code.gs) 두 배열에만 추가하면
+  된다"고 적었지만, `GET_ALLOWED_ACTIONS_`는 doGet(3117행대)의 진짜 실행 분기가 아니라 그
+  앞단의 "이 action이 GET으로 허용되는가" 가드일 뿐이다(3128행: 배열에 없으면
+  `METHOD_NOT_ALLOWED`로 즉시 거부) — 가드를 통과한 뒤 실제로 데이터를 반환하는 건 그 아래
+  별도의 `if (action === '...') return apiWeb..._(params);` 체인(3133~3144행)이다. 이 체인에
+  새 액션 두 줄을 추가하지 않았다면 `settingsOverview`/`runIntegrityCheck`는 GET 가드는
+  통과하고도 실제 분기가 없어 `UNKNOWN_ACTION`으로 떨어졌을 것이다 — "GET·POST 두 경로가 항상
+  같은 동작을 보장한다"는 이 파일 자신의 주석(3106~3111행)과 어긋나고, api.ts의 H3
+  자동 GET 재시도(POST가 네트워크 계층에서 죽었을 때만 발동)가 이 두 액션에 한해서만 조용히
+  실패하는 비대칭이 생긴다. 그래서 다른 9개 GET 허용 액션과 완전히 같은 모양으로 실행 분기
+  두 줄을 doGet 안에도 추가했다 — "다른 모든 읽기 액션과 일관되게"라는 task 노트의 진짜 의도를
+  문자 그대로의 "배열 두 곳만"보다 우선했다. doPost·doGet의 기존 줄은 이 두 줄씩의 순수 추가
+  외에는 전혀 바뀌지 않았다(각 함수 끝의 `fail_('UNKNOWN_ACTION', ...)` 직전에만 삽입).
+
+- **POLICIES 매트릭스에서 `created_at`/`created_by`/`row_version` 3개 컬럼은 응답에서 뺐다** —
+  `13_POLICIES`의 18개 컬럼 중 나머지 15개(정책 ID·회원/자료 유형·대출/연장/예약/수령 관련
+  숫자 5종·연체료·적용 시작/종료일·상태·수정 시각/수정자)만 `apiWebSettingsOverview_`가
+  camelCase로 매핑해 내려준다. 이 3개는 "언제 처음 만들어졌는지"·"동시 편집 충돌 감지용
+  내부 버전 카운터"라 사서가 정책을 훑어볼 때 의미 있는 "매트릭스" 정보가 아니라고 판단했다 —
+  17_CONFIG는 컬럼이 6개뿐이라 전부(설정 키·값·값 유형·설명·수정 시각/수정자) 그대로 내려준다.
+
+- **무결성 점검(`runIntegrityCheck` 액션)은 읽기 전용이라 샘플 폴백 대상, 서지 보강
+  (`enrichBibliographic`)은 실제 쓰기라 샘플 폴백 대상이 아니다** — 서로 다른 두 액션을 한
+  화면에 같이 두면서 규약이 갈리는 점을 명시적으로 갈랐다(`services/settingsData.ts` 상단
+  주석 참고). `integrityCheck_()`는 `13_POLICIES` 등 원장을 읽기만 하고 아무것도 쓰지 않는다
+  (사이드바 `apiRunIntegrityCheck()`와 완전히 같은 함수를 재사용) — 그래서 UNKNOWN_ACTION일 때
+  `mocks/settings.ts`의 샘플로 폴백해도 "가짜 성공"이 아니다(사이드바 결과와 똑같은 모양의
+  아무 문제 없음 상태를 보여줄 뿐). 반면 서지 보강은 `executeWrite_`를 거쳐 `08_COPIES`·
+  `03_TITLES.cover_url`을 실제로 바꾸는 todo/17의 기존 쓰기 액션이라, 배포 전(UNKNOWN_ACTION)
+  이면 `reservationData.ts`의 createReservation/cancelReservation과 같은 방식으로 오류 토스트만
+  띄운다(성공한 척하지 않는다).
+
+- **`views/settings`의 "수정은 시트/사이드바" 안내문은 실제 메뉴 경로를 확인해서 적었다** —
+  `Code.gs`의 `onOpen()`(77행대)이 만드는 스프레드시트 메뉴 "📚 도서관 관리 ▸ 사이드바 열기"로
+  열리는 `Sidebar.html`을 직접 grep한 결과, "관리" 탭 안에 "기본 대출 정책 변경"
+  섹션(507~521행)이 실제로 존재해 `13_POLICIES`의 기본 정책(`DEFAULT_POLICY_ID`)을 그 UI로
+  바꿀 수 있다 — 그래서 정책 안내문은 이 경로를 구체적으로 언급한다. 반면 `17_CONFIG`를 편집할
+  수 있는 사이드바 UI는 어디에도 없다(`Sidebar.html`에 "CONFIG" 관련 문자열 0건) — 그래서 설정
+  값 안내문은 "17_CONFIG 시트를 직접 편집"이라고만 쓰고, 존재하지 않는 사이드바 경로를
+  지어내지 않았다. 실제로 존재하는지 확인하지 않은 URL(스프레드시트 링크 등)은 아예 만들지
+  않았다(task 노트 지시 그대로).
+
+- **설정 뷰 아이콘은 `SlidersHorizontal`(lucide-react)을 선택**했다 — `MobileShell.tsx`가 이미
+  `Settings` 아이콘을 접속 설정(API URL·토큰·operator) 다이얼로그를 여는 기어 버튼
+  (`m-shell-settings`, `openSessionSettings`)에 쓰고 있어, 레지스트리 뷰에도 같은 `Settings`를
+  쓰면 두 화면이 아이콘만으로 구분되지 않는다(하나는 셸 접속 설정, 하나는 도서관 정책/운영
+  설정 — 완전히 다른 개념). 완전히 다른 아이콘을 골라 혼동을 원천 차단했다.

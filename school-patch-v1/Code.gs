@@ -3066,6 +3066,8 @@ function doPost(e) {
       if (action === 'registerTitle') return apiWebRegisterTitle_(payload);
       if (action === 'registerCopy') return apiWebRegisterCopy_(payload);
       if (action === 'enrichBibliographic') return apiWebEnrichBibliographic_(payload);
+      if (action === 'settingsOverview') return apiWebSettingsOverview_(payload);
+      if (action === 'runIntegrityCheck') return apiWebIntegrityCheck_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -3111,7 +3113,10 @@ function doPost(e) {
 // 바꾸지 않았다 — 이 함수(doGet) 자체의 순수 추가일 뿐이다.
 var GET_ALLOWED_ACTIONS_ = [
   'lookupIsbn', 'copyStatus', 'reservations', 'dashboard', 'manualEntryPendingCount',
-  'report', 'viz', 'catalogSync', 'recentOps', 'titleDetail', 'unpaidFines'
+  'report', 'viz', 'catalogSync', 'recentOps', 'titleDetail', 'unpaidFines',
+  // todo/26 — settingsOverview·runIntegrityCheck 둘 다 읽기 전용(POLICIES/CONFIG 조회 ·
+  // integrityCheck_() 재사용, 상태 변경 없음)이라 이 배열에 추가한다(순수 추가, 위 11개는 그대로).
+  'settingsOverview', 'runIntegrityCheck'
 ];
 
 function doGet(e) {
@@ -3141,6 +3146,12 @@ function doGet(e) {
         if (action === 'recentOps') return apiWebRecentOps_(params);
         if (action === 'titleDetail') return apiWebTitleDetail_(params);
         if (action === 'unpaidFines') return apiWebUnpaidFines_(params);
+        // todo/26 — GET_ALLOWED_ACTIONS_에 추가한 두 액션도 doPost와 동일하게 실제로 실행되는
+        // 분기를 갖춰야 위 배열 등재("GET으로도 호출 가능")가 실제로 성립한다(그 배열은 가드일
+        // 뿐, 이 if-chain이 진짜 실행 경로다) — 다른 9개 read 액션과 같은 이유로 같은 함수를
+        // 참조 동일하게 재호출할 뿐이다(새 로직 없음, 위 줄들은 그대로).
+        if (action === 'settingsOverview') return apiWebSettingsOverview_(params);
+        if (action === 'runIntegrityCheck') return apiWebIntegrityCheck_(params);
         fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
       });
     } else {
@@ -4680,6 +4691,81 @@ function runBibliographicEnrichment() {
     SpreadsheetApp.getUi().ButtonSet.OK
   );
   return result;
+}
+
+// --------------------------- 웹앱 설정 뷰(todo/26, TASK_SETTINGS_VIEW) ---------------------------
+//
+// 완전히 새로운 함수/디스패치 라인 추가일 뿐 — integrityCheck_·executeWrite_·doPost의 기존 줄은
+// 단 하나도 고치지 않는다(절대 규칙 2번). doPost/doGet에 새 action 분기 한 줄씩만 덧붙이는 방식은
+// 이미 todo/05~25가 반복해 온 승인된 패턴(dashboard·report·viz·catalogSync·... 전부 이렇게
+// 추가됐다)을 그대로 따른 것이다.
+//
+// apiWebIntegrityCheck_ — 사이드바 apiRunIntegrityCheck()/runIntegrityCheck()와 똑같이
+// integrityCheck_()를 그대로 재사용한다(읽기 전용, 상태를 하나도 바꾸지 않음 — executeWrite_를
+// 거칠 이유가 없다). 사이드바 두 함수는 SpreadsheetApp.getUi().alert(...)로 결과를 보여주는데,
+// 그건 스프레드시트 UI 컨텍스트 전용 API라 Web App(doPost/doGet) 쪽에서 부르면 예외가 난다 —
+// 그래서 alert 없이 integrityCheck_()의 결과 객체만 그대로 반환하고, 얼럿을 대신할 화면(토스트 +
+// 문제 목록 표시)은 프론트(views/settings)가 담당한다.
+function apiWebIntegrityCheck_(payload) {
+  return integrityCheck_();
+}
+
+// apiWebSettingsOverview_ — 13_POLICIES·17_CONFIG를 읽기 전용으로 보여주고(수정은 시트/사이드바
+// 전용 — 이 액션은 쓰기 페이로드를 아예 받지 않는다), installLibraryTriggers()(1694행대)가 설치하는
+// 두 일배치 트리거(dailyLibraryMaintenance·dailyVizBatch)의 설치 여부를 함께 내려준다.
+//
+// "마지막 백업" 판단 근거 — docs/ASSUMPTIONS.md `## todo/26` 참고. 이 코드베이스엔 실제 백업
+// 메커니즘이 전혀 없다(grep으로 "backup"/"백업" 0건 확인). 초안은 DriveApp.getFileById(...)
+// .getLastUpdated()로 "최근 수정 시각"을 대신 보여주려 했으나, 이 프로젝트의 기존 5개
+// oauthScopes에는 Drive API 접근 권한이 전혀 없어(Sheets API 전용 스코프뿐) 새 스코프 추가가
+// 필요했다 — 스코프 확장은 다음 배포 시 재동의를 요구하는 사용자 결정 사항이라 판단해(CLAUDE.md
+// 🟡 "Code.gs 새 버전 배포"와 같은 결) 사용자에게 물었고, 사용자가 "최근 수정 시각 기능은 빼고
+// 나머지만 커밋"을 선택했다 — 그래서 이 필드 자체를 뺐다(DriveApp 미호출, 새 스코프 없음).
+// "마지막 백업"이 필요하면 향후 별도 todo로 별도 논의한다.
+function apiWebSettingsOverview_(payload) {
+  var policies = readTable_(LIBRARY_MVP.SHEETS.POLICIES).rows.map(function(row) {
+    return {
+      policyId: row.policy_id,
+      memberTypeCode: row.member_type_code || '',
+      materialTypeCode: row.material_type_code || '',
+      loanDays: Number(row.loan_days || 0),
+      maxOpenLoans: Number(row.max_open_loans || 0),
+      maxRenewals: Number(row.max_renewals || 0),
+      renewalDays: Number(row.renewal_days || 0),
+      maxReservations: Number(row.max_reservations || 0),
+      holdDays: Number(row.hold_days || 0),
+      overdueFeePerDay: Number(row.overdue_fee_per_day || 0),
+      activeFromText: formatDate_(row.active_from),
+      activeToText: formatDate_(row.active_to),
+      statusCode: row.status_code || '',
+      updatedAtText: formatDateTime_(row.updated_at),
+      updatedBy: row.updated_by || ''
+    };
+  });
+
+  var config = readTable_(LIBRARY_MVP.SHEETS.CONFIG).rows.map(function(row) {
+    return {
+      settingKey: row.setting_key || '',
+      settingValue: row.setting_value === undefined || row.setting_value === null ? '' : String(row.setting_value),
+      valueType: row.value_type || '',
+      description: row.description || '',
+      updatedAtText: formatDateTime_(row.updated_at),
+      updatedBy: row.updated_by || ''
+    };
+  });
+
+  // installLibraryTriggers()가 설치하는 핸들러 이름 2개만 상태를 확인한다(그 함수 자체는 여기서
+  // 호출하지 않는다 — 이 액션은 읽기 전용, 트리거를 새로 만들거나 지우지 않는다).
+  var triggerInstalled = { dailyLibraryMaintenance: false, dailyVizBatch: false };
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    var handlerName = trigger.getHandlerFunction();
+    if (Object.prototype.hasOwnProperty.call(triggerInstalled, handlerName)) triggerInstalled[handlerName] = true;
+  });
+  var triggers = Object.keys(triggerInstalled).map(function(handlerName) {
+    return { handlerFunction: handlerName, installed: triggerInstalled[handlerName] };
+  });
+
+  return { policies: policies, config: config, triggers: triggers };
 }
 
 // --------------------------- 수기입력 (todo/21, 구 PATCH_SPEC P3) ---------------------------

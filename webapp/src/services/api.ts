@@ -89,7 +89,11 @@ export const READ_ONLY_ACTIONS: readonly string[] = [
   'catalogSync',
   'recentOps',
   'titleDetail',
-  'unpaidFines'
+  'unpaidFines',
+  // todo/26 — settingsOverview·runIntegrityCheck 둘 다 읽기 전용(Code.gs GET_ALLOWED_ACTIONS_에도
+  // 같은 이름으로 추가됨) — 위 11개는 그대로.
+  'settingsOverview',
+  'runIntegrityCheck'
 ];
 
 interface FetchAttemptContext {

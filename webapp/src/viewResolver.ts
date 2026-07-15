@@ -13,5 +13,6 @@ export const VIEW_COMPONENTS: Record<ViewId, LazyExoticComponent<ComponentType<V
   'book-detail': lazy(() => import('./views/book-detail')),
   'recent-ops': lazy(() => import('./views/recent-ops')),
   reports: lazy(() => import('./views/reports')),
-  reservations: lazy(() => import('./views/reservations'))
+  reservations: lazy(() => import('./views/reservations')),
+  settings: lazy(() => import('./views/settings'))
 };

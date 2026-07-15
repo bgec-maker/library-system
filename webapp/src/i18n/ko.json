@@ -26,7 +26,8 @@
     "bookDetail": { "title": "도서 상세" },
     "recentOps": { "title": "최근 처리" },
     "reports": { "title": "리포트" },
-    "reservations": { "title": "예약 관리" }
+    "reservations": { "title": "예약 관리" },
+    "settings": { "title": "설정" }
   },
   "dashboard": {
     "title": "대시보드",
@@ -537,6 +538,70 @@
       "cancelDone": "{title} 예약을 취소했습니다.",
       "cancelFailed": "예약 취소 실패 — {message}",
       "arrivalHint": "대출·반납 화면에서 바코드 {barcode} · 회원 {member}을(를) 스캔하세요."
+    },
+    "settings": {
+      "readonlyNote": "정책·설정 값은 이 화면에서 조회만 가능합니다. 변경은 스프레드시트에서 직접 하세요 — 정책(13_POLICIES)은 시트를 편집하거나 사이드바 「관리」 탭의 「기본 대출 정책 변경」에서, 설정(17_CONFIG)은 17_CONFIG 시트를 직접 편집해서 바꿉니다.",
+      "refresh": "새로고침",
+      "loadFailed": "설정 정보를 불러오지 못했습니다 — {message}",
+      "policiesTitle": "대출 정책 (13_POLICIES)",
+      "policiesEmpty": "등록된 정책이 없습니다.",
+      "policiesSearchPlaceholder": "정책 검색…",
+      "policyCol": {
+        "policyId": "정책 ID",
+        "memberType": "회원 유형",
+        "materialType": "자료 유형",
+        "loanDays": "대출일수",
+        "maxOpenLoans": "동시대출 한도",
+        "maxRenewals": "연장 가능 횟수",
+        "renewalDays": "연장일수",
+        "maxReservations": "예약 한도",
+        "holdDays": "수령대기일수",
+        "overdueFee": "연체료(1일)",
+        "activeFrom": "적용 시작일",
+        "activeTo": "적용 종료일",
+        "status": "상태",
+        "updatedAt": "수정일시",
+        "updatedBy": "수정자"
+      },
+      "configTitle": "환경 설정 (17_CONFIG)",
+      "configEmpty": "등록된 설정값이 없습니다.",
+      "configSearchPlaceholder": "설정 키 검색…",
+      "configCol": {
+        "key": "키",
+        "value": "값",
+        "valueType": "값 유형",
+        "description": "설명",
+        "updatedAt": "수정일시",
+        "updatedBy": "수정자"
+      },
+      "triggersTitle": "일배치 트리거 상태",
+      "triggerInstalled": "설치됨",
+      "triggerNotInstalled": "미설치",
+      "triggerName": {
+        "dailyLibraryMaintenance": "일일 유지보수 (매일 04시)",
+        "dailyVizBatch": "시각화 캐시 배치 (매일 05시)"
+      },
+      "actionsTitle": "실행",
+      "integrityTitle": "무결성 점검",
+      "integrityHint": "회원·소장본·대출·예약 등 데이터 간 참조 무결성을 점검합니다(읽기 전용 — 데이터를 바꾸지 않습니다).",
+      "integrityRun": "무결성 점검 실행",
+      "integrityNoIssues": "문제를 찾지 못했습니다.",
+      "integrityIssuesFound": "{count}개 문제를 찾았습니다.",
+      "integrityFailed": "무결성 점검 실패 — {message}",
+      "integrityResultSummary": "{at} 기준 문제 {count}건",
+      "integrityTruncatedHint": "문제가 많아 상위 200건만 표시합니다.",
+      "issueCol": {
+        "sheet": "시트",
+        "row": "행",
+        "code": "코드",
+        "message": "내용"
+      },
+      "enrichTitle": "서지 일괄 보강",
+      "enrichHint": "표지·페이지수 등 서지 정보가 비어 있는 도서를 알라딘 API로 조회해 채웁니다(한 번 실행 시 최대 처리 건수는 서버 설정을 따릅니다).",
+      "enrichRun": "서지 보강 실행",
+      "enrichDone": "서지 보강 완료 — 신규 보강 {enriched}건 · 남은 빈 항목 {remaining}건",
+      "enrichFailed": "서지 보강 실패 — {message}",
+      "enrichResultSummary": "실행 전 빈 항목 {before}건 → 실행 후 {after}건 (처리 {processed}건 · 캐시히트 {cacheHit}건 · 실패 {failed}건)"
     }
   },
   "viz": {

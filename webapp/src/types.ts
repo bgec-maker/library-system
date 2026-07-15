@@ -13,7 +13,8 @@ export type ViewId =
   | 'catalog'
   | 'recent-ops'
   | 'reports'
-  | 'reservations';
+  | 'reservations'
+  | 'settings';
 
 export type ScanInterest = 'focus' | 'none';
 

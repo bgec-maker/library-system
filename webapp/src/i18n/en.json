@@ -26,7 +26,8 @@
     "bookDetail": { "title": "Book Detail" },
     "recentOps": { "title": "Recent Activity" },
     "reports": { "title": "Reports" },
-    "reservations": { "title": "Reservations" }
+    "reservations": { "title": "Reservations" },
+    "settings": { "title": "Settings" }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -537,6 +538,70 @@
       "cancelDone": "Cancelled the reservation for {title}.",
       "cancelFailed": "Failed to cancel reservation — {message}",
       "arrivalHint": "In Checkout/Return, scan barcode {barcode} · member {member}."
+    },
+    "settings": {
+      "readonlyNote": "Policy and config values here are view-only. Change them directly in the spreadsheet instead — policies (13_POLICIES) via the sheet or the sidebar's \"Admin\" tab \"Change default loan policy\" panel, and config (17_CONFIG) by editing the 17_CONFIG sheet directly.",
+      "refresh": "Refresh",
+      "loadFailed": "Couldn't load settings — {message}",
+      "policiesTitle": "Loan policies (13_POLICIES)",
+      "policiesEmpty": "No policies registered.",
+      "policiesSearchPlaceholder": "Search policies…",
+      "policyCol": {
+        "policyId": "Policy ID",
+        "memberType": "Member type",
+        "materialType": "Material type",
+        "loanDays": "Loan days",
+        "maxOpenLoans": "Max open loans",
+        "maxRenewals": "Max renewals",
+        "renewalDays": "Renewal days",
+        "maxReservations": "Max reservations",
+        "holdDays": "Hold days",
+        "overdueFee": "Overdue fee/day",
+        "activeFrom": "Active from",
+        "activeTo": "Active to",
+        "status": "Status",
+        "updatedAt": "Updated at",
+        "updatedBy": "Updated by"
+      },
+      "configTitle": "Config (17_CONFIG)",
+      "configEmpty": "No config values registered.",
+      "configSearchPlaceholder": "Search config keys…",
+      "configCol": {
+        "key": "Key",
+        "value": "Value",
+        "valueType": "Value type",
+        "description": "Description",
+        "updatedAt": "Updated at",
+        "updatedBy": "Updated by"
+      },
+      "triggersTitle": "Daily batch trigger status",
+      "triggerInstalled": "Installed",
+      "triggerNotInstalled": "Not installed",
+      "triggerName": {
+        "dailyLibraryMaintenance": "Daily maintenance (04:00 daily)",
+        "dailyVizBatch": "Viz cache batch (05:00 daily)"
+      },
+      "actionsTitle": "Actions",
+      "integrityTitle": "Integrity check",
+      "integrityHint": "Checks referential integrity across members, copies, loans, reservations, etc. (read-only — makes no changes).",
+      "integrityRun": "Run integrity check",
+      "integrityNoIssues": "No issues found.",
+      "integrityIssuesFound": "Found {count} issue(s).",
+      "integrityFailed": "Integrity check failed — {message}",
+      "integrityResultSummary": "{count} issue(s) as of {at}",
+      "integrityTruncatedHint": "Too many issues — showing the first 200 only.",
+      "issueCol": {
+        "sheet": "Sheet",
+        "row": "Row",
+        "code": "Code",
+        "message": "Message"
+      },
+      "enrichTitle": "Bibliographic enrichment",
+      "enrichRun": "Run enrichment",
+      "enrichHint": "Looks up missing bibliographic details (cover, page count, etc.) via the Aladin API (the max items processed per run follows the server setting).",
+      "enrichDone": "Enrichment complete — {enriched} newly enriched · {remaining} still blank",
+      "enrichFailed": "Enrichment failed — {message}",
+      "enrichResultSummary": "Blank before: {before} → after: {after} (processed {processed} · cache hits {cacheHit} · failed {failed})"
     }
   },
   "viz": {
