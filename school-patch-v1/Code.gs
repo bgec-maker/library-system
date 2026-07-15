@@ -1633,7 +1633,13 @@ function runVizDailyBatch_() {
     ['loan-time-of-day', now, JSON.stringify(computeLoanTimeOfDayViz_(now))],
     ['overdue-flow', now, JSON.stringify(computeOverdueFlowViz_(now))],
     ['class-participation', now, JSON.stringify(computeClassParticipationViz_(now))],
-    ['monthly-loan-curve', now, JSON.stringify(computeMonthlyLoanCurveViz_(now))]
+    ['monthly-loan-curve', now, JSON.stringify(computeMonthlyLoanCurveViz_(now))],
+    // todo/19 — 같은 방식으로 한 번 더(승인된 "추가만" 패턴): 아래 4행이 이번에 새로 추가한
+    // 항목이고, 위 8행의 로직·순서는 그대로다. V1 12종 전체가 이 배열에 다 모였다.
+    ['shelf-heatmap', now, JSON.stringify(computeShelfHeatmapViz_(now))],
+    ['collection-age', now, JSON.stringify(computeCollectionAgeViz_(now))],
+    ['grade-reading-gap', now, JSON.stringify(computeGradeReadingGapViz_(now))],
+    ['budget-picture', now, JSON.stringify(computeBudgetViz_(now))]
   ];
   var sheet = getRequiredSheet_(LIBRARY_MVP.SHEETS.VIZ_CACHE);
   var lastRow = sheet.getLastRow();
@@ -1970,6 +1976,245 @@ function computeMonthlyLoanCurveViz_(now) {
     if (hasAny) years.push({ year: y, months: months });
   }
   return { years: years };
+}
+
+// todo/19 — VIZ.md V1 3차(마지막): #4 서가 온도·#5 장서 나이·#9 학년 독서 격차·#11 예산 그림.
+// 아래 4개 함수는 todo/06·todo/18과 같은 관례(readTable_/indexBy_/asDate_/formatDate_ 재사용,
+// 한 번의 순회로 인덱싱해 O(n²) 회피, 이미 있는 시간창·버킷 헬퍼 재사용)를 그대로 따른다.
+
+// #4 서가 온도 — COPIES.shelf_code별 대출횟수 집계 → "재배가 근거 — 죽은 구역". 소장본이 그
+// 서가를 지금 점유하고 있다고 셀 기준은 회전율 사분면(computeTurnoverQuadrantViz_)이 이미 쓰는
+// 것과 똑같은 상태 집합(AVAILABLE/ON_LOAN/HOLD_READY/REPAIR — 이미 폐기·분실된 소장본은 더는
+// 어느 서가도 점유하지 않으므로 제외)을 그대로 재사용한다 — 같은 질문("이 소장본이 지금 서가
+// 배치의 일부인가")을 다른 축으로 다시 묻는 것뿐이라 새 필터를 만들지 않았다.
+//
+// shelf_code는 acquisition_source처럼 CODEBOOK 코드군이 없는 자유 텍스트다(HEADERS 확인 —
+// registerCopy_가 safeText_로만 저장). 물리적 서가 배치 순서(층·구역 접두사 같은 관례)가
+// 문서·코드 어디에도 없어(docs/ASSUMPTIONS.md todo/19) 자연수 인식 정렬 대신 plain
+// localeCompare(다른 자유 텍스트 정렬에 이미 쓰이는 관례 — reportWeedingRecommend_의
+// acquiredAtText.localeCompare, purchaseCandidates의 title.localeCompare와 같은 방식)로
+// 사전순 정렬한다. shelf_code가 빈 소장본은 집계에서 빼고 개수만 skippedNoShelf로 내려
+// 각주 표시한다(회전율 사분면의 skippedNoAcquiredDate와 같은 관례). "죽은 구역"(회전율이
+// 유독 낮은 서가) 판정 자체는 프론트가 avgLoansPerCopy를 상대 비교해 정한다(원 자료는 서버가
+// 다 계산해 두고, 어느 정도가 "낮다"인지의 임계값 판단만 화면 쪽 책임 — TurnoverQuadrant.tsx의
+// quadrantFor·ClassParticipation.tsx의 levelForRatio와 같은 분업).
+function computeShelfHeatmapViz_(now) {
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.filter(function(row) {
+    return row.status_code === 'AVAILABLE' || row.status_code === 'ON_LOAN' || row.status_code === 'HOLD_READY' || row.status_code === 'REPAIR';
+  });
+  var loanCountByCopy = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    loanCountByCopy[loan.copy_id] = (loanCountByCopy[loan.copy_id] || 0) + 1;
+  });
+
+  var byShelf = {};
+  var skippedNoShelf = 0;
+  copies.forEach(function(copy) {
+    var shelf = cleanText_(copy.shelf_code);
+    if (!shelf) { skippedNoShelf++; return; }
+    if (!byShelf[shelf]) byShelf[shelf] = { shelfCode: shelf, copyCount: 0, totalLoanCount: 0 };
+    byShelf[shelf].copyCount++;
+    byShelf[shelf].totalLoanCount += loanCountByCopy[copy.copy_id] || 0;
+  });
+
+  var shelves = Object.keys(byShelf).map(function(key) {
+    var s = byShelf[key];
+    return {
+      shelfCode: s.shelfCode,
+      copyCount: s.copyCount,
+      totalLoanCount: s.totalLoanCount,
+      avgLoansPerCopy: s.copyCount > 0 ? s.totalLoanCount / s.copyCount : 0
+    };
+  }).sort(function(a, b) { return a.shelfCode.localeCompare(b.shelfCode); });
+
+  return { shelves: shelves, skippedNoShelf: skippedNoShelf };
+}
+
+// #5 장서 나이 — COPIES.acquired_at을 입수연도로 묶고 status_code로 적층해 "노후 + 아직
+// 유통 중"과 "노후 + 이미 폐기·분실 처리됨"을 한눈에 가른다. 상태 6종의 고정 순서는 새로
+// 정하지 않고 08_COPIES status_code 데이터 검증 배열(LIBRARY_MVP.VALIDATIONS, 이 파일 위쪽)이
+// 이미 쓰는 순서를 그대로 재사용한다 — DESIGN.md 범주(≤6) 고정 팔레트 한도에 정확히 맞는다
+// (상태값 자체가 정확히 6종이라 "기타" 버킷이 필요 없다).
+//
+// "미점검"(VIZ.md 차트 이름 "장서 나이"가 답하는 질문 "노후·미점검 장서 규모"에 명시)은 별도
+// 색 계열로 쪼개지 않았다 — 6종 상태 팔레트에 일곱 번째 계열을 얹으면 DESIGN.md 범주 고정
+// 한도(≤6)를 넘는다. 대신 최상위 요약 숫자 하나로 함께 내려준다: 현재 유통 중인(AVAILABLE/
+// ON_LOAN/HOLD_READY/REPAIR — 이미 폐기·분실로 결론 난 소장본은 "점검"의 의미가 없어 제외)
+// 소장본 중 last_inventory_at이 비어 있거나 VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_일보다
+// 오래된 것의 개수(staleUncheckedCount). 이 임계값(1년)은 VIZ.md·기존 코드 어디에도 정의가
+// 없어(todo/14 장서점검은 "언제 점검했는지" 필드만 추가했을 뿐 "얼마나 오래되면 재점검이
+// 필요한가" 기준은 정하지 않았다) 이 항목에서 새로 임의 지정한 값이다(docs/ASSUMPTIONS.md
+// todo/19).
+//
+// acquired_at이 비어 있는 소장본은 연도별 적층 집계에서 빼고 개수만 skippedNoAcquiredDate로
+// 내려 각주 표시한다(회전율 사분면과 같은 관례) — staleUncheckedCount 집계는 이와 별개로
+// acquired_at 유무와 무관하게 포함한다("언제 샀나"가 아니라 "언제 마지막으로 봤나"를 묻는
+// 별개의 질문이라서다).
+var VIZ_COLLECTION_AGE_STATUS_ORDER_ = ['AVAILABLE', 'ON_LOAN', 'HOLD_READY', 'REPAIR', 'LOST', 'WITHDRAWN'];
+var VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_ = 365;
+
+function computeCollectionAgeViz_(now) {
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows;
+  var byYear = {};
+  var skippedNoAcquiredDate = 0;
+
+  copies.forEach(function(copy) {
+    var acquired = asDate_(copy.acquired_at);
+    if (!acquired) { skippedNoAcquiredDate++; return; }
+    if (VIZ_COLLECTION_AGE_STATUS_ORDER_.indexOf(copy.status_code) === -1) return; // 방어적 스킵(assertCode_가 이미 막아 실제로는 발생하지 않음)
+    var year = Number(formatDate_(acquired).slice(0, 4));
+    if (!byYear[year]) {
+      byYear[year] = { year: year, statusCounts: {} };
+      VIZ_COLLECTION_AGE_STATUS_ORDER_.forEach(function(code) { byYear[year].statusCounts[code] = 0; });
+    }
+    byYear[year].statusCounts[copy.status_code]++;
+  });
+
+  var years = Object.keys(byYear).map(function(key) { return byYear[key]; })
+    .sort(function(a, b) { return a.year - b.year; });
+
+  var staleCutoff = addDays_(now, -VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_);
+  var staleUncheckedCount = 0;
+  copies.forEach(function(copy) {
+    var circulating = copy.status_code === 'AVAILABLE' || copy.status_code === 'ON_LOAN' || copy.status_code === 'HOLD_READY' || copy.status_code === 'REPAIR';
+    if (!circulating) return;
+    var lastInventory = asDate_(copy.last_inventory_at);
+    if (!lastInventory || lastInventory.getTime() < staleCutoff.getTime()) staleUncheckedCount++;
+  });
+
+  return {
+    statusOrder: VIZ_COLLECTION_AGE_STATUS_ORDER_,
+    years: years,
+    skippedNoAcquiredDate: skippedNoAcquiredDate,
+    staleInspectionDays: VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_,
+    staleUncheckedCount: staleUncheckedCount
+  };
+}
+
+// #9 학년 독서 격차 — LOANS × MEMBERS.grade(STUDENT·ACTIVE)를 학년별 분포 스트립으로 낸다.
+// "몇 회 빌렸나"를 4단 버킷(0회·1~3회·4~10회·11회+)으로 나눠 학년마다 학생이 어느 버킷에
+// 몰려 있는지 보여준다 — vizBucketIndex_(회전율 사분면이 이미 정의해 둔 버킷 인덱싱 헬퍼, 이
+// 파일 위쪽)를 그대로 재사용한다(새 버킷 인덱싱 로직을 또 만들지 않는다).
+//
+// 창 폭은 reportNoLoanFinder_/computeClassParticipationViz_가 이미 쓰는 "최근 90일"을 그대로
+// 재사용하지 않고 180일(약 한 학기)로 새로 잡았다 — "정확히 같은 질문"의 재사용이 아니라고
+// 판단했기 때문이다: 반 참여 링은 "요즘 누가 안 빌렸나"라는 순간 스냅샷이지만, "어느 학년이
+// 비어 있나"는 학년 전체의 독서 습관 격차라는 더 느린 신호라 90일(한 분기)로는 시험 기간 같은
+// 일시적 요철에 너무 민감하게 흔들릴 수 있다고 봤다. VIZ.md는 정확한 기간을 명시하지 않아
+// 임의 지정이다(docs/ASSUMPTIONS.md todo/19).
+var VIZ_GRADE_READING_GAP_WINDOW_DAYS_ = 180;
+var VIZ_GRADE_READING_GAP_BUCKETS_ = [
+  { label: '0회', max: 0 },
+  { label: '1~3회', max: 3 },
+  { label: '4~10회', max: 10 },
+  { label: '11회+', max: Infinity }
+];
+
+function computeGradeReadingGapViz_(now) {
+  var since = addDays_(now, -VIZ_GRADE_READING_GAP_WINDOW_DAYS_);
+  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE';
+  });
+
+  var loanCountByMember = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (!checkedOut || checkedOut.getTime() < since.getTime()) return;
+    loanCountByMember[loan.member_id] = (loanCountByMember[loan.member_id] || 0) + 1;
+  });
+
+  var byGrade = {};
+  members.forEach(function(m) {
+    var grade = Number(m.grade) || 0;
+    if (!byGrade[grade]) byGrade[grade] = { grade: grade, studentCount: 0, bucketCounts: new Array(VIZ_GRADE_READING_GAP_BUCKETS_.length).fill(0) };
+    byGrade[grade].studentCount++;
+    var loanCount = loanCountByMember[m.member_id] || 0;
+    byGrade[grade].bucketCounts[vizBucketIndex_(loanCount, VIZ_GRADE_READING_GAP_BUCKETS_)]++;
+  });
+
+  var grades = Object.keys(byGrade).map(function(key) { return byGrade[key]; })
+    .sort(function(a, b) { return a.grade - b.grade; });
+
+  return {
+    sinceDate: formatDate_(since),
+    windowDays: VIZ_GRADE_READING_GAP_WINDOW_DAYS_,
+    buckets: VIZ_GRADE_READING_GAP_BUCKETS_.map(function(b) { return b.label; }),
+    grades: grades
+  };
+}
+
+// #11 예산 그림 — COPIES.price를 acquisition_source별로 누적하고 acquired_at 연도로 나눠
+// "적층 영역"(연도 × 출처)으로 낸다. 예산 증빙 성격이라 상태 필터를 두지 않는다(이미
+// 폐기·분실된 소장본도 "그때 그 돈을 썼다"는 사실은 그대로다) — reportDonorThanks_(todo/09)와
+// 정확히 같은 이유로 같은 전제를 따른다.
+//
+// 출처 버킷 = reportDonorThanks_가 이미 확립한 자유 텍스트 그룹 키(acquisition_source 원문
+// 문자열, CODEBOOK 코드군 없음)를 그대로 재사용한다 — 새 분류 체계를 만들지 않는다. 다만
+// reportDonorThanks_는 그룹을 몇 개든 표로 그대로 나열하지만(리포트는 줄 수 제한이 없다), 이
+// 차트는 DESIGN.md 범주(≤6) 고정 팔레트 안에 있어야 해서(적층 영역의 색 계열 수 = 팔레트
+// 크기) 누적 금액 상위 VIZ_BUDGET_MAX_SOURCES_개만 개별 계열로 두고 나머지는
+// VIZ_BUDGET_OTHER_LABEL_("그 외 출처") 한 계열로 합친다. "기타"라는 문구를 쓰지 않은 이유 —
+// acquisition_source가 자유 텍스트라 사서가 실제로 그 칸에 문자 그대로 "기타"를 입력해 뒀을
+// 수 있고, 그 값과 이 합산 버킷이 같은 라벨로 뒤섞이면 헷갈린다(docs/ASSUMPTIONS.md todo/19).
+//
+// 인쇄 파이프라인(todo/24 R3 연간 운영 보고서가 "예산 차트(19) 삽입"을 예고함)에 그대로 꽂을
+// 수 있게 페이로드를 "연도별 × 출처별 순수 숫자" 표로 단순하게 유지한다 — 중첩 계산·프론트
+// 전용 파생값을 서버가 미리 다 끝내 둔다(정적 인쇄본에서 다시 계산할 게 없다).
+var VIZ_BUDGET_MAX_SOURCES_ = 5;
+var VIZ_BUDGET_OTHER_LABEL_ = '그 외 출처';
+
+function computeBudgetViz_(now) {
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows;
+
+  var totalBySource = {};
+  var skippedNoSource = 0;
+  copies.forEach(function(copy) {
+    var source = cleanText_(copy.acquisition_source);
+    if (!source) { skippedNoSource++; return; }
+    totalBySource[source] = (totalBySource[source] || 0) + (Number(copy.price) || 0);
+  });
+
+  var topSources = Object.keys(totalBySource)
+    .sort(function(a, b) { return totalBySource[b] - totalBySource[a] || a.localeCompare(b); })
+    .slice(0, VIZ_BUDGET_MAX_SOURCES_);
+  var topSourceSet = {};
+  topSources.forEach(function(s) { topSourceSet[s] = true; });
+  var hasOther = Object.keys(totalBySource).some(function(s) { return !topSourceSet[s]; });
+  var sourceOrder = hasOther ? topSources.concat([VIZ_BUDGET_OTHER_LABEL_]) : topSources;
+
+  var byYear = {};
+  var skippedNoAcquiredDate = 0;
+  copies.forEach(function(copy) {
+    var acquired = asDate_(copy.acquired_at);
+    if (!acquired) { skippedNoAcquiredDate++; return; }
+    var source = cleanText_(copy.acquisition_source);
+    if (!source) return; // skippedNoSource에서 이미 셈 — 연도×출처 적층에서도 동일하게 제외
+    var bucketLabel = topSourceSet[source] ? source : VIZ_BUDGET_OTHER_LABEL_;
+    var year = Number(formatDate_(acquired).slice(0, 4));
+    if (!byYear[year]) {
+      byYear[year] = { year: year, amountBySource: {}, total: 0 };
+      sourceOrder.forEach(function(s) { byYear[year].amountBySource[s] = 0; });
+    }
+    var price = Number(copy.price) || 0;
+    byYear[year].amountBySource[bucketLabel] += price;
+    byYear[year].total += price;
+  });
+
+  var years = Object.keys(byYear).map(function(key) {
+    var y = byYear[key];
+    return {
+      year: y.year,
+      total: y.total,
+      sources: sourceOrder.map(function(s) { return { sourceLabel: s, amount: y.amountBySource[s] }; })
+    };
+  }).sort(function(a, b) { return a.year - b.year; });
+
+  return {
+    sourceOrder: sourceOrder,
+    years: years,
+    skippedNoSource: skippedNoSource,
+    skippedNoAcquiredDate: skippedNoAcquiredDate
+  };
 }
 
 // --------------------------- Repository and common helpers ---------------------------
@@ -3195,9 +3440,12 @@ function reportDonorThanks_(payload) {
 function apiWebViz_(payload) {
   var type = cleanText_(payload && payload.type);
   // todo/18 — 승인된 방식(추가만): 아래 4개는 새 타입이고, 앞 4개의 순서·값은 그대로다.
+  // todo/19 — 같은 방식으로 한 번 더: 마지막 4개가 이번에 새로 추가한 타입이고, 앞 8개의
+  // 순서·값은 그대로다. VIZ.md V1 12종 전체의 type 문자열이 이제 다 모였다.
   var validTypes = [
     'loan-heatmap', 'category-treemap', 'turnover-quadrant', 'reservation-pressure',
-    'loan-time-of-day', 'overdue-flow', 'class-participation', 'monthly-loan-curve'
+    'loan-time-of-day', 'overdue-flow', 'class-participation', 'monthly-loan-curve',
+    'shelf-heatmap', 'collection-age', 'grade-reading-gap', 'budget-picture'
   ];
   if (validTypes.indexOf(type) === -1) fail_('VALIDATION_ERROR', '지원하지 않는 시각화 종류입니다: ' + type);
   var row = readTable_(LIBRARY_MVP.SHEETS.VIZ_CACHE).rows.find(function(r) { return r.viz_type === type; });

@@ -17,4 +17,11 @@ export const OverdueFlow = lazy(() => import('./OverdueFlow'));
 export const ClassParticipation = lazy(() => import('./ClassParticipation'));
 export const MonthlyLoanCurve = lazy(() => import('./MonthlyLoanCurve'));
 
+// todo/19 — VIZ.md V1 4·5·9·11번(서가 온도·장서 나이·학년 독서 격차·예산 그림). 이걸로 V1
+// 12종 전체가 이 지연 로딩 계약 아래 모였다 — 위 8종과 같은 패턴 그대로.
+export const ShelfHeatmap = lazy(() => import('./ShelfHeatmap'));
+export const CollectionAge = lazy(() => import('./CollectionAge'));
+export const GradeReadingGap = lazy(() => import('./GradeReadingGap'));
+export const BudgetPicture = lazy(() => import('./BudgetPicture'));
+
 export { VizLazyMount } from './VizLazyMount';

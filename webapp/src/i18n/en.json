@@ -603,6 +603,59 @@
       "colCount": "Loans",
       "tableCaption": "Monthly loan counts by year",
       "empty": "No loan history to show."
+    },
+    "shelfHeatmap": {
+      "title": "Shelf temperature",
+      "subtitle": "Average loans per copy by shelf — a basis for reshelving, finding dead zones",
+      "legendLow": "Cold",
+      "legendHigh": "Hot",
+      "colShelf": "Shelf",
+      "colCopyCount": "Copies",
+      "colLoanCount": "Cumulative loans",
+      "colAvg": "Avg. loans/copy",
+      "tableCaption": "Copies and loans by shelf",
+      "empty": "No shelves to show.",
+      "actionButton": "Start an inventory-check session",
+      "skippedLine": "Excludes {count} copies with no shelf assigned"
+    },
+    "collectionAge": {
+      "title": "Collection age",
+      "subtitle": "Status breakdown by acquisition year — the scale of aged and uninspected stock",
+      "status": {
+        "AVAILABLE": "Available",
+        "ON_LOAN": "On loan",
+        "HOLD_READY": "Hold ready",
+        "REPAIR": "In repair",
+        "LOST": "Lost",
+        "WITHDRAWN": "Withdrawn"
+      },
+      "colYear": "Acquired",
+      "colTotal": "Total",
+      "tableCaption": "Status breakdown by acquisition year",
+      "empty": "No collection data to show.",
+      "actionButton": "Open dead-stock / purchase report",
+      "staleLine": "{count} circulating copies among these haven't been inventory-checked in {days}+ days",
+      "skippedLine": "Excludes {count} copies with no acquisition date"
+    },
+    "gradeReadingGap": {
+      "title": "Grade reading gap",
+      "subtitle": "Loan-count distribution by grade over the last 6 months — which grade is falling behind",
+      "gradeLabel": "Grade {grade}",
+      "rowTitle": "Grade {grade} · {count} enrolled",
+      "sinceLine": "Based on loans since {date}",
+      "colGrade": "Grade",
+      "colStudentCount": "Enrolled",
+      "tableCaption": "Loan-count bucket distribution by grade",
+      "empty": "No grades to show."
+    },
+    "budgetPicture": {
+      "title": "Budget picture",
+      "subtitle": "Cumulative acquisition cost by year — material for the operating report (R3)",
+      "colYear": "Acquired",
+      "colTotal": "Total",
+      "tableCaption": "Acquisition cost by year and source",
+      "empty": "No budget data to show.",
+      "skippedLine": "Excludes {source} copies with no acquisition source and {date} with no acquisition date"
     }
   },
   "student": {

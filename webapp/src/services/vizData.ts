@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { apiCall } from './api';
 import {
+  mockBudgetPicture,
   mockCategoryTreemap,
   mockClassParticipation,
+  mockCollectionAge,
+  mockGradeReadingGap,
   mockLoanHeatmap,
   mockLoanTimeOfDay,
   mockMonthlyLoanCurve,
   mockOverdueFlow,
   mockReservationPressure,
+  mockShelfHeatmap,
   mockTurnoverQuadrant
 } from '../mocks/viz';
 
@@ -27,6 +31,11 @@ import {
 // {type, computedAt, data} 모양을 그대로 옮긴 타입이며 school-patch-v1/Code.gs의
 // computeLoanTimeOfDayViz_/computeOverdueFlowViz_/computeClassParticipationViz_/
 // computeMonthlyLoanCurveViz_ 반환값에 맞춰져 있다.
+//
+// todo/19 — 마지막 4종 추가: 서가 온도·장서 나이·학년 독서 격차·예산 그림(VIZ.md V1 4·5·9·11번).
+// 이걸로 V1 12종 전체가 이 계약에 다 모였다 — school-patch-v1/Code.gs의
+// computeShelfHeatmapViz_/computeCollectionAgeViz_/computeGradeReadingGapViz_/
+// computeBudgetViz_ 반환값에 맞춰져 있다.
 export type VizType =
   | 'loan-heatmap'
   | 'category-treemap'
@@ -35,7 +44,11 @@ export type VizType =
   | 'loan-time-of-day'
   | 'overdue-flow'
   | 'class-participation'
-  | 'monthly-loan-curve';
+  | 'monthly-loan-curve'
+  | 'shelf-heatmap'
+  | 'collection-age'
+  | 'grade-reading-gap'
+  | 'budget-picture';
 
 export interface VizDay {
   /** yyyy-MM-dd */
@@ -137,6 +150,75 @@ export interface MonthlyLoanCurveData {
   years: MonthlyLoanCurveYear[];
 }
 
+// #4 서가 온도 — computeShelfHeatmapViz_ 그대로. avgLoansPerCopy는 서버가 미리 나눈 값이라
+// 프론트는 0으로 나누는 경우를 신경 쓰지 않아도 된다.
+export interface ShelfHeatmapShelf {
+  shelfCode: string;
+  copyCount: number;
+  totalLoanCount: number;
+  avgLoansPerCopy: number;
+}
+
+export interface ShelfHeatmapData {
+  shelves: ShelfHeatmapShelf[];
+  /** shelf_code가 빈 소장본 수 — 각주 표시용(회전율 사분면의 skippedNoAcquiredDate와 같은 관례). */
+  skippedNoShelf: number;
+}
+
+// #5 장서 나이 — computeCollectionAgeViz_ 그대로. statusOrder는 08_COPIES status_code 검증
+// 배열과 같은 순서(AVAILABLE·ON_LOAN·HOLD_READY·REPAIR·LOST·WITHDRAWN) — DESIGN.md 범주(≤6)
+// 고정 팔레트에 정확히 맞는 6종이다.
+export interface CollectionAgeYear {
+  year: number;
+  statusCounts: Record<string, number>;
+}
+
+export interface CollectionAgeData {
+  statusOrder: string[];
+  years: CollectionAgeYear[];
+  skippedNoAcquiredDate: number;
+  /** "미점검" 재점검 임계 일수(서버 VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_ 그대로). */
+  staleInspectionDays: number;
+  /** 현재 유통 중인 소장본 중 그 임계일보다 오래 미점검된 개수 — 색 계열이 아니라 요약 숫자로만. */
+  staleUncheckedCount: number;
+}
+
+// #9 학년 독서 격차 — computeGradeReadingGapViz_ 그대로. buckets는 서버가 이미 만든 4단
+// 라벨(예: '0회'…'11회+') — vizBucketIndex_와 같은 순서라 bucketCounts[i]가 buckets[i]에 대응.
+export interface GradeReadingGapGrade {
+  grade: number;
+  studentCount: number;
+  bucketCounts: number[];
+}
+
+export interface GradeReadingGapData {
+  sinceDate: string;
+  windowDays: number;
+  buckets: string[];
+  grades: GradeReadingGapGrade[];
+}
+
+// #11 예산 그림 — computeBudgetViz_ 그대로. sourceOrder는 누적 금액 상위 5개 + (있다면) "그 외
+// 출처" 순서로 고정돼 있어(≤6, DESIGN.md 범주 고정 팔레트 한도) 프론트는 이 순서 그대로 색을
+// 배정하면 된다. sources[i].sourceLabel은 항상 sourceOrder[i]와 같다.
+export interface BudgetPictureSourceAmount {
+  sourceLabel: string;
+  amount: number;
+}
+
+export interface BudgetPictureYear {
+  year: number;
+  total: number;
+  sources: BudgetPictureSourceAmount[];
+}
+
+export interface BudgetPictureData {
+  sourceOrder: string[];
+  years: BudgetPictureYear[];
+  skippedNoSource: number;
+  skippedNoAcquiredDate: number;
+}
+
 export type VizDataMap = {
   'loan-heatmap': LoanHeatmapData;
   'category-treemap': CategoryTreemapData;
@@ -146,6 +228,10 @@ export type VizDataMap = {
   'overdue-flow': OverdueFlowData;
   'class-participation': ClassParticipationData;
   'monthly-loan-curve': MonthlyLoanCurveData;
+  'shelf-heatmap': ShelfHeatmapData;
+  'collection-age': CollectionAgeData;
+  'grade-reading-gap': GradeReadingGapData;
+  'budget-picture': BudgetPictureData;
 };
 
 interface VizApiResponse<T> {
@@ -177,7 +263,11 @@ const SAMPLE_BY_TYPE: { [K in VizType]: VizDataMap[K] } = {
   'loan-time-of-day': mockLoanTimeOfDay,
   'overdue-flow': mockOverdueFlow,
   'class-participation': mockClassParticipation,
-  'monthly-loan-curve': mockMonthlyLoanCurve
+  'monthly-loan-curve': mockMonthlyLoanCurve,
+  'shelf-heatmap': mockShelfHeatmap,
+  'collection-age': mockCollectionAge,
+  'grade-reading-gap': mockGradeReadingGap,
+  'budget-picture': mockBudgetPicture
 };
 
 export interface VizFetchState<T> {

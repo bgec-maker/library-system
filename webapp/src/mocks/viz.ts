@@ -1,11 +1,15 @@
 import type {
+  BudgetPictureData,
   CategoryTreemapData,
   ClassParticipationData,
+  CollectionAgeData,
+  GradeReadingGapData,
   LoanHeatmapData,
   LoanTimeOfDayData,
   MonthlyLoanCurveData,
   OverdueFlowData,
   ReservationPressureData,
+  ShelfHeatmapData,
   TurnoverQuadrantData
 } from '../services/vizData';
 
@@ -149,3 +153,124 @@ function buildMockMonthlyLoanCurve(): MonthlyLoanCurveData {
 }
 
 export const mockMonthlyLoanCurve: MonthlyLoanCurveData = buildMockMonthlyLoanCurve();
+
+// todo/19 — #4 서가 온도 샘플. 일부러 회전율이 아주 낮은 서가("만화-2"·"참고자료-1")를
+// 섞어 "죽은 구역"이 눈에 띄게 했다.
+export const mockShelfHeatmap: ShelfHeatmapData = {
+  shelves: [
+    { shelfCode: '과학-1', copyCount: 68, totalLoanCount: 142, avgLoansPerCopy: 142 / 68 },
+    { shelfCode: '만화-1', copyCount: 40, totalLoanCount: 260, avgLoansPerCopy: 260 / 40 },
+    { shelfCode: '만화-2', copyCount: 36, totalLoanCount: 9, avgLoansPerCopy: 9 / 36 },
+    { shelfCode: '문학-1', copyCount: 92, totalLoanCount: 310, avgLoansPerCopy: 310 / 92 },
+    { shelfCode: '문학-2', copyCount: 88, totalLoanCount: 205, avgLoansPerCopy: 205 / 88 },
+    { shelfCode: '사회-1', copyCount: 54, totalLoanCount: 96, avgLoansPerCopy: 96 / 54 },
+    { shelfCode: '역사-1', copyCount: 46, totalLoanCount: 34, avgLoansPerCopy: 34 / 46 },
+    { shelfCode: '참고자료-1', copyCount: 30, totalLoanCount: 2, avgLoansPerCopy: 2 / 30 }
+  ],
+  skippedNoShelf: 5
+};
+
+// todo/19 — #5 장서 나이 샘플. 오래된 연도일수록 WITHDRAWN·LOST 비중이 커지는 모양(자연 감모)과
+// staleUncheckedCount(1년 이상 미점검) 요약 숫자를 함께 흉내낸다.
+export const mockCollectionAge: CollectionAgeData = {
+  statusOrder: ['AVAILABLE', 'ON_LOAN', 'HOLD_READY', 'REPAIR', 'LOST', 'WITHDRAWN'],
+  years: [
+    { year: 2017, statusCounts: { AVAILABLE: 40, ON_LOAN: 5, HOLD_READY: 0, REPAIR: 2, LOST: 8, WITHDRAWN: 25 } },
+    { year: 2018, statusCounts: { AVAILABLE: 55, ON_LOAN: 8, HOLD_READY: 1, REPAIR: 3, LOST: 6, WITHDRAWN: 15 } },
+    { year: 2019, statusCounts: { AVAILABLE: 70, ON_LOAN: 10, HOLD_READY: 1, REPAIR: 2, LOST: 5, WITHDRAWN: 8 } },
+    { year: 2020, statusCounts: { AVAILABLE: 60, ON_LOAN: 12, HOLD_READY: 0, REPAIR: 1, LOST: 3, WITHDRAWN: 4 } },
+    { year: 2021, statusCounts: { AVAILABLE: 90, ON_LOAN: 18, HOLD_READY: 2, REPAIR: 2, LOST: 2, WITHDRAWN: 2 } },
+    { year: 2022, statusCounts: { AVAILABLE: 110, ON_LOAN: 22, HOLD_READY: 1, REPAIR: 1, LOST: 1, WITHDRAWN: 1 } },
+    { year: 2023, statusCounts: { AVAILABLE: 130, ON_LOAN: 26, HOLD_READY: 2, REPAIR: 1, LOST: 0, WITHDRAWN: 0 } },
+    { year: 2024, statusCounts: { AVAILABLE: 150, ON_LOAN: 30, HOLD_READY: 1, REPAIR: 0, LOST: 0, WITHDRAWN: 0 } }
+  ],
+  skippedNoAcquiredDate: 4,
+  staleInspectionDays: 365,
+  staleUncheckedCount: 187
+};
+
+// todo/19 — #9 학년 독서 격차 샘플. 저학년일수록 0회 버킷 비중이 크고, 고학년으로 갈수록
+// 11회+ 비중이 커지는 모양을 흉내낸다("어느 학년이 비어 있나"에 바로 답하는 대비).
+export const mockGradeReadingGap: GradeReadingGapData = {
+  sinceDate: toDateKey(new Date(Date.now() - 180 * 86400000)),
+  windowDays: 180,
+  buckets: ['0회', '1~3회', '4~10회', '11회+'],
+  grades: [
+    { grade: 1, studentCount: 90, bucketCounts: [40, 30, 15, 5] },
+    { grade: 2, studentCount: 88, bucketCounts: [28, 32, 20, 8] },
+    { grade: 3, studentCount: 95, bucketCounts: [18, 30, 32, 15] },
+    { grade: 4, studentCount: 92, bucketCounts: [12, 25, 35, 20] },
+    { grade: 5, studentCount: 86, bucketCounts: [8, 18, 34, 26] },
+    { grade: 6, studentCount: 80, bucketCounts: [22, 20, 24, 14] }
+  ]
+};
+
+// todo/19 — #11 예산 그림 샘플. 상위 5개 출처 + "그 외 출처" 계열, 연도별로 총 예산이 조금씩
+// 늘어나는 모양(적층 영역이 위로 갈수록 두꺼워짐).
+export const mockBudgetPicture: BudgetPictureData = {
+  sourceOrder: ['도서관 예산(구매)', '학교 운영비', '학부모회 기증', '개인 기증', '외부 공모 지원', '그 외 출처'],
+  years: [
+    {
+      year: 2021,
+      total: 4200000,
+      sources: [
+        { sourceLabel: '도서관 예산(구매)', amount: 2200000 },
+        { sourceLabel: '학교 운영비', amount: 900000 },
+        { sourceLabel: '학부모회 기증', amount: 600000 },
+        { sourceLabel: '개인 기증', amount: 300000 },
+        { sourceLabel: '외부 공모 지원', amount: 0 },
+        { sourceLabel: '그 외 출처', amount: 200000 }
+      ]
+    },
+    {
+      year: 2022,
+      total: 4800000,
+      sources: [
+        { sourceLabel: '도서관 예산(구매)', amount: 2500000 },
+        { sourceLabel: '학교 운영비', amount: 1000000 },
+        { sourceLabel: '학부모회 기증', amount: 650000 },
+        { sourceLabel: '개인 기증', amount: 350000 },
+        { sourceLabel: '외부 공모 지원', amount: 100000 },
+        { sourceLabel: '그 외 출처', amount: 200000 }
+      ]
+    },
+    {
+      year: 2023,
+      total: 5300000,
+      sources: [
+        { sourceLabel: '도서관 예산(구매)', amount: 2700000 },
+        { sourceLabel: '학교 운영비', amount: 1100000 },
+        { sourceLabel: '학부모회 기증', amount: 700000 },
+        { sourceLabel: '개인 기증', amount: 400000 },
+        { sourceLabel: '외부 공모 지원', amount: 200000 },
+        { sourceLabel: '그 외 출처', amount: 200000 }
+      ]
+    },
+    {
+      year: 2024,
+      total: 5900000,
+      sources: [
+        { sourceLabel: '도서관 예산(구매)', amount: 3000000 },
+        { sourceLabel: '학교 운영비', amount: 1150000 },
+        { sourceLabel: '학부모회 기증', amount: 750000 },
+        { sourceLabel: '개인 기증', amount: 450000 },
+        { sourceLabel: '외부 공모 지원', amount: 300000 },
+        { sourceLabel: '그 외 출처', amount: 250000 }
+      ]
+    },
+    {
+      year: 2025,
+      total: 6400000,
+      sources: [
+        { sourceLabel: '도서관 예산(구매)', amount: 3200000 },
+        { sourceLabel: '학교 운영비', amount: 1250000 },
+        { sourceLabel: '학부모회 기증', amount: 800000 },
+        { sourceLabel: '개인 기증', amount: 500000 },
+        { sourceLabel: '외부 공모 지원', amount: 350000 },
+        { sourceLabel: '그 외 출처', amount: 300000 }
+      ]
+    }
+  ],
+  skippedNoSource: 12,
+  skippedNoAcquiredDate: 3
+};

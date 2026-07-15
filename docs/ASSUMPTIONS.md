@@ -1258,3 +1258,120 @@
   자동 조회) 급의 새 예외가 하나 더 생긴 셈이다. 반 참여 링을 거치지 않고 리포트 허브 카드로
   직접 들어오면(`initialGrade`/`initialClassNo` 둘 다 없음) 기존과 동일하게 1학년 1반
   기본값 + 수동 미리보기 버튼 그대로다(과거 동작 보존).
+
+## todo/19 · 시각화 V1 3차(마지막) (2026-07-15)
+
+- **`runVizDailyBatch_`의 `rows` 배열·`apiWebViz_`의 `validTypes` 배열에 각각 4줄만 추가**했다
+  (`computeShelfHeatmapViz_`/`computeCollectionAgeViz_`/`computeGradeReadingGapViz_`/
+  `computeBudgetViz_`, 타입 문자열 `shelf-heatmap`/`collection-age`/`grade-reading-gap`/
+  `budget-picture`) — todo/06·todo/18이 만든 기존 8행·8개 타입 문자열의 순서·값은 그대로다.
+  `git diff`로 두 배열 다 순수 추가만 있었음을 확인했다(todo/18과 같은 급의 "배열 확장" 예외).
+  이걸로 VIZ.md V1 표의 12행이 전부 이 두 배열에 모였다.
+
+- **서가 온도(`computeShelfHeatmapViz_`)는 "이 소장본이 지금 서가를 점유하는가" 필터를
+  회전율 사분면(`computeTurnoverQuadrantViz_`)과 정확히 똑같이(AVAILABLE/ON_LOAN/HOLD_READY/
+  REPAIR) 재사용**했다 — 같은 질문을 다른 축(서가별)으로 다시 묻는 것뿐이라 새 필터를 만들지
+  않았다. `shelf_code`는 `acquisition_source`처럼 CODEBOOK 코드군이 없는 자유 텍스트라, 물리적
+  배치 순서(층·구역 접두사 같은 관례)를 문서·코드 어디에서도 찾지 못해 자연수 인식 정렬 대신
+  **plain `localeCompare`로 사전순 정렬**했다(`reportWeedingRecommend_`의
+  `acquiredAtText.localeCompare`/`purchaseCandidates`의 `title.localeCompare`와 같은 기존
+  관례를 그대로 재사용 — GAS V8에서 `localeCompare(..., {numeric:true})` 같은 옵션 인자의
+  런타임 동작을 검증할 방법이 없어 이미 안전이 확인된 무옵션 형태만 썼다). "죽은 구역" 판정
+  (어느 정도가 "차갑다"인지의 임계값)은 서버가 내리지 않고 프론트(`ShelfHeatmap.tsx`의
+  `levelForAvg`)가 상대 비교로 정한다 — `TurnoverQuadrant.tsx`의 `quadrantFor`·
+  `ClassParticipation.tsx`의 `levelForRatio`와 같은 분업.
+
+- **장서 나이(`computeCollectionAgeViz_`)의 상태 6종 고정 순서는 새로 정하지 않고 08_COPIES
+  `status_code` 데이터 검증 배열(`LIBRARY_MVP.VALIDATIONS`)이 이미 쓰는 순서
+  (AVAILABLE·ON_LOAN·HOLD_READY·REPAIR·LOST·WITHDRAWN)를 그대로 재사용**했다 — DESIGN.md
+  범주(≤6) 고정 팔레트 한도에 정확히 맞아떨어진다(상태값 자체가 정확히 6종이라 "기타" 버킷이
+  필요 없다). **"미점검"(차트 이름 자체가 "노후·미점검 장서 규모"라고 명시)은 7번째 색 계열로
+  쪼개지 않고 최상위 요약 숫자(`staleUncheckedCount`) 하나로만 내려준다** — 7종째 색을 얹으면
+  범주 고정 팔레트 한도(≤6)를 넘기 때문이다. 이 요약은 현재 유통 중(AVAILABLE/ON_LOAN/
+  HOLD_READY/REPAIR)인 소장본 중 `last_inventory_at`이 비었거나
+  `VIZ_COLLECTION_AGE_STALE_INSPECTION_DAYS_`(**새로 임의 지정한 365일** — todo/14 장서점검은
+  "언제 점검했는지" 필드만 추가했을 뿐 "얼마나 오래되면 재점검이 필요한가" 기준을 정의하지
+  않아, 기존에 재사용할 만한 값이 없었다)보다 오래된 것의 개수다.
+
+- **학년 독서 격차(`computeGradeReadingGapViz_`)는 반 참여 링/미대출 발굴이 이미 쓰는 "최근
+  90일" 창을 재사용하지 않고 180일(약 한 학기)로 새로 잡았다** — "정확히 같은 질문의 재사용"이
+  아니라고 판단했기 때문이다: 반 참여 링은 "요즘 누가 안 빌렸나"라는 순간 스냅샷이지만, "어느
+  학년이 비어 있나"는 학년 전체의 독서 습관 격차라는 더 느린 신호라 90일(한 분기)로는 시험
+  기간 같은 일시적 요철에 너무 민감하게 흔들릴 수 있다고 봤다. VIZ.md는 정확한 기간을 명시하지
+  않아 임의 지정이다. 버킷 인덱싱은 회전율 사분면이 이미 정의해 둔 `vizBucketIndex_` 헬퍼를
+  그대로 재사용했다(새 버킷 로직을 또 만들지 않음). 버킷 4단(0회·1~3회·4~10회·11회+)의 색은
+  이름 나열형 범주가 아니라 "적음↔많음"이라는 순서형 축이라 범주 고정 순서 대신 순차 램프
+  (`--viz-seq-1~4`)를 배정했다 — 0회 버킷이 가장 옅은 색인 것 자체가 "비어 있음"을 시각적으로
+  대변한다.
+
+- **예산 그림(`computeBudgetViz_`)의 출처 버킷은 `reportDonorThanks_`(todo/09)가 이미 확립한
+  자유 텍스트 그룹 키(`acquisition_source` 원문 문자열, `cleanText_`만 거침, CODEBOOK 코드군
+  없음)를 정확히 그대로 재사용**했다 — 새 분류 체계를 만들지 않았다. 다만
+  `reportDonorThanks_`는 그룹을 몇 개든 표로 나열하지만(리포트라 줄 수 제한이 없음), 이
+  차트는 DESIGN.md 범주(≤6) 고정 팔레트 안에 있어야 해서(적층 영역의 색 계열 수 = 팔레트
+  크기) **누적 금액 상위 5개(`VIZ_BUDGET_MAX_SOURCES_`)만 개별 계열로 두고 나머지는 "그 외
+  출처"(`VIZ_BUDGET_OTHER_LABEL_`) 한 계열로 합쳤다**(정렬 동률은 `reportDonorThanks_`와 같은
+  `localeCompare` 타이브레이크). **"기타"라는 문구는 의도적으로 쓰지 않았다** —
+  `acquisition_source`가 자유 텍스트라 사서가 실제로 그 칸에 문자 그대로 "기타"를 입력해 뒀을
+  수 있고, 그 값과 이 합산 버킷이 같은 라벨로 뒤섞이면 어느 쪽인지 헷갈린다(단, "그 외 출처"
+  역시 이론상 똑같은 문구가 실제 입력값으로 존재할 극히 희박한 가능성까지는 막지 못한다 —
+  `reportDonorThanks_`도 이런 자유 텍스트 충돌을 애초에 막지 않는 것과 같은 수준의 잔여
+  위험으로 받아들였다).
+
+- **예산 그림의 인쇄 호환(과제 노트가 명시한 요구 — todo/24 R3 연간 운영 보고서가 이 차트를
+  그대로 삽입할 예정)은 `styles/print.css`/`PrintDocument.tsx`를 손대지 않고(읽기 전용
+  참고로만 확인) `BudgetPicture.tsx` 쪽에서 세 가지로 해결**했다: ① 각 밴드 오른쪽 끝에
+  출처명을 `<title>` 툴팁이 아니라 항상 보이는 `<text>`로 직접 라벨링, ② 밴드 사이에
+  `var(--panel)` 테두리를 그어(CategoryTreemap.tsx의 rect stroke 관례 재사용) 색이 흑백
+  인쇄에서 뭉개져도 경계가 보이게 함, ③ 범례를 스와치+출처명+`Intl.NumberFormat` 금액을 항상
+  텍스트로 함께 표시(색만으로 구분하지 않음). 그래도 화면이 완전히 washed out되는 극단적
+  경우를 대비해 다른 11종과 동일한 sr-only `<table>` 대체(모든 연도×출처 숫자)를 그대로
+  유지했다 — `print.css`의 `.print-root table` 규칙이 어떤 `<table>`이든 테두리를 검정으로
+  강제하므로 표 하나만으로도 이 차트의 정보가 전부 보존된다는 점을 근거로 확인했다(DESIGN.md
+  "인쇄" 절 자체가 인쇄 밀집 콘텐츠는 표 중심으로 간다고 이미 전제함). `print.css`/
+  `PrintDocument.tsx`를 실제로 고쳐야 할 필요는 발견하지 못했다 — `docs/BLOCKERS.md`에 남길
+  실사용 블로커는 없었다.
+
+- **예산 그림은 행동 버튼을 달지 않았다**(VIZ.md 원칙 ③의 명시적 예외) — 이 차트의 "그래서
+  뭘 하나"는 화면 안 이동이 아니라 todo/24가 만들 인쇄 보고서에 그대로 삽입되는 것 자체이고,
+  그 리포트가 아직 없어(todo 범위 밖) 지금 누를 수 있는 버튼이 없다. 대출 잔디/하루의 파도/
+  열두 달 곡선(todo/06·18)이 이미 쓴 것과 같은 등급의 예외다.
+
+- **서가 온도의 행동 버튼은 장서점검(`inventory`) 뷰로 연결**했다(`onNavigate?.('inventory')`,
+  파라미터 없음) — "죽은 구역을 찾았다" 다음의 가장 직접적인 행동이 그 서가를 다시 훑어보는
+  점검 세션 시작이기 때문이다. `inventory` 뷰(`views/inventory/index.tsx`)는 어느 서가인지
+  특정해 받는 파라미터 계약이 아직 없어(세션 시작 버튼 하나로 전체 스캔 세션을 시작하는 구조)
+  특정 서가로 필터링된 진입은 지원하지 못하지만, "점검을 시작할 수 있는 화면으로 이동"이라는
+  최소 계약은 만족한다.
+
+- **장서 나이의 행동 버튼은 트리맵·회전율 사분면과 같은 `weeding-recommend` 리포트로
+  연결**했다 — "노후 + 이미 폐기·분실" 비중이 큰 연도를 본 다음 취할 다음 행동이 그 리포트이기
+  때문이다(정확히 같은 목적지를 세 번째로 재사용).
+
+- **학년 독서 격차의 행동은 카드 전체 버튼 하나 대신 학년(행) 하나하나를 클릭 가능한 버튼으로
+  만들어 그 학년의 `grade`만 담임 리포트로 넘기는 방식**으로 구현했다(`ClassParticipation.tsx`
+  반 참여 링과 같은 이유 — 카드 전체 버튼 하나로는 "몇 학년"인지 특정할 수 없다). 다만 이
+  차트는 학년 단위 집계라 `classNo`까지는 특정할 수 없다 — `views/reports/index.tsx`의
+  `HomeroomReportPanel`은 `initialClassNo`가 없으면 자동 미리보기를 건너뛰고 학년 칸만 채운 채
+  기본 1반으로 대기한다(기존 동작 그대로, 이 항목에서 그 패널의 코드를 바꾸지 않았다 — 이미
+  `grade`만 오는 경우를 정확히 이렇게 처리하도록 만들어져 있었다).
+
+- **대시보드 착륙 지점에 서가 온도 1종만 추가하고(대출 잔디+예약 압력+하루의 파도+열두 달
+  곡선+서가 온도, 총 5종), 리포트 허브 `viz-insights` 착륙 지점에 장서 나이·학년 독서 격차·
+  예산 그림 3종을 추가**했다(트리맵+사분면+연체 흐름+반 참여 링+장서 나이+학년 독서 격차+
+  예산 그림, 총 7종) — 4종을 정확히 2+2로 균등 분배하지 않은 이유: 장서 나이는 트리맵·회전율
+  사분면과 같은 "폐기 판단" 계열(같은 `weeding-recommend` 목적지), 학년 독서 격차는 반 참여
+  링과 같은 "참여 판단" 계열(같은 `homeroom-report` 목적지), 예산 그림은 과제 노트가 명시한
+  대로 인쇄 보고서(todo/24) 재료라 그 목적지에 더 가까운 이 허브가 자연스러웠다. 반대로 서가
+  온도는 "지금 서가가 어떤 상태인가"를 훑어보는 공간적 스냅샷이라 대출 잔디·예약 압력·하루의
+  파도·열두 달 곡선과 같은 "매일 훑어보는 운영 신호" 성격에 더 가깝다고 판단했다. `viz-insights`
+  칸이 4→7개로 늘어 과제 노트가 예시로 든 "6개는 부담스러울 수 있다"는 임계치를 넘지만, 이
+  칸이 쓰는 `.reports-viz-grid`가 이미 `repeat(auto-fit, minmax(320px,1fr))` 자동 줄바꿈
+  그리드이고(같은 리포트 허브의 유형 선택 카드 그리드도 이미 7장을 문제없이 담고 있음) 새
+  상태·토글을 도입하는 "더 보기" UI 없이도 그냥 줄이 하나 더 생기는 것으로 충분하다고 판단해
+  별도 접기/탭 UI를 새로 만들지 않았다.
+
+- **`viz/viz.css`에 새 클래스만 추가**(`.viz-shelf-grid`/`.viz-shelf-tile`/`.viz-stack-bar-rect`/
+  `.viz-grade-strip-*`/`.viz-budget-*`)했고 기존 클래스는 손대지 않았다 — 여전히 색상 리터럴
+  없이 `var(--token)`/`var(--viz-seq-*)`/`var(--viz-div-*)`/DESIGN.md 범주 고정 토큰만
+  참조한다(`grep -rEn '#[0-9a-fA-F]{3,6}' src/viz` 0건으로 확인).

@@ -268,3 +268,107 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ── #4 서가 온도 — CSS 그리드 + 타일마다 작은 SVG(ClassParticipation.tsx의 .viz-ring-grid와
+   같은 구조) ──────────────────────────────────────────────────────────── */
+.viz-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+.viz-shelf-tile {
+  overflow: visible;
+}
+.viz-shelf-tile--dead rect {
+  stroke: var(--ink-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+.viz-shelf-tile-code {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+}
+.viz-shelf-tile-avg {
+  font-size: 9px;
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+
+/* ── #5 장서 나이 — 연도별 적층 바 ────────────────────────────────────────── */
+.viz-stack-bar-rect {
+  stroke: var(--panel);
+  stroke-width: 0.5;
+}
+
+/* ── #9 학년 독서 격차 — 학년별 분포 스트립(가로 100% 적층 막대, 반 참여 링과 같은 클릭형
+   행 관례) ────────────────────────────────────────────────────────────── */
+.viz-grade-strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.viz-grade-strip-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  border-radius: var(--radius);
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+.viz-grade-strip-row:not(:disabled) {
+  cursor: pointer;
+}
+.viz-grade-strip-row:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.viz-grade-strip-row:not(:disabled):hover {
+  background: var(--panel);
+}
+.viz-grade-strip-label {
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+.viz-grade-strip-count {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* ── #11 예산 그림 — 적층 영역(연도 × 출처). 인쇄 호환: 밴드 사이 테두리(--panel)를 색과
+   별개의 경계 신호로 남기고(CategoryTreemap.tsx의 rect stroke 관례 재사용), 범례는 항상
+   텍스트(스와치+출처명+금액)로 — 색만으로 구분하지 않는다. ─────────────────────────── */
+.viz-budget-band {
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.viz-budget-band-label {
+  font-size: 8px;
+  fill: var(--ink-2);
+}
+.viz-budget-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.viz-budget-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.viz-budget-legend-label {
+  flex: 1;
+}
+.viz-budget-legend-amount {
+  font-family: var(--mono);
+  color: var(--ink);
+}

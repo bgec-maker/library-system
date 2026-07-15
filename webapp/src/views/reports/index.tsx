@@ -28,7 +28,16 @@ import {
 } from '../../services/reportData';
 import { fetchUnpaidFines, payFine, type UnpaidFineRow } from '../../services/loanActionsData';
 import { subscribeDataChange } from '../../services/dataChangeBus';
-import { CategoryTreemap, ClassParticipation, OverdueFlow, TurnoverQuadrant, VizLazyMount } from '../../viz';
+import {
+  BudgetPicture,
+  CategoryTreemap,
+  ClassParticipation,
+  CollectionAge,
+  GradeReadingGap,
+  OverdueFlow,
+  TurnoverQuadrant,
+  VizLazyMount
+} from '../../viz';
 import { intlLocaleTag, t } from '../../i18n';
 import './reports.css';
 
@@ -136,6 +145,15 @@ function TypeSelector({ onSelect }: TypeSelectorProps) {
 // 그대로 채택, docs/ASSUMPTIONS.md todo/18). 반 참여 링의 「담임 리포트로 직행」은 링 각각이
 // onNavigate를 grade/classNo와 함께 호출하고, 아래 HomeroomReportPanel이 그 params를 받아
 // 입력칸을 채운 뒤 자동으로 미리보기까지 실행한다.
+//
+// todo/19 — 장서 나이·학년 독서 격차·예산 그림을 여기 더했다(V1 12종 중 나머지 1종인 서가
+// 온도는 대시보드 쪽, shells/desktop/DashboardBaseLayer.tsx 참고): 장서 나이는 트리맵·회전율
+// 사분면과 같은 "폐기 판단" 계열(같은 weeding-recommend 목적지로 연결), 학년 독서 격차는
+// 반 참여 링과 같은 "참여 판단" 계열(같은 homeroom-report 목적지, 다만 학년만 특정), 예산
+// 그림은 이 항목 과제 노트가 명시한 대로 인쇄 보고서(todo/24 R3) 재료라 그 목적지에 가까운
+// 이 허브에 두었다. 이 칸이 4→7개로 늘었지만 reports-viz-grid는 이미 auto-fit 그리드라(그리드
+// 정의 위 REPORT_TYPES 카드도 이미 7장) 줄바꿈만 늘어날 뿐 별도 "더 보기" 조작 없이도
+// 자연스럽게 늘어난다고 판단했다(docs/ASSUMPTIONS.md todo/19).
 function VizInsightsPanel({ shell }: { shell: ShellContext }) {
   return (
     <div>
@@ -162,6 +180,21 @@ function VizInsightsPanel({ shell }: { shell: ShellContext }) {
         <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
           <VizLazyMount>
             <ClassParticipation onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <CollectionAge onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <GradeReadingGap onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <BudgetPicture />
           </VizLazyMount>
         </Suspense>
       </div>

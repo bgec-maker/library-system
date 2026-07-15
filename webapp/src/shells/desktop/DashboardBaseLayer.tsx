@@ -20,7 +20,7 @@ import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { useReadyReservationCount } from '../../services/reservationData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
-import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, VizLazyMount } from '../../viz';
+import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, ShelfHeatmap, VizLazyMount } from '../../viz';
 import { useWindowStore } from './useWindowStore';
 import './dashboard.css';
 
@@ -203,7 +203,12 @@ export default function DashboardBaseLayer() {
           todo/18 — 하루의 파도·열두 달 곡선을 여기 더했다: 둘 다 "요즘 도서관이 어떻게
           돌아가나"를 매일 훑어보는 관찰용 시계열이라(연체 흐름·반 참여 링처럼 반/정책
           단위 의사결정 자료가 아니다) 대출 잔디·예약 압력과 같은 성격이라고 판단했다
-          (docs/ASSUMPTIONS.md todo/18 착륙 지점 근거). */}
+          (docs/ASSUMPTIONS.md todo/18 착륙 지점 근거).
+          todo/19 — 서가 온도를 여기 더했다(V1 12종 중 나머지 3종은 reports 쪽,
+          views/reports/index.tsx VizInsightsPanel 참고): 장서 나이·학년 독서 격차·예산
+          그림은 트리맵·회전율 사분면처럼 "가끔 들여다보는 의사결정 자료"에 가깝지만, 서가
+          온도는 "지금 서가가 어떤 상태인가"를 훑어보는 공간적 스냅샷이라 대출 잔디·예약
+          압력과 같은 성격의 일상 점검 신호로 판단했다(docs/ASSUMPTIONS.md todo/19). */}
       <section className="dash-viz-section">
         <h2>{t('dashboard.vizRow.heading')}</h2>
         <div className="dash-viz-grid">
@@ -225,6 +230,11 @@ export default function DashboardBaseLayer() {
           <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
             <VizLazyMount>
               <MonthlyLoanCurve />
+            </VizLazyMount>
+          </Suspense>
+          <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
+            <VizLazyMount>
+              <ShelfHeatmap onNavigate={openWindow} />
             </VizLazyMount>
           </Suspense>
         </div>

@@ -603,6 +603,59 @@
       "colCount": "대출 건수",
       "tableCaption": "연도별 월간 대출 건수 표",
       "empty": "표시할 대출 기록이 없습니다."
+    },
+    "shelfHeatmap": {
+      "title": "서가 온도",
+      "subtitle": "서가별 평균 대출/권 — 재배가 근거, 죽은 구역 찾기",
+      "legendLow": "차가움",
+      "legendHigh": "뜨거움",
+      "colShelf": "서가",
+      "colCopyCount": "소장 권수",
+      "colLoanCount": "누적 대출",
+      "colAvg": "평균 대출/권",
+      "tableCaption": "서가별 소장·대출 표",
+      "empty": "표시할 서가가 없습니다.",
+      "actionButton": "장서점검 세션 시작하기",
+      "skippedLine": "서가 미배정 {count}권 제외"
+    },
+    "collectionAge": {
+      "title": "장서 나이",
+      "subtitle": "입수연도별 상태 분포 — 노후·미점검 장서 규모",
+      "status": {
+        "AVAILABLE": "대출가능",
+        "ON_LOAN": "대출중",
+        "HOLD_READY": "예약대기",
+        "REPAIR": "수선중",
+        "LOST": "분실",
+        "WITHDRAWN": "폐기"
+      },
+      "colYear": "입수연도",
+      "colTotal": "합계",
+      "tableCaption": "입수연도별 상태 분포 표",
+      "empty": "표시할 장서가 없습니다.",
+      "actionButton": "죽은 장서·구매 추천 리포트로",
+      "staleLine": "이 중 정상 유통 중 {count}권이 {days}일 이상 미점검",
+      "skippedLine": "입수일 미상 {count}권 제외"
+    },
+    "gradeReadingGap": {
+      "title": "학년 독서 격차",
+      "subtitle": "최근 6개월 학년별 대출 분포 — 어느 학년이 비어 있나",
+      "gradeLabel": "{grade}학년",
+      "rowTitle": "{grade}학년 · 재적 {count}명",
+      "sinceLine": "{date} 이후 대출 기준",
+      "colGrade": "학년",
+      "colStudentCount": "재적 수",
+      "tableCaption": "학년별 대출 구간 분포 표",
+      "empty": "표시할 학년이 없습니다."
+    },
+    "budgetPicture": {
+      "title": "예산 그림",
+      "subtitle": "연도별 입수 단가 누적 — 운영 보고서(R3) 재료",
+      "colYear": "입수연도",
+      "colTotal": "합계",
+      "tableCaption": "연도별 출처별 입수 단가 합계 표",
+      "empty": "표시할 예산 자료가 없습니다.",
+      "skippedLine": "입수경로 미상 {source}건·입수일 미상 {date}건 제외"
     }
   },
   "student": {
