@@ -38,6 +38,14 @@
   font-size: var(--fs-sm);
 }
 
+/* 수기입력 미처리(todo/21) — 헤더 메타 줄의 작은 텍스트 하나, 새 카드 없이. */
+.dash-manual-entry-pending {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--wait);
+}
+
 .dash-refresh-btn {
   display: inline-flex;
   align-items: center;

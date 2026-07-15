@@ -12,12 +12,14 @@ import {
   FileText,
   Gift,
   Megaphone,
+  NotebookPen,
   RefreshCw,
   UserSearch,
   Users
 } from 'lucide-react';
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { useReadyReservationCount } from '../../services/reservationData';
+import { useManualEntryPendingCount } from '../../services/manualEntryData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
 import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, ShelfHeatmap, VizLazyMount } from '../../viz';
@@ -66,6 +68,11 @@ export default function DashboardBaseLayer() {
   // 대상). READY(수령 준비 완료)만 따로 보여주려면 그 필드 하나로는 부족해서(도착 여부가 안
   // 갈라짐) reservations 액션에서 별도로 가져온다 — services/reservationData.ts 주석 참고.
   const readyPickup = useReadyReservationCount();
+  // 수기입력 미처리(todo/21, 구 PATCH_SPEC P3) — GAS 장애 대비 비상 경로(22_MANUAL_ENTRY)가
+  // 아직 흡수되지 않은 행이 쌓이고 있는지 사서가 대시보드에서 바로 확인한다. readyPickup과
+  // 같은 이유(대시보드 자체 데이터 변경 감지 불가)로 새로고침 버튼에 refresh()를 함께 연결한다
+  // (아래 dash-header-meta 참고).
+  const manualEntryPending = useManualEntryPendingCount();
 
   // "진입 시" 갱신(FRONTEND.md 4트리거 중 하나) — 이 컴포넌트는 셸 부팅 시 1회만 마운트되므로
   // 이 effect도 1회만 실행된다. ensureAutoRefresh()가 5분 인터벌·트랜잭션-후 구독도 함께 건다.
@@ -100,10 +107,18 @@ export default function DashboardBaseLayer() {
         <div className="dash-header-meta">
           {data?.actorLabel && <span>{data.actorLabel}</span>}
           <span>{t('dashboard.lastRefreshed', { time: refreshedTimeText })}</span>
+          <span className="dash-manual-entry-pending" title={t('dashboard.manualEntryPending.hint')}>
+            <NotebookPen size={14} aria-hidden />
+            {t('dashboard.manualEntryPending.label', { count: manualEntryPending.loading ? '—' : manualEntryPending.count })}
+            {manualEntryPending.sample && <SampleDataBadge />}
+          </span>
           <button
             type="button"
             className="ghost dash-refresh-btn"
-            onClick={() => void dashboardData.refresh()}
+            onClick={() => {
+              void dashboardData.refresh();
+              manualEntryPending.refresh();
+            }}
             disabled={loading}
           >
             <RefreshCw size={14} aria-hidden /> {loading ? t('common.loading') : t('dashboard.refreshButton')}

@@ -64,6 +64,10 @@
       "title": "예약 도착",
       "label": "수령 대기 중"
     },
+    "manualEntryPending": {
+      "label": "수기입력 미처리 {count}건",
+      "hint": "GAS 장애 시 22_MANUAL_ENTRY 시트에 손으로 적은 대출/반납 중 아직 흡수되지 않은 건수"
+    },
     "lastBackup": {
       "label": "마지막 백업",
       "unavailable": "데이터 없음 — 백업 정보는 아직 제공되지 않습니다."

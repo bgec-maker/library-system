@@ -25,7 +25,7 @@
 - [x] 18 viz-v1-b — 하루의 파도 · 열두 달 · 연체 흐름 · 반 참여 링
 - [x] 19 viz-v1-c — 서가 온도 · 장서 나이 · 학년 격차 · 예산
 - [x] 20 book-page-public — /b/ 읽기 전용 (빌리기=로그인 배너)
-- [ ] 21 manual-entry — 수기입력 시트+흡수 (P3)
+- [x] 21 manual-entry — 수기입력 시트+흡수 (P3)
 - [ ] 22 sidebar-i18n — 사이드바 한/영 (P7)
 - [ ] 23 annual-reset — 리셋 마법사 + 학생 CSV + LOANS 아카이브
 - [ ] 24 annual-report — R3 연간 운영 보고서

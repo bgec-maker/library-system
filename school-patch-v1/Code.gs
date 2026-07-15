@@ -29,7 +29,14 @@ var LIBRARY_MVP = Object.freeze({
     OPERATIONS: '18_SYS_OPERATIONS',
     NOTIFICATIONS: '19_NOTIFICATION_QUEUE',
     VIZ_CACHE: '20_VIZ_CACHE',
-    BOOK_CACHE: '21_BOOK_CACHE'
+    BOOK_CACHE: '21_BOOK_CACHE',
+    // todo/21(구 PATCH_SPEC P3) — 명세 원문은 "20_MANUAL_ENTRY"라고 적었지만, 그 사이 20/21은
+    // VIZ_CACHE/BOOK_CACHE가 이미 차지했다(각각 todo/06·todo/17). 번호가 겹치면 시트 탭 이름은
+    // 여전히 고유하니 기술적으로는 동작하지만 혼란스러워서, 다음 순번인 22를 대신 썼다
+    // (docs/ASSUMPTIONS.md todo/21 참고). 의도적으로 LIBRARY_MVP.HEADERS에는 넣지 않는다 —
+    // 이 시트 하나만 protectDatabaseSheets_의 자동 보호 대상에서 빠져야 하기 때문이다. 아래
+    // ensureManualEntrySheet_()/MANUAL_ENTRY_HEADERS_ 주석 참고.
+    MANUAL_ENTRY: '22_MANUAL_ENTRY'
   }),
   HEADERS: Object.freeze({
     '03_TITLES': ['title_id', 'isbn13', 'title', 'subtitle', 'edition', 'publisher', 'published_year', 'language_code', 'material_type_code', 'classification_no', 'keywords', 'description', 'cover_url', 'status_code', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
@@ -75,7 +82,8 @@ function buildLibraryMenu_() {
     .addItem('무결성 점검', 'runIntegrityCheck')
     .addItem('소장본 상태 복구', 'reconcileCopyStatuses')
     .addItem('일일 관리 트리거 설치', 'installLibraryTriggers')
-    .addItem('서지 일괄 보강', 'runBibliographicEnrichment');
+    .addItem('서지 일괄 보강', 'runBibliographicEnrichment')
+    .addItem('수기입력 흡수', 'runAbsorbManualEntries');
 
   ui.createMenu('📚 도서관 관리')
     .addItem('사이드바 열기', 'showLibrarySidebar')
@@ -2932,6 +2940,7 @@ function doPost(e) {
       if (action === 'cancelReservation') return apiWebCancelReservation_(payload);
       if (action === 'reservations') return apiWebReservations_(payload);
       if (action === 'dashboard') return apiWebDashboard_(payload);
+      if (action === 'manualEntryPendingCount') return apiWebManualEntryPendingCount_(payload);
       if (action === 'report') return apiWebReport_(payload);
       if (action === 'viz') return apiWebViz_(payload);
       if (action === 'catalogSync') return apiWebCatalogSync_(payload);
@@ -4315,4 +4324,217 @@ function runBibliographicEnrichment() {
     SpreadsheetApp.getUi().ButtonSet.OK
   );
   return result;
+}
+
+// --------------------------- 수기입력 (todo/21, 구 PATCH_SPEC P3) ---------------------------
+//
+// GAS 자체가 죽었을 때(배포 오류·네트워크 두절 등) 사서가 대출/반납을 시트에 손으로 적어 두었다가
+// GAS가 돌아오면 한 번에 흡수하는 비상 경로(PATCH_SPEC.md "P3 · 수기입력" 원문). 그래서
+// 22_MANUAL_ENTRY는 이 프로젝트에서 유일하게 protectDatabaseSheets_의 ADMIN 전용 보호를 걸지
+// 않는 쓰기 시트여야 한다 — 사서가 "GAS 없이" 바로 타이핑할 수 있어야 이 경로의 존재 이유가
+// 성립한다.
+//
+// 아키텍처 결정 — 왜 LIBRARY_MVP.HEADERS에 넣지 않았는가:
+// ensureSchema_()(135행)와 protectDatabaseSheets_()(226행)는 둘 다 그대로
+// Object.keys(LIBRARY_MVP.HEADERS)를 순회한다(둘 다 "기존 함수 수정 금지" 대상). HEADERS에 시트를
+// 등록하는 순간 "누락 시 자동 생성"과 "자동 ADMIN 전용 보호"가 한 세트로 묶여 버려서, 이 시트만
+// 전자는 원하고 후자는 원하지 않는 요구를 그 두 함수를 고치지 않고는 만족시킬 수 없다. 그래서:
+//   1) LIBRARY_MVP.SHEETS에만 이름을 등록했다(위 SHEETS.MANUAL_ENTRY 참고) — 이 맵은
+//      ensureSchema_/protectDatabaseSheets_ 어느 쪽도 순회하지 않으므로(둘 다 HEADERS의 키만
+//      본다) 두 함수 입장에서는 완전히 보이지 않는다(inert). 다른 상수들과의 이름 관례 통일
+//      목적뿐이다.
+//   2) 생성은 이 파일에서 새로 만든 ensureManualEntrySheet_()가 멱등하게 담당한다(아래).
+//   3) readTable_(sheetName)(2245행)은 `var requiredHeaders = LIBRARY_MVP.HEADERS[sheetName] || [];`
+//      로 필수 헤더를 구한다 — HEADERS에 없는 시트는 requiredHeaders가 빈 배열이 되어 헤더 검사가
+//      트리비얼하게 통과하고, 시트에 실제로 있는 헤더를 그대로 읽어 온다. 그래서 이 시트에도
+//      readTable_를 무수정으로 재사용할 수 있다.
+// 결과: ensureSchema_·protectDatabaseSheets_ 단 한 줄도 건드리지 않고 "자동 생성되지만 영구
+// 비보호"인 시트를 만들었다 — 과제가 제시한 "강력히 선호되는 설계"를 그대로 따랐고, 대체안(
+// protectDatabaseSheets_ 내부 제외 가드 한 줄)은 필요하지 않았다.
+var MANUAL_ENTRY_HEADERS_ = ['일시', '구분(대출/반납)', 'barcode', '학생(학번 또는 이름)', '처리자', '메모', '처리상태', '처리결과'];
+
+function ensureManualEntrySheet_() {
+  var ss = getSpreadsheet_();
+  var sheet = ss.getSheetByName(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  if (sheet) return sheet;
+  sheet = ss.insertSheet(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  sheet.getRange(1, 1, 1, MANUAL_ENTRY_HEADERS_.length).setValues([MANUAL_ENTRY_HEADERS_]);
+  formatNewDbSheet_(sheet, MANUAL_ENTRY_HEADERS_.length);
+  // barcode·학생(학번 또는 이름) 열은 formatIdTextColumns_(318행, 08_COPIES.barcode·
+  // 09_MEMBERS.member_no/school_no에 하는 것과 같은 이유로) 텍스트 서식(@)을 걸어 둔다 —
+  // 이 시트는 사서가 직접 타이핑하므로, 서식이 없으면 "0000123" 같은 값을 Sheets가 숫자 123으로
+  // 바꿔 버려 앞자리 0이 사라지고 findCopyByKey_/resolveManualEntryMember_가 못 찾게 된다. 이건
+  // formatIdTextColumns_ 자체를 부르거나 고치는 게 아니라 이 시트 전용으로 같은 기법을 한 번 더
+  // 쓰는 것뿐이다(그 함수는 MEMBERS/COPIES만 대상으로 하드코딩돼 있어 애초에 이 시트를 모른다).
+  ['barcode', '학생(학번 또는 이름)'].forEach(function(header) {
+    var colIndex = MANUAL_ENTRY_HEADERS_.indexOf(header);
+    sheet.getRange(2, colIndex + 1, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@');
+  });
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  return sheet;
+}
+
+// 학생 해석 — "학번 정확일치 → 이름 유일일치, 실패 시 오류"(PATCH_SPEC 원문). 이 코드베이스에서
+// "학번"이라는 이름표가 실제로 붙어 있는 필드는 09_MEMBERS.student_no가 아니라 school_no다 —
+// registerMember_(632행대)의 중복 검사 오류 메시지가 "같은 학번의 회원이 있습니다"라고 school_no
+// 중복을 가리킨다(646~647행). student_no는 라벨이 "번호"인 반 좌석 번호일 뿐이고 학년·반 조합
+// 안에서만 유일하다(전교 유일이 아님 — 649~653행 dupSeat 검사가 grade+classNo+studentNo 세 개를
+// 함께 봐야 하는 이유). 그래서 "학번 정확일치"는 school_no 기준으로 판단하고, 사서가 도서관
+// 회원번호(member_no, findMemberByKey_가 이미 쓰는 식별자)를 그대로 적는 경우도 자주 있을 것 같아
+// 같이 받아 준다(둘 중 하나만 정확히 일치해도 통과). docs/ASSUMPTIONS.md todo/21에 이 판단
+// 근거를 남겼다 — 과제 메모가 예시로 든 "student_no"를 문자 그대로 따르지 않은 이유다.
+function resolveManualEntryMember_(key) {
+  var normalizedCode = cleanCode_(key);
+  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows;
+  if (normalizedCode) {
+    var byCode = members.filter(function(row) {
+      return row.status_code !== 'WITHDRAWN' &&
+        (cleanCode_(row.member_no) === normalizedCode || cleanCode_(row.school_no) === normalizedCode);
+    });
+    if (byCode.length === 1) return byCode[0];
+    if (byCode.length > 1) fail_('AMBIGUOUS_MANUAL_ENTRY_MEMBER', '학번/회원번호가 일치하는 회원이 여러 명입니다: ' + key);
+  }
+  var normalizedName = normalizeText_(key);
+  var byName = members.filter(function(row) { return row.status_code === 'ACTIVE' && normalizeText_(row.name) === normalizedName; });
+  if (byName.length === 1) return byName[0];
+  if (byName.length > 1) fail_('AMBIGUOUS_MANUAL_ENTRY_MEMBER', '동명이인 — 이름이 일치하는 활성 회원이 ' + byName.length + '명입니다: ' + key);
+  fail_('MANUAL_ENTRY_MEMBER_NOT_FOUND', '학번/이름과 일치하는 회원을 찾을 수 없습니다: ' + key);
+}
+
+function writeManualEntryResult_(table, rowNumber, status, resultText) {
+  table.sheet.getRange(rowNumber, table.index['처리상태'] + 1).setValue(status);
+  table.sheet.getRange(rowNumber, table.index['처리결과'] + 1).setValue(safeText_(String(resultText || '').slice(0, 500)));
+  // 이 시트는 08_COPIES 등과 달리 transactionUpdateRecord_/row_version 관례를 쓰지 않는 자유형
+  // 로그 시트라 직접 setValue한다(과제 지시 그대로 — 되돌릴 "도메인 행"이 아니라 로그일 뿐이다).
+  // 같은 실행 안에서 이 시트를 다시 읽는 코드가 없어도, 다음 호출·다른 액션이 항상 최신 상태를
+  // 보도록 캐시를 무효화해 둔다.
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+}
+
+function summarizeManualEntryResult_(kind, result) {
+  // executeWrite_(2410행대, 무수정)가 이미 COMPLETED로 기록된 requestId를 다시 받으면
+  // checkout_/return_을 재실행하지 않고 { idempotent: true, ... } 요약만 돌려준다(정상 —
+  // "행 처리상태='완료'를 먼저 거른다"는 우리 쪽 1차 방어선이 어떤 이유로든 못 걸렀을 때의
+  // 안전망이 정확히 여기서 작동한 것). 이 경우 checkout_/return_ 고유 필드(memberName·title·
+  // dueAt 등)가 없으므로 그것들을 읽으려 하지 않고 그 사실 자체를 요약으로 남긴다.
+  if (result && result.idempotent) return '완료(이미 처리된 요청 — 이전 실행에서 처리됨, 중복 실행 아님)';
+  if (kind === '대출') {
+    return '대출 완료 · ' + (result.memberName || '') + '(' + result.memberNo + ') · ' + (result.title || result.barcode) + ' · 반납예정 ' + formatDateTime_(result.dueAt);
+  }
+  var overdueText = result.overdueDays ? ' · 연체 ' + result.overdueDays + '일 · 연체료 ' + result.fineAmount : '';
+  return '반납 완료 · ' + (result.title || result.barcode) + overdueText;
+}
+
+// 미처리 행을 위→아래로 재생한다. requestId = 'MANUAL-' + 행번호라서 같은 행을 다시 흡수해도
+// executeWrite_(2410행대, 무수정)의 기존 멱등 체계가 두 번째 checkout_/return_ 실행 자체를 막는다
+// — 다만 그건 "혹시 재시도해도 안전하다"는 안전망이고, 1차 방어선은 아래 pending 필터다: 이미
+// 처리상태='완료'로 적어 둔 행은 애초에 이번 실행의 candidates에도 들어가지 않으므로
+// executeWrite_까지 갈 일이 없다(더 싸고 더 명확하다 — 과제 지시 그대로, "재처리 자체를 앱
+// 레벨에서 먼저 피한다").
+//
+// 오류난 행을 고쳐서 재시도하는 방법이 실패 지점에 따라 갈린다는 점을 README.md에도 적었다:
+//  - resolveManualEntryMember_/구분 파싱처럼 executeWrite_ 호출 "이전"에 실패한 행은
+//    18_SYS_OPERATIONS에 그 requestId가 아예 없으므로, 행 내용을 고치고 처리상태·처리결과 칸을
+//    지우면 다음 실행에서 완전히 새로 시도된다.
+//  - checkout_/return_이 executeWrite_ 안에서 실제로 실패한 행(이미 대출 중·회원 정지 등)은
+//    18_SYS_OPERATIONS에 그 requestId가 FAILED로 이미 남는다 — 같은 행을 고쳐서 같은 행번호로
+//    다시 흡수해도 executeWrite_ 자체가 FAILED_REQUEST_REQUIRES_REVIEW로 거부한다(2432행,
+//    무수정 — "새 요청 ID로 다시 실행하라"는 기존 설계 그대로). 그래서 이런 행은 고치지 말고
+//    새 행을 추가해 다시 입력해야 한다.
+function absorbManualEntries_() {
+  // 역할 확인을 행 루프보다 먼저 한 번만 한다 — executeWrite_도 각 행마다 같은 검사를 하지만,
+  // 거기 맡기면 권한이 없는 계정이 실행했을 때 대상 행 전부가 "오류(권한 없음)"로 낙인찍혀
+  // 버린다(그러면 정당한 ADMIN/LIBRARIAN이 나중에 실행해도 처리상태가 이미 채워져 있어 pending
+  // 필터에 안 걸린다). 권한 문제는 배치 전체를 조용히 실패시키는 게 맞다 — 개별 행 오류(동명이인
+  // 등)와는 성격이 다르다.
+  var actor = getActor_();
+  requireRole_(actor, ['ADMIN', 'LIBRARIAN']);
+  ensureManualEntrySheet_();
+  var table = readTable_(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  MANUAL_ENTRY_HEADERS_.forEach(function(header) {
+    if (table.index[header] === undefined) fail_('SCHEMA_MISMATCH', LIBRARY_MVP.SHEETS.MANUAL_ENTRY + '에 필요한 헤더가 없습니다: ' + header);
+  });
+
+  var pending = table.rows.filter(function(row) { return !cleanText_(row['처리상태']); });
+  var processedCount = 0;
+  var succeededCount = 0;
+  var failedCount = 0;
+
+  pending.forEach(function(row) {
+    processedCount++;
+    var rowNumber = row._row;
+    try {
+      var kind = cleanText_(row['구분(대출/반납)']);
+      var barcode = requiredText_(row['barcode'], 'barcode');
+      var studentKey = requiredText_(row['학생(학번 또는 이름)'], '학생(학번 또는 이름)');
+      var operationType;
+      var targetFn;
+      if (kind === '대출') { operationType = 'MANUAL_CHECKOUT'; targetFn = checkout_; }
+      else if (kind === '반납') { operationType = 'MANUAL_RETURN'; targetFn = return_; }
+      else fail_('VALIDATION_ERROR', "구분은 '대출' 또는 '반납'이어야 합니다: " + kind);
+
+      var member = resolveManualEntryMember_(studentKey);
+      var noteParts = ['[수기입력 행 ' + rowNumber + ']'];
+      if (cleanText_(row['메모'])) noteParts.push(cleanText_(row['메모']));
+      // apiWebCheckout_/apiWebReturn_(3081·3087행)과 같은 관례 — executeWrite_에 넘기는
+      // payload와 실제 checkout_/return_에 넘기는 payload를 같은 객체로 재사용해 이중 래핑하지
+      // 않는다. requestId를 이 payload 안에 넣어야 executeWrite_의 payloadHash가 매 실행마다
+      // 같은 값으로 계산돼(행 내용을 안 고쳤다면) 두 번째 실행에서도 REQUEST_ID_CONFLICT가 나지
+      // 않는다.
+      var writePayload = {
+        requestId: 'MANUAL-' + rowNumber,
+        copyKey: barcode,
+        memberKey: member.member_no,
+        note: noteParts.join(' ')
+      };
+      var result = executeWrite_(operationType, writePayload, function(writeActor, requestId, transaction) {
+        return targetFn(writePayload, writeActor, requestId, transaction);
+      });
+      writeManualEntryResult_(table, rowNumber, '완료', summarizeManualEntryResult_(kind, result));
+      succeededCount++;
+    } catch (error) {
+      // 동명이인·회원 없음·소장본 대출 중 등 어떤 이유로 실패해도 이 행 하나만 오류로 남기고
+      // 배치는 계속한다(PATCH_SPEC 수용 기준 "오류 행은 건너뛰고 계속"). catch를 행 단위로 두어
+      // 다음 forEach 반복이 자동으로 이어진다 — 별도 continue 로직이 필요 없다.
+      failedCount++;
+      writeManualEntryResult_(table, rowNumber, '오류', error.message || String(error));
+    }
+  });
+
+  return { processedCount: processedCount, succeededCount: succeededCount, failedCount: failedCount };
+}
+
+// 사이드바 관리 메뉴("수기입력 흡수")가 호출하는 진입점 — runBibliographicEnrichment(todo/17,
+// 위)와 정확히 같은 패턴(결과를 alert로 보여 준다).
+function runAbsorbManualEntries() {
+  try {
+    var result = absorbManualEntries_();
+    var message = '대상 ' + result.processedCount + '건 · 성공 ' + result.succeededCount + '건 · 오류 ' + result.failedCount + '건';
+    if (result.failedCount) {
+      message += '\n오류 행은 ' + LIBRARY_MVP.SHEETS.MANUAL_ENTRY + ' 시트의 처리결과 열을 확인하세요. ' +
+        '입력 오류(학번/이름/구분 등)는 고쳐서 처리상태 칸을 지우면 재시도되고, ' +
+        '실제 처리 거부(이미 대출 중 등)는 그 행은 그대로 두고 새 행에 다시 입력하세요.';
+    }
+    SpreadsheetApp.getUi().alert('수기입력 흡수 완료', message, SpreadsheetApp.getUi().ButtonSet.OK);
+    return result;
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('수기입력 흡수 실패', error.message || String(error), SpreadsheetApp.getUi().ButtonSet.OK);
+    throw error;
+  }
+}
+
+// 웹앱 대시보드용 읽기 전용 미처리 건수(todo/21) — apiWebDashboard_/getDashboardData_(3201행,
+// 무수정)과 같은 자리에서 쓰이지만 별도 액션으로 분리했다: 대시보드 응답 모양은
+// getDashboardData_()가 고정으로 반환하는 그대로라 그 함수를 고치지 않고는 필드를 더할 수 없다
+// (todo/12 readyPickup이 이미 같은 이유로 apiWebReservations_를 dashboard와 별도 액션으로 뒀다
+// — 3197행 주석 참고). 시트가 아직 없으면(=이 경로가 한 번도 안 쓰였으면) 오류를 던지지 않고
+// 0을 돌려준다 — ensureManualEntrySheet_는 여기서 부르지 않는다(순수 읽기 액션이 부작용으로
+// 시트를 새로 만들면 안 된다는 판단).
+function apiWebManualEntryPendingCount_(payload) {
+  var sheet = getSpreadsheet_().getSheetByName(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  if (!sheet) return { pendingCount: 0 };
+  var table = readTable_(LIBRARY_MVP.SHEETS.MANUAL_ENTRY);
+  if (table.index['처리상태'] === undefined) return { pendingCount: 0 };
+  var pendingCount = table.rows.filter(function(row) { return !cleanText_(row['처리상태']); }).length;
+  return { pendingCount: pendingCount };
 }

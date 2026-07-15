@@ -64,6 +64,10 @@
       "title": "Ready for pickup",
       "label": "Awaiting pickup"
     },
+    "manualEntryPending": {
+      "label": "{count} manual entries pending",
+      "hint": "Loan/return rows hand-typed into 22_MANUAL_ENTRY while GAS was down, not yet absorbed"
+    },
     "lastBackup": {
       "label": "Last backup",
       "unavailable": "No data — backup info isn't available yet."
