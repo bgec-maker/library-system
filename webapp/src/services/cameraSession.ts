@@ -12,6 +12,14 @@ export interface CameraSessionStatus {
   running: boolean;
   /** 연속 모드 핀 — 켜져 있으면 유휴 타이머가 아예 걸리지 않는다(러시아워용, FRONTEND.md). */
   continuous: boolean;
+  /**
+   * H1 — 유휴 자동종료 타이머가 걸려 있을 때 그 발동 절대 시각(Date.now() 기준 ms). 연속 모드이거나
+   * 애초에 꺼져 있으면 null. UI(모바일 스캔 무대의 유휴 카운트다운)가 매 tick마다
+   * `idleDeadlineAt - Date.now()`로 남은 시간을 계산해 마지막 30초부터만 그린다 — 실제 종료
+   * 타이밍(3분 고정)은 여전히 armIdleTimer의 setTimeout 하나가 갖고, 이 필드는 그 마감 시각을
+   * 읽기 전용으로 노출할 뿐이다(10초 전 토스트 예고와 별개로 존재하는 추가 시각 신호).
+   */
+  idleDeadlineAt: number | null;
 }
 
 const IDLE_MS = 3 * 60 * 1000; // 유휴 3분 자동 종료
@@ -22,6 +30,7 @@ class CameraSessionImpl {
   private continuous = false;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private warningTimer: ReturnType<typeof setTimeout> | null = null;
+  private idleDeadlineAt: number | null = null;
   private statusListeners = new Set<(s: CameraSessionStatus) => void>();
 
   constructor() {
@@ -37,7 +46,7 @@ class CameraSessionImpl {
   }
 
   getStatus(): CameraSessionStatus {
-    return { running: this.running, continuous: this.continuous };
+    return { running: this.running, continuous: this.continuous, idleDeadlineAt: this.idleDeadlineAt };
   }
 
   onStatus(fn: (s: CameraSessionStatus) => void): () => void {
@@ -97,21 +106,28 @@ class CameraSessionImpl {
       clearTimeout(this.warningTimer);
       this.warningTimer = null;
     }
+    this.idleDeadlineAt = null;
   }
 
   /**
    * 스캔(=활동)이 있을 때마다 다시 호출돼 3분 카운트다운을 리셋한다. 연속 모드이거나 애초에
    * 꺼져 있으면 아무 타이머도 걸지 않는다(자동 종료 대상이 아님).
+   *
+   * H1 — idleDeadlineAt(마감 절대 시각)도 여기서 같이 갱신하고 notify()로 즉시 broadcast한다.
+   * 실제 종료 타이밍(IDLE_MS)·10초 전 토스트는 그대로 — 이 notify는 그 위에 얹는 추가 UI
+   * 신호(모바일 스캔 무대의 카운트다운)를 위한 것뿐, 타이머 자체를 바꾸지 않는다.
    */
   private armIdleTimer(): void {
     this.clearTimers();
     if (this.continuous || !this.running) return;
+    this.idleDeadlineAt = Date.now() + IDLE_MS;
     this.warningTimer = setTimeout(() => {
       pushToast(t('camera.idleWarning'), 'info');
     }, IDLE_MS - WARNING_LEAD_MS);
     this.idleTimer = setTimeout(() => {
       this.stop();
     }, IDLE_MS);
+    this.notify();
   }
 }
 

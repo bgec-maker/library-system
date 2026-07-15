@@ -586,3 +586,42 @@
   이미 같은 개념을 가리키는 기존 키(`views.catalog.col.barcode/status/shelf/acquiredAt`,
   `views.recentOps.col.*`, `common.none`, `components.dataTable.errorPrefix`)는 새로 만들지
   않고 그대로 재사용했다(DESIGN.md "같은 행동 같은 이름 관통").
+
+## H1 · 모바일 카메라 무대 (2026-07-15)
+
+- **`ScanCameraStart.tsx`에 새 필수 prop `platform`을 추가**하면서 4개 호출부(loan-return·
+  register·inventory·book-detail) 전부를 고쳤다 — todo 본문은 "loan-return/inventory/register"
+  세 곳만 언급했지만 실제로는 `book-detail`(todo/11, `scan:'focus'`로 전환됨)도 같은 컴포넌트를
+  쓰고 있어 넷째 호출부가 이미 존재했다. `platform`을 옵셔널로 두고 book-detail만 빠뜨리면 그
+  화면만 조용히 데스크톱 취급을 받거나(타입 에러 없이) 모바일에서 깨지는 사각지대가 생기므로,
+  네 곳 모두 `shell.platform`을 넘기게 통일했다.
+
+- **`camera.offHint` 문구를 재정의(재사용)해서 ADR-020 카피로 바꿨다** — 새 키
+  (`camera.offCard.hint` 등)를 만들지 않았다. `offHint`는 todo/03에서 추가된 뒤 실제로는
+  어디서도 쓰인 적이 없는 채로 남아 있던 키였고(정확히 이 항목의 "꺼짐 상태" 카드를 위해
+  미리 마련해 둔 것으로 보인다), 문구도 "카메라가 꺼져 있습니다 — 스캔하려면 켜세요"에서
+  완료 조건이 요구하는 정확한 문장("카메라는 필요할 때만 켜집니다")으로 바꿔치기만 하면
+  그대로 들어맞아서 재사용했다(ko/en 양쪽). 마찬가지로 무대의 종료 버튼은 새 키를 만들지 않고
+  기존 `camera.stop`("카메라 끄기" — 이 역시 todo/03 이후 미사용 상태였다)을 재사용했다.
+
+- **DESIGN.md가 문서화한 간격 토큰 `--sp-1~--sp-8`이 실제로는 `tokens/work.css`·
+  `tokens/student.css` 어디에도 정의돼 있지 않다**(전체 저장소 grep 결과 0건, 기존 컴포넌트
+  CSS도 전부 px 리터럴을 그대로 씀). 이번에 추가한 `base.css`의 `.scan-off-card*`,
+  `components/camera/MobileScanStage.css`도 존재하지 않는 `var(--sp-*)`를 참조해 조용히
+  깨진 스타일을 만들지 않도록, 기존 관례(px 리터럴)를 그대로 따랐다 — 토큰 정의 자체를 새로
+  추가하는 건 디자인 시스템 전체에 영향을 주는 별도 결정이라 이 항목 범위 밖으로 남겨둔다.
+
+- **조준 프레임 색은 `--brass`(평상시)·`--pass`(인식 순간)로 정했다** — `--pass`는 이미
+  `ScanFlashOverlay.tsx`(전면 플래시)가 "인식 성공"의 의미로 쓰고 있어 그대로 이어받았고,
+  평상시(조준 중) 색은 `Window.tsx`의 `.window-pin.is-pinned`(이 창이 지금 스캔을 받는
+  대상)가 쓰는 `--brass`를 그대로 가져왔다 — "지금 이게 활성 대상"이라는 의미가 같다.
+
+- **조준 프레임 사각형이 화면 밖으로 살짝 넘칠 수 있는 경우를 그대로 뒀다(고치지 않음)** —
+  `services/camera.ts`의 `CROP.wRatio`(0.72, 네이티브 영상 폭의 72%)가 화면 종횡비가 카메라
+  네이티브 종횡비보다 훨씬 좁고 긴 기기(예: 아주 좁은 폰 화면 + 4:3에 가까운 카메라)에서는
+  `object-fit: cover`가 실제로 보여주는 폭 비율보다 커질 수 있다 — 이 경우 조준 프레임 좌우
+  가장자리가 화면 경계를 넘어간다(`.scan-stage`의 `overflow: hidden`이 그 넘치는 부분만
+  조용히 잘라낸다, 레이아웃이 깨지거나 예외가 나지 않는다 — 세로는 항상 정확히 맞는다,
+  실측 트레이스는 최종 보고 참고). "조준 프레임 = 실제 디코드 크롭 영역과 픽셀 일치"가 완료
+  조건이라 크롭 폭 자체를 줄이는 근사치 타협은 하지 않았고, `camera.ts`의 `CROP` 값도 이 항목
+  대상이 아니라(수정 금지, export만 추가) 건드리지 않았다.

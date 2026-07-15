@@ -79,7 +79,12 @@
     "continuousMode": "Continuous mode",
     "continuousModeHint": "Keeps running without the idle auto-stop — for busy periods like lunch rush.",
     "idleWarning": "Scanner turns off in 10 seconds.",
-    "offHint": "Camera is off — turn it on to scan."
+    "offHint": "The camera only turns on when you need it.",
+    "stage": {
+      "scanningTo": "Scanning → {target}",
+      "autoStopIn": "Auto-stop in {seconds}s",
+      "torch": "Flashlight"
+    }
   },
   "shell": {
     "desktop": {

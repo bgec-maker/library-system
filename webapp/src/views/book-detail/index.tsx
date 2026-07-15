@@ -261,7 +261,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
 
   return (
     <div className="bd-view">
-      <ScanCameraStart viewId="book-detail" />
+      <ScanCameraStart viewId="book-detail" platform={shell.platform} />
 
       {!hasQuery && <div className="panel bd-empty">{t('views.bookDetail.invalidQuery')}</div>}
 

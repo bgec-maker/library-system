@@ -127,6 +127,31 @@ label {
   min-height: 44px;
 }
 
+/* 모바일 "꺼짐 상태" 큰 카드 — H1(components/camera/*) 완료 조건 "큰 시작 버튼 카드". 데스크톱의
+   작은 버튼(위)과 시작 트리거(cameraSession.start)는 같고, 모바일에서만 더 큰 탭 타깃 + ADR-020
+   카피 한 줄(camera.offHint)을 더한다. platform==='mobile' && !session.running일 때만 렌더(H1). */
+.scan-off-card {
+  margin: 10px 0;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+.scan-off-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 0 24px;
+  font-size: var(--fs-lg);
+}
+.scan-off-card__hint {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+
 /* components/SampleDataBadge.tsx — todo/04 이후 대시보드·리포트·시각화가 공유하는 「샘플 데이터」
    배지. --wait(대기/주의 톤)를 재사용 — 새 색을 만들지 않는다(DESIGN.md "임의 hex 금지"). */
 .sample-data-badge {

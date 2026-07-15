@@ -1,0 +1,101 @@
+/* components/camera/MobileScanStage.tsx — H1 모바일 풀스크린 스캔 무대. 구조만 담당(색은
+   var(--token)만), 조준 프레임 자체는 ScanAimFrame.css가 담당한다. 간격은 다른 셸 CSS(mobile.css·
+   desktop.css·base.css)와 같은 관례대로 px 리터럴을 쓴다 — DESIGN.md가 문서화한 --sp-* 간격
+   토큰은 이 저장소 어디에도 실제 정의돼 있지 않아(tokens/work.css·student.css 미정의) 지금 이걸
+   쓰면 조용히 깨진 var() 참조가 된다. docs/ASSUMPTIONS.md "H1" 절 참고.
+   z-index 9200 — 셸 콘텐츠/탭바(<=700)보다는 위, ToastHost(9999)·ScanFlashOverlay(9998)보다는
+   아래에 둬서 유휴 경고 토스트·전면 인식 플래시가 이 무대 위에서도 계속 보이게 한다. */
+.scan-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 9200;
+  overflow: hidden;
+  background: #000; /* .scanner-dock__preview(desktop.css)와 같은 관례 — 비디오 letterbox 배경 */
+}
+
+.scan-stage__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-stage__topbar,
+.scan-stage__bottombar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.scan-stage__topbar {
+  top: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 12px
+    calc(16px + env(safe-area-inset-left, 0px));
+}
+
+.scan-stage__title {
+  font: 600 var(--fs-md) var(--sans);
+}
+
+.scan-stage__countdown {
+  font: 700 var(--fs-sm) var(--sans);
+  color: var(--brass);
+}
+
+.scan-stage__bottombar {
+  bottom: 0;
+  justify-content: center;
+  padding: 12px calc(16px + env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px));
+}
+
+.scan-stage__iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--radius);
+  color: #fff;
+  padding: 0;
+}
+
+.scan-stage__iconBtn.is-active {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--ink);
+}
+
+.scan-stage__closeBtn {
+  background: var(--fail);
+  border-color: var(--fail);
+  margin-left: 12px;
+}
+
+.scan-stage__recognized {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  transform: translate(-50%, 0);
+  z-index: 2;
+  max-width: 80%;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  background: var(--pass);
+  color: #fff;
+  font: 700 var(--fs-md) var(--mono);
+  text-align: center;
+  word-break: break-all;
+}

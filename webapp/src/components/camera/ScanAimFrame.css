@@ -1,0 +1,50 @@
+/* components/camera/ScanAimFrame.tsx — H1·H2가 공유하는 조준 프레임 규격 컴포넌트.
+   색상은 tokens/{work,student}.css 변수만 참조(DESIGN.md "임의 hex 금지"). --brass = 조준 중
+   (window-pin.is-pinned과 같은 "지금 이게 활성 대상" 톤), --pass = 인식 성공 플래시(ScanFlashOverlay와
+   같은 톤). 모션은 색 전환 하나뿐이고 base.css의 prefers-reduced-motion 전역 규칙이 그 transition도
+   함께 무효화한다(DESIGN.md "장식 애니메이션 금지 — 스캔 플래시만 허용"에 해당). */
+.scan-aim-frame {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scan-aim-frame__corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--brass);
+  transition: border-color 150ms ease-out;
+}
+
+.scan-aim-frame.is-flash .scan-aim-frame__corner {
+  border-color: var(--pass);
+}
+
+.scan-aim-frame__corner--tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.scan-aim-frame__corner--tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+.scan-aim-frame__corner--bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+}
+
+.scan-aim-frame__corner--br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+}

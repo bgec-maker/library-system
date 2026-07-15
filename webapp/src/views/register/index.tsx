@@ -397,7 +397,7 @@ export default function RegisterView({ shell }: ViewProps) {
 
       {screen === 'scan' && (
         <section className="reg-scan panel">
-          <ScanCameraStart viewId="register" />
+          <ScanCameraStart viewId="register" platform={shell.platform} />
           <p className="reg-scanHint">{t('views.register.scanHint')}</p>
           {!manualOpen ? (
             <button type="button" className="ghost" onClick={() => setManualOpen(true)}>

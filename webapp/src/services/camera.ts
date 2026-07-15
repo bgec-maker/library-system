@@ -49,7 +49,10 @@ export interface CameraStatus {
 
 // 조준 프레임(가운데 72% x 40%)만 잘라 디코더에 넘긴다 — 처리 픽셀을 줄여 발열을 낮춘다
 // (register.html에서 실측 검증된 크롭 비율을 그대로 이식).
-const CROP = { xRatio: 0.14, wRatio: 0.72, yRatio: 0.3, hRatio: 0.4 };
+// export: H1(components/camera/ScanAimFrame.tsx)이 화면 위 조준 프레임을 이 크롭 영역과
+// "픽셀 일치"시키기 위해 이 값을 그대로 import한다 — UI 쪽에서 값을 다시 하드코딩하면 이 비율이
+// 바뀔 때 드리프트가 생기므로, 단일 원천으로 여기서만 export한다(디코드 루프 로직 자체는 불변).
+export const CROP = { xRatio: 0.14, wRatio: 0.72, yRatio: 0.3, hRatio: 0.4 };
 const THROTTLE_MS = 100; // 10fps
 const DEDUPE_MS = 1200;
 
@@ -86,6 +89,15 @@ class CameraServiceImpl {
   /** 도크 위젯 등에서 실시간 미리보기를 보여줄 때만 사용 — 디코드용 video와 별개 엘리먼트에 같은 스트림을 붙인다. */
   attachPreview(el: HTMLVideoElement): void {
     if (this.stream) el.srcObject = this.stream;
+  }
+
+  /**
+   * 활성 스트림의 비디오 트랙 — 읽기 전용 접근자(추가만, getUserMedia 호출점·스트림 수명 관리는
+   * 그대로 이 파일 안쪽뿐). H1 모바일 스캔 무대의 토치 토글처럼 track.getCapabilities()/
+   * applyConstraints()가 필요한 UI를 위한 것 — 스트림이 없으면 null.
+   */
+  getVideoTrack(): MediaStreamTrack | null {
+    return this.stream?.getVideoTracks()[0] ?? null;
   }
 
   async acquire(): Promise<void> {

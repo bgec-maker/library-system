@@ -17,7 +17,7 @@ export default function InventoryView({ shell }: ViewProps) {
 
   return (
     <div className="panel" style={{ padding: 20 }}>
-      <ScanCameraStart viewId="inventory" />
+      <ScanCameraStart viewId="inventory" platform={shell.platform} />
       <p>{t('views.inventory.comingSoon')}</p>
       <p style={{ marginTop: 8, fontSize: 'var(--fs-sm)', color: 'var(--ink-3)' }}>{t('views.inventory.comingSoonDetail')}</p>
     </div>

@@ -79,7 +79,12 @@
     "continuousMode": "연속 모드",
     "continuousModeHint": "유휴 자동 종료 없이 계속 켜 둡니다 — 점심시간 등 연속 스캔용.",
     "idleWarning": "스캐너가 10초 후 꺼집니다.",
-    "offHint": "카메라가 꺼져 있습니다 — 스캔하려면 켜세요."
+    "offHint": "카메라는 필요할 때만 켜집니다.",
+    "stage": {
+      "scanningTo": "스캔 중 → {target}",
+      "autoStopIn": "{seconds}초 후 자동 종료",
+      "torch": "손전등"
+    }
   },
   "shell": {
     "desktop": {

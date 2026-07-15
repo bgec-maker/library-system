@@ -419,7 +419,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
         <span className="lr-header-hint">{t('views.loanReturn.hint')}</span>
       </header>
 
-      <ScanCameraStart viewId="loan-return" />
+      <ScanCameraStart viewId="loan-return" platform={shell.platform} />
 
       <div className="lr-slots">
         <div className={`lr-slot${book ? ' filled' : ''}`}>
