@@ -941,3 +941,78 @@
   비싼 연산이라 버릴 프레임에 대해서까지 그 비용을 치르는 건 "디코드를 메인 스레드 밖으로 옮겨
   메인 스레드를 자유롭게 한다"는 이 항목의 목적에 오히려 반한다고 판단했다. 동작 결과(프레임
   드랍, 큐잉 없음)는 todo가 요구한 그대로다.
+
+## todo/15 · 검색 강화 (2026-07-15)
+
+- **ISBN은 통합 검색 대상에서 실제로는 빠졌다** — todo 본문 "서명·저자·ISBN·등록번호 통합"을
+  글자 그대로 구현하려 했으나, `services/catalog.ts`의 `CatalogCopyRow`(todo/08 미러 스키마)에
+  애초에 `isbn13` 필드가 없다. 서버 `apiWebCatalogSync_`(school-patch-v1/Code.gs 3048행)의
+  반환 객체를 직접 확인했고, 거기도 `isbn13`을 내려주지 않는다 — 즉 미러 자체에 ISBN 데이터가
+  전혀 존재하지 않는다. 이 항목은 "Code.gs 변경 없음" 전제이고 `catalog.ts`의 동기화/커서
+  로직(스키마 포함)도 건드리지 말라는 규칙이라, 필드를 새로 추가해 받아오는 선택지 자체가
+  막혀 있었다. 그렇다고 있지도 않은 필드를 있는 척 매칭시키는 것은 CLAUDE.md 검증 원칙
+  "가짜 성공 금지"에 어긋난다고 판단해, 검색 입력창 문구(`views.search.queryPlaceholder`)를
+  "서명·저자·등록번호로 검색"으로 정직하게 좁혔다 — ISBN 문자열을 입력해도 어떤 행에도
+  매칭되지 않고 그냥 "검색 결과가 없습니다"로 보인다(오작동이 아니라 데이터가 없어서 나는
+  정상적인 빈 결과). 스캔 연동도 같은 이유로 `target.kind === 'isbn'` 이벤트는 조용히
+  무시한다(등록 도구 쪽 몫으로 남김, 아래 스캔 연동 항목 참고). 실제로 ISBN까지 검색하려면
+  다음 라운드에서 `apiWebCatalogSync_`가 `isbn13`을 함께 내려주도록 서버를 바꾸고
+  `CatalogCopyRow`에 필드를 추가해야 한다 — 이번 항목의 범위 밖으로 남긴다.
+
+- **DataTable(`components/DataTable/index.tsx`) 자체는 건드리지 않고, search 뷰가 자기 검색어·
+  필터로 미러 전체를 먼저 걸러(`visibleRows`) DataTable에 넘기는 방식**을 택했다(todo 지시문의
+  두 옵션 중 (b)). 이 컴포넌트는 catalog·recent-ops·reports(담임 리포트·미변상 목록)·
+  reservations·book-detail 5곳이 공유하는 단일 구현체라, 그 안의 검색 상자를 초성 인식으로
+  바꾸면 5곳 전부의 기존 동작(단순 부분 문자열 매칭)을 다시 검증해야 하는 회귀 위험을 새로
+  떠안는다. 반면 "화면이 자기 상태로 `rows`를 미리 걸러 DataTable에 넘기고, DataTable 자신의
+  검색 상자는 그 결과 안에서 한 번 더 좁히는 보조 역할로 남는다"는 패턴은 이미
+  `views/reservations/index.tsx`(대기/도착/임박 탭이 `items`→`filteredRows`)가 정확히 같은
+  모양으로 쓰고 있어 새 아키텍처가 아니라 기존 관례의 재사용이다. 그래서 `services/choseong.ts`
+  (신규, 순수 유틸)를 만들어 search 뷰 안에서만 쓰고, DataTable에는 `searchPlaceholder`만
+  "표시된 결과 안에서 추가 검색"으로 바꿔 두 검색 상자가 서로 다른 일을 한다는 걸 문구로
+  구분했다. `npm run verify`(lint·view-boundary·i18n 이중검사·tsc)와 `npm run build`가 전부
+  기존과 동일하게 통과했고, DataTable 자체를 전혀 수정하지 않았으므로 catalog·recent-ops·
+  reports·reservations·book-detail 4곳(도서상세 포함 5곳)의 기존 동작은 코드 변경이 아예 없어
+  회귀 가능성이 원천적으로 없다.
+
+- **스캔 연동은 "검색 뷰 안에서 결과를 제자리 필터링"이 아니라 "book-detail로 이동"**을
+  택했다(registry.ts에서 search를 `scan:'focus'`로 전환). todo 문구 "포커스 중 스캔 → 해당
+  도서로"의 "해당 도서로"를 "그 책 화면으로"로 읽었다 — catalog 행 클릭이 이미 book-detail로
+  이동하는 것과 같은 내비게이션 규약이고, search 결과의 행 클릭도 이번 항목에서 같은 곳으로
+  이동하게 만들었으니(`shell.open('book-detail', {...})`) 스캔도 같은 목적지를 가리키는 편이
+  "같은 행동 같은 이름 관통"(DESIGN.md) 원칙에 맞는다고 판단했다. book-detail 자신이
+  `scan:'focus'`일 때 "제자리 갱신"을 하는 것(todo/11)과 다른 이유: book-detail은 이미 그 책
+  화면 자체이니 제자리 갱신이 자연스럽지만, search는 여러 책이 늘어선 목록 화면이라 스캔된 한
+  책만을 위해 목록 자체를 접어 넣는 것보다 "그 책 상세로 이동"이 사서 입장에서 더 예측 가능한
+  동작이라고 봤다. 예약 대기(학생증 스캔을 기다리는 중) 상태에서 책 스캔이 들어오면 그 대기를
+  접고(`setReservingTitleId(null)`) 이동한다 — book-detail이 새 책 스캔 시 `reserving` 상태를
+  접는 것(같은 파일의 `useEffect(() => setReserving(false), [query.copyKey, query.titleId])`)과
+  같은 이유(더 이상 화면에 남아 있지 않을 예약 대기 안내를 남겨두지 않는다).
+
+- **초성 알고리즘 검증** — 유니코드 한글 음절 블록(U+AC00 "가" ~ U+D7A3 "힣")에서
+  `choseongIndex = floor((code - 0xAC00) / (21 × 28))`로 초성 인덱스를 구한다. 코드 작성 시
+  `node -e`로 실제 실행해 확인한 값(암산이 아니라 실행 결과):
+  ```
+  채 U+CC44 → offset 8260 → floor(8260/588)=14 → ㅊ
+  식 U+C2DD → offset 5853 → floor(5853/588)=9  → ㅅ
+  주 U+C8FC → offset 7420 → floor(7420/588)=12 → ㅈ
+  의 U+C758 → offset 7000 → floor(7000/588)=11 → ㅇ
+  자 U+C790 → offset 7056 → floor(7056/588)=12 → ㅈ
+  ⇒ "채식주의자" → "ㅊㅅㅈㅇㅈ", 쿼리 "ㅊㅅㅈ"는 접두 3글자와 일치 → 매칭 성공
+  아 U+C544 → offset 6468 → floor(6468/588)=11 → ㅇ
+  몬 U+BAAC → offset 3756 → floor(3756/588)=6  → ㅁ
+  드 U+B4DC → offset 2268 → floor(2268/588)=3  → ㄷ
+  ⇒ "아몬드" → "ㅇㅁㄷ", 쿼리 "ㅇㅁㄷ"와 완전 일치 → 매칭 성공
+  ```
+  5,000행 목데이터(`mocks/catalog.ts`)에 위 두 예를 섞은 뒤 실제 필터 파이프라인(부분 문자열
+  ∪ 초성)을 그대로 흉내 낸 스크립트로 재확인 — 초성 쿼리 "ㅊㅅㅈ"/"ㅇㅁㄷ" 둘 다 정확히 해당
+  행 1건만 골라냈고, 5,002행 전체 스캔에 소요된 시간은 3ms 이하였다(완료 조건 "100ms 내"에
+  여유 있게 들어온다). 행별 부분 문자열 대상(`plainText`)·초성 문자열(`choseongText`)은
+  `state.rows` 참조가 바뀔 때만 `useMemo`로 다시 계산하고, 검색어 입력마다는 이미 계산된
+  문자열을 재사용한다(`views/search/index.tsx`의 `searchIndex`).
+
+- **예약 대기는 화면 전체에 하나만 허용**한다(행마다 독립적인 대기 상태를 두지 않음) — 여러
+  서지의 「예약」 버튼을 동시에 누를 수 있게 하면 다음 학생 스캔이 어느 예약으로 가는지
+  모호해진다. 그래서 `reservingTitleId`(전역 상태 하나)가 채워져 있으면 나머지 모든 행의
+  「예약」 버튼을 비활성화한다 — book-detail(서지 하나짜리 화면이라 이 문제 자체가 없음)과
+  달리 search는 목록 화면이라 이 조율이 필요했다.

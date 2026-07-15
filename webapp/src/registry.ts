@@ -42,11 +42,16 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     mobile: { tab: 1 }
   },
   {
+    // todo/15 — 이전엔 scan:'none'이라 검색 뷰가 포커스/핀 상태여도 스캔 이벤트를 못 받았다.
+    // book-detail(todo/11)과 같은 이유로 'focus'로 전환: "검색 뷰 포커스 중 스캔 → 해당 도서로"
+    // 완료 조건 때문이다(뷰 안 scanBus 구독, views/search/index.tsx) — 유효 책 스캔이 오면
+    // book-detail로 이동한다(카탈로그 행 클릭과 같은 내비게이션, 목록 화면이라 book-detail처럼
+    // "제자리 갱신"이 아니라 "이동"을 택했다 — docs/ASSUMPTIONS.md `## todo/15` 참고).
     id: 'search',
     title: t(TITLE_KEYS.search),
     icon: Search,
     roles: ['LIBRARIAN'],
-    scan: 'none',
+    scan: 'focus',
     desktop: { min: [480, 560] },
     mobile: { tab: 2 }
   },

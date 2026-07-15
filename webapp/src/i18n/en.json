@@ -233,8 +233,13 @@
       "errorNoOperator": "No operator info — enter your login details in Settings."
     },
     "search": {
-      "comingSoon": "Search is coming soon.",
-      "comingSoonDetail": "The catalog mirror search screen will live here."
+      "queryPlaceholder": "Search by title, author, or barcode — Korean initials work too (e.g. ㅊㅅㅈ)",
+      "choseongHint": "You can search with Korean initial consonants alone — e.g. \"ㅊㅅㅈ\" matches 채식주의자",
+      "filterAll": "All",
+      "resetFilters": "Reset filters",
+      "refineSearchPlaceholder": "Search within displayed results",
+      "empty": "No matching results — try a different search term.",
+      "scanNavigatingHint": "Opening the scanned book…"
     },
     "inventory": {
       "startSession": "Start inventory session",
