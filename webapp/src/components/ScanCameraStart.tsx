@@ -5,6 +5,7 @@ import { cameraSession, type CameraSessionStatus } from '../services/cameraSessi
 import { getEffectiveScanRoute, subscribeScanRoute } from '../services/scanBus';
 import { t } from '../i18n';
 import { MobileScanStage } from './camera/MobileScanStage';
+import { openScannerWindow } from '../services/scannerWindowStore';
 
 interface ScanCameraStartProps {
   viewId: ViewId;
@@ -20,11 +21,13 @@ interface ScanCameraStartProps {
  * (셸별 오버레이를 따로 만들지 않은 이유는 docs/ASSUMPTIONS.md todo/03 참고.)
  *
  * 이 뷰가 지금 유효 스캔 라우트(getEffectiveScanRoute())가 아니면 어느 플랫폼에서도 아무것도
- * 렌더하지 않는다. 유효 라우트일 때는 플랫폼별로 갈린다(H1):
- *  - 데스크톱: 이 항목 이전과 완전히 동일 — 꺼져 있을 때 작은 버튼, 켜져 있을 때 null
- *    (데스크톱 카메라 UI 자체를 다루는 건 다음 큐 항목 H2 — 여기서 선점하지 않는다).
+ * 렌더하지 않는다. 유효 라우트일 때는 플랫폼별로 갈린다:
+ *  - 데스크톱(H2/ADR-026): 꺼져 있을 때 작은 버튼 — 클릭하면 `ScannerWindow`를 연다(그 창을
+ *    여는 것 자체가 카메라 시작이다, services/scannerWindowStore.ts). 켜져 있을 때는 null
+ *    (창이 이미 열려 카메라가 돌고 있다는 뜻이므로 이 뷰 안에 또 다른 시작 지점을 그릴 필요가 없다).
  *  - 모바일: 꺼져 있을 때 큰 "시작 카드"(ADR-020 카피 포함), 켜져 있을 때 풀스크린 스캔 무대
- *    (components/camera/MobileScanStage.tsx — 조준 프레임은 H2와 공유하는 ScanAimFrame).
+ *    (components/camera/MobileScanStage.tsx — 조준 프레임은 데스크톱 ScannerWindow와 공유하는
+ *    ScanAimFrame).
  */
 export function ScanCameraStart({ viewId, platform }: ScanCameraStartProps) {
   const [route, setRoute] = useState(getEffectiveScanRoute());
@@ -51,7 +54,7 @@ export function ScanCameraStart({ viewId, platform }: ScanCameraStartProps) {
 
   return (
     <div className="scan-camera-start">
-      <button type="button" className="warn" onClick={() => cameraSession.start('view-button')}>
+      <button type="button" className="warn" onClick={() => openScannerWindow()}>
         <Camera size={16} aria-hidden /> {t('camera.start')}
       </button>
     </div>

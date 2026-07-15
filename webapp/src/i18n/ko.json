@@ -89,23 +89,26 @@
   "shell": {
     "desktop": {
       "minimizedSuffix": " (최소화됨)",
-      "scannerExpand": "스캐너 펼치기",
-      "scannerCollapse": "스캐너 접기",
       "scannerLabel": "스캐너",
       "scanningNative": "스캔 중 (내장 디코더)",
       "scanningZxing": "스캔 중 (ZXing)",
       "cameraPreparing": "카메라 준비 중…",
       "cameraError": "카메라 오류",
       "idle": "대기 중",
-      "scannerStart": "시작",
-      "scannerStop": "종료",
       "pinPin": "이 창에 스캔 고정 (전역 1개만 가능)",
       "pinUnpin": "스캔 고정 해제",
       "scanReceiving": "스캔 수신",
       "snapLeft": "왼쪽 절반",
       "snapRight": "오른쪽 절반",
       "minimize": "최소화",
-      "maxWindows": "창은 최대 {max}개까지 동시에 열 수 있습니다."
+      "maxWindows": "창은 최대 {max}개까지 동시에 열 수 있습니다.",
+      "scannerWindow": {
+        "open": "스캐너 창 열기",
+        "restore": "스캐너 창 복원",
+        "focus": "스캐너 창으로 이동",
+        "receivingTarget": "→ 수신 창: {target}",
+        "confirmCloseContinuous": "연속 모드가 켜져 있습니다. 창을 닫으면 카메라가 꺼지고 연속 모드 고정도 해제됩니다. 계속할까요?"
+      }
     },
     "mobile": {
       "scanTabLabel": "스캔",

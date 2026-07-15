@@ -1,35 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { cameraService, type CameraStatus } from '../../services/camera';
 import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
+import { openScannerWindow, restoreScannerWindow, useScannerWindowState } from '../../services/scannerWindowStore';
 import { t } from '../../i18n';
 
-// 우하단 고정 스캐너 도크 — 닫기 불가(접기만). DesktopShell 루트에 마운트되어 데스크톱 셸이 사는
-// 동안 계속 떠 있는다("카메라는 창이 아니다"). ADR-020(온디맨드 반전) 이후로는 마운트 시 자동으로
-// acquire()하지 않는다 — cameraSession이 시작/종료 정책을 갖고, 이 위젯은 그 상태를 보여주고
-// (session.running 여부에 따라 시작 버튼 ↔ 미리보기+종료 버튼+연속 모드 핀을 전환) 트리거 중
-// 하나("위젯 클릭")를 제공할 뿐이다.
+// 우하단 고정 스캐너 도크 — ADR-026 개정: "스캐너는 창이 아니다"(구 ADR-018 부수결정)가 뒤집히며
+// 미리보기·연속 모드 체크박스·종료 버튼은 전부 ScannerWindow.tsx로 옮겼다. 이 위젯은 이제
+// 상태점(카메라 상태) + 버튼 하나로 축소됐다("도크 위젯은 상태점+열기 버튼으로 축소", ADR-026):
+//  - 창이 닫혀 있으면 클릭 = 열기(= 카메라 시작, scannerWindowStore.openScannerWindow)
+//  - 창이 열려 있으면(최소화 포함) 클릭 = 복원(scannerWindowStore.restoreScannerWindow) — 이미
+//    펼쳐져 있을 때는 무해한 no-op이다. ScannerWindow는 항상 고정된 높은 z-index라
+//    (scannerWindowStore.SCANNER_WINDOW_Z) "포커스"라는 별도 개념이 필요 없다.
 export function ScannerDockWidget() {
-  const [collapsed, setCollapsed] = useState(false);
   const [status, setStatus] = useState<CameraStatus>(() => cameraService.getStatus());
   const [session, setSession] = useState<CameraSessionStatus>(() => cameraSession.getStatus());
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scannerWindow = useScannerWindowState();
 
   useEffect(() => cameraService.onStatus(setStatus), []);
   useEffect(() => cameraSession.onStatus(setSession), []);
-
-  // 접기/펼치기 토글마다 <video>가 통째로 마운트/언마운트된다(아래 조건부 렌더) — status.state가
-  // 이미 'active'로 안 바뀌는 재펼침 케이스를 놓치지 않도록, effect 대신 ref 콜백에서 직접 붙인다.
-  const attachVideoRef = useCallback((el: HTMLVideoElement | null) => {
-    videoRef.current = el;
-    if (el) cameraService.attachPreview(el);
-  }, []);
-
-  useEffect(() => {
-    if (status.state === 'active' && videoRef.current) {
-      cameraService.attachPreview(videoRef.current);
-    }
-  }, [status.state]);
 
   const dotColor = !session.running
     ? 'var(--idle)'
@@ -41,60 +30,25 @@ export function ScannerDockWidget() {
           ? 'var(--wait)'
           : 'var(--idle)';
 
-  return (
-    <div className={`scanner-dock${collapsed ? ' is-collapsed' : ''}`}>
-      <button
-        type="button"
-        className="scanner-dock__toggle"
-        onClick={() => setCollapsed((c) => !c)}
-        title={collapsed ? t('shell.desktop.scannerExpand') : t('shell.desktop.scannerCollapse')}
-      >
-        <span className="scanner-dock__dot" style={{ background: dotColor }} aria-hidden />
-        <Camera size={14} aria-hidden />
-        {!collapsed && <span className="scanner-dock__label">{t('shell.desktop.scannerLabel')}</span>}
-      </button>
-      {!collapsed && (
-        <div className="scanner-dock__body">
-          {session.running ? (
-            <>
-              <video ref={attachVideoRef} className="scanner-dock__preview" autoPlay muted playsInline />
-              <p className="scanner-dock__status">{statusText(status)}</p>
-              <label className="scanner-dock__continuous" title={t('camera.continuousModeHint')}>
-                <input
-                  type="checkbox"
-                  checked={session.continuous}
-                  onChange={(e) => cameraSession.setContinuous(e.target.checked)}
-                />
-                {t('camera.continuousMode')}
-              </label>
-              <button type="button" className="ghost scanner-dock__actionBtn" onClick={() => cameraSession.stop()}>
-                {t('shell.desktop.scannerStop')}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="scanner-dock__actionBtn"
-              onClick={() => cameraSession.start('widget')}
-            >
-              {t('shell.desktop.scannerStart')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function statusText(status: CameraStatus): string {
-  switch (status.state) {
-    case 'active':
-      return status.decoder === 'native' ? t('shell.desktop.scanningNative') : t('shell.desktop.scanningZxing');
-    case 'starting':
-      return t('shell.desktop.cameraPreparing');
-    case 'error':
-      return status.message ?? t('shell.desktop.cameraError');
-    default:
-      return t('shell.desktop.idle');
+  function handleClick() {
+    if (!scannerWindow.open) {
+      openScannerWindow();
+      return;
+    }
+    restoreScannerWindow();
   }
+
+  const label = !scannerWindow.open
+    ? t('shell.desktop.scannerWindow.open')
+    : scannerWindow.minimized
+      ? t('shell.desktop.scannerWindow.restore')
+      : t('shell.desktop.scannerWindow.focus');
+
+  return (
+    <button type="button" className="scanner-dock" onClick={handleClick} title={label}>
+      <span className="scanner-dock__dot" style={{ background: dotColor }} aria-hidden />
+      <Camera size={14} aria-hidden />
+      <span className="scanner-dock__label">{t('shell.desktop.scannerLabel')}</span>
+    </button>
+  );
 }

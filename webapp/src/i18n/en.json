@@ -89,23 +89,26 @@
   "shell": {
     "desktop": {
       "minimizedSuffix": " (minimized)",
-      "scannerExpand": "Expand scanner",
-      "scannerCollapse": "Collapse scanner",
       "scannerLabel": "Scanner",
       "scanningNative": "Scanning (built-in decoder)",
       "scanningZxing": "Scanning (ZXing)",
       "cameraPreparing": "Starting camera…",
       "cameraError": "Camera error",
       "idle": "Idle",
-      "scannerStart": "Start",
-      "scannerStop": "Stop",
       "pinPin": "Pin scans to this window (only one at a time)",
       "pinUnpin": "Unpin scan",
       "scanReceiving": "Receiving scans",
       "snapLeft": "Snap left",
       "snapRight": "Snap right",
       "minimize": "Minimize",
-      "maxWindows": "Up to {max} windows can be open at once."
+      "maxWindows": "Up to {max} windows can be open at once.",
+      "scannerWindow": {
+        "open": "Open scanner window",
+        "restore": "Restore scanner window",
+        "focus": "Go to scanner window",
+        "receivingTarget": "→ Receiving window: {target}",
+        "confirmCloseContinuous": "Continuous mode is on. Closing this window turns off the camera and unpins continuous mode. Continue?"
+      }
     },
     "mobile": {
       "scanTabLabel": "Scan",

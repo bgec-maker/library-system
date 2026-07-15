@@ -625,3 +625,94 @@
   실측 트레이스는 최종 보고 참고). "조준 프레임 = 실제 디코드 크롭 영역과 픽셀 일치"가 완료
   조건이라 크롭 폭 자체를 줄이는 근사치 타협은 하지 않았고, `camera.ts`의 `CROP` 값도 이 항목
   대상이 아니라(수정 금지, export만 추가) 건드리지 않았다.
+
+## H2 · 데스크톱 스캐너 창 (2026-07-16)
+
+- **[오케스트레이터 리뷰 수정] `scannerWindowStore.ts`를 `shells/desktop/`가 아니라
+  `services/`에 배치**했다(에이전트의 최초 구현은 `shells/desktop/`에 뒀었다). 이 모듈은
+  `components/ScanCameraStart.tsx`가 import하는데, 그 컴포넌트는 `scan:'focus'` 뷰 4개
+  (loan-return·register·inventory·book-detail) 안에 직접 박혀 두 셸 모두의 지연 청크에서
+  공유된다 — "뷰는 셸을 모른다" 자동 검사(check-view-boundary.mjs) 자체는 `src/views/**`의
+  직접 import만 훑어 이 배치가 CI를 통과하는 데는 문제가 없었지만, 뷰에 내장되는 공용
+  컴포넌트가 참조하는 상태 모듈은 `cameraSession.ts`·`scanBus.ts`와 같은 층위(`services/`)에
+  있는 게 이 프로젝트의 디렉터리 계약(`shells/desktop/`=그 셸 전용 코드)과 더 맞다고 판단해
+  옮겼다 — 순수 파일 위치 정리이며 zustand 미도입 등 번들 분리 관련 판단은 그대로 유지했다
+  (재검증: lint·tsc·build·size 전부 그대로 통과, 수치 변화 없음).
+
+- **열기/닫기/최소화 상태와 위치·크기를 `ScannerWindow.tsx`(렌더링)와 분리한 별도 파일
+  `services/scannerWindowStore.ts`로 뺐다** — `components/camera/aimRect.ts`가
+  `ScanAimFrame.tsx`에서 분리된 것과 정확히 같은 이유(`react-refresh/only-export-components`
+  린트, `--max-warnings 0`이라 위반 시 빌드 실패)다. 컴포넌트 파일은 컴포넌트만 export해야 하는데,
+  `openScannerWindow`/`closeScannerWindow`/`minimizeScannerWindow`/`restoreScannerWindow`/
+  `toggleScannerWindow`/`useScannerWindowState`를 `DesktopShell.tsx`·`ScannerDockWidget.tsx`·
+  `components/ScanCameraStart.tsx` 세 파일이 각자 import해야 해서(todo가 명시한 요구사항)
+  `ScannerWindow.tsx`에 co-locate하는 대안은 애초에 불가능했다.
+
+- **`scannerWindowStore.ts`는 `useWindowStore.ts`(zustand)를 의도적으로 import하지 않는다.**
+  `components/ScanCameraStart.tsx`는 `scan:'focus'` 뷰 4개(loan-return·register·inventory·
+  book-detail)의 지연 청크에서 공유되고, 그 청크들은 데스크톱·모바일 양쪽에서 그대로
+  재사용된다(`viewResolver.ts`의 `VIEW_COMPONENTS`가 뷰당 1개 청크만 만든다 — 셸별로 따로
+  안 만든다). `scannerWindowStore.ts`가 zustand를 끌어오면 모바일 사용자도 그 뷰 청크를 열
+  때마다 절대 쓰지 않는 데스크톱 창-관리자 상태 라이브러리를 함께 받는다. 이미 이 프로젝트가
+  용인하는 종류의 트레이드오프이긴 하다(`ScanCameraStart.tsx`가 모바일 전용
+  `MobileScanStage.tsx`를 무조건 정적 import해서 데스크톱 몫 청크에도 끼워 넣는 것과 동급) —
+  하지만 zustand라는 새 의존성 하나를 추가로 끼워 넣을 이유는 없다고 판단해 피했다.
+
+- **위 결정의 직접적인 결과로 `ScannerWindow`의 z-순서를 일반 창(`useWindowStore`의 zCounter,
+  세션 내내 증가하는 카운터)과 상호작용시키지 않고, 고정 상수 `SCANNER_WINDOW_Z = 800`으로
+  단순화**했다(todo가 명시적으로 허용한 두 선택지 — "zCounter와 interleave" 또는 "고정 높은
+  z-index" — 중 후자). 800은 도크(500)·도크 위젯(700)보다 위, 토스트(9999)·인식
+  플래시(9998)보다 아래, 일반 업무 창(zCounter는 1부터 시작)보다는 사실상 항상 위에 온다.
+  트레이드오프: 한 세션에서 일반 창 열기/포커스/복원 조작이 누적 800회를 넘으면 이론적으로
+  역전될 수 있다 — 실사용 세션에서 그 정도 누적 클릭에 도달할 가능성은 낮다고 보고 감수했다.
+  이 선택 덕에 클릭 시 "포커스"라는 별도 개념이 필요 없어졌다(이미 항상 위이므로) — 그래서
+  도크 위젯의 "창이 이미 열려 있을 때" 클릭 동작은 `focusScannerWindow()` 같은 걸 새로
+  만들지 않고 `restoreScannerWindow()`(최소화 해제, 이미 펼쳐져 있으면 무해한 no-op) 하나로
+  충분하다고 판단했다.
+
+- **리사이즈는 `Window.tsx`의 8방향 대신 SE(오른쪽 아래) 코너 핸들 1개로 단순화**했다 — todo가
+  "더 단순한 부분집합도 좋다, 단순화하면 문서화"라고 명시적으로 허용했다. 유틸리티 성격의
+  단일 창(항상 최대 1개)에 8개 리사이즈 핸들을 전부 두는 복잡도가 실이익 대비 과하다고 판단했다.
+
+- **닫기 확인(연속 모드 핀 중) 후 연속 모드 핀을 자동으로 해제**한다
+  (`scannerWindowStore.closeScannerWindow`가 `cameraSession.stop()` 다음에
+  `cameraSession.setContinuous(false)`도 호출) — todo가 "자동 해제 또는 stale 플래그로 방치,
+  둘 다 당신 판단"이라고 위임한 지점이다. 카메라가 꺼진 채 "연속 모드"만 켜져 있는 상태는
+  사용자에게 아무 의미가 없고, 다음에 창을 다시 열었을 때 그 핀이 남아 있으면 "왜 유휴
+  자동종료가 하나도 안 걸리지"처럼 사용자가 잊고 있던 과거 의도가 조용히 되살아나는 쪽이
+  stale 플래그를 방치하는 쪽보다 더 나쁜 놀라움이라고 판단해 자동 해제를 택했다.
+
+- **바깥 챙(패널·테두리·그림자·타이틀바·최소화/닫기 버튼·리사이즈 핸들)은 새 CSS를 만들지
+  않고 desktop.css의 `.window`/`.window-titlebar`/`.window-titlebar__title`/`.window-btn`/
+  `.window-btn--close`/`.window-body`/`.window-resize`/`.window-resize--se`를 그대로
+  재사용**했다(className을 그대로 붙여 씀) — 일반 창과 똑같은 시각 언어를 얻으면서 중복 CSS를
+  피했다. 연속 모드 체크박스도 새 클래스를 만들지 않고 `ScannerDockWidget`(구)이 쓰던
+  `.scanner-dock__continuous`를 그대로 재사용했다(desktop.css에 남겨 둠).
+
+- **`ScannerDockWidget.tsx`를 여닫이 `<div>` + 내부 `<button>` 구조에서 `<button>` 하나로
+  통째로 바꿨다** — ADR-026이 위젯을 "상태점+열기 버튼"으로 못박아서, 이제 이 위젯 전체가
+  하나의 클릭 가능한 컨트롤이다(접기/펼치기 토글 상태 자체가 사라졌으므로 `collapsed` state도
+  삭제). 상태 텍스트(`statusText()`, "스캔 중 (내장 디코더)" 등)는 `ScannerWindow.tsx`
+  안으로 옮겨 그대로 재사용했다(같은 i18n 키 재사용, 새 키 없음).
+
+- **`shell.desktop.scannerExpand`/`scannerCollapse`/`scannerStart`/`scannerStop` i18n 키
+  4개를 ko/en 양쪽에서 제거**했다 — 접기/펼치기 토글과 위젯 안 시작/종료 버튼이 이번 개정으로
+  전부 없어져 더 이상 어디서도 참조하지 않는다(제거 전 grep으로 사용처 0건 확인).
+
+- **`docs/FRONTEND.md`의 "스캐너는 창이 아니다" 절을 ADR-026에 맞춰 함께 고쳤다** — todo
+  본문은 `docs/DECISIONS.md`만 명시했지만, ADR-020(온디맨드 반전) 때도 FRONTEND.md의 해당
+  절이 함께 갱신된 선례가 있고(현재 파일에 이미 반영돼 있음), FRONTEND.md 자체가 CLAUDE.md가
+  "구현 전 필독"으로 지정한 법전이라 ADR과 반대되는 문장을 그대로 남겨두면 다음 항목을 집는
+  에이전트가 낡은 규칙을 그대로 믿을 위험이 있다고 판단했다. ADR 표 자체(DECISIONS.md)는
+  요청대로 손대지 않았고, 이전 ADR 항목은 전혀 건드리지 않았다.
+
+- **`components/ScanCameraStart.tsx`(components/, views/** 아님)가
+  `shells/desktop/scannerWindowStore.ts`를 직접 import**한다 — `check-view-boundary.mjs`는
+  `src/views/**`만 훑고 eslint의 `no-restricted-imports`(셸 import 금지)도 `files:
+  ['src/views/**/*.{ts,tsx}']`에만 걸려 있어 린트 위반은 아니지만, "components/가 shells/를
+  아는" 방향이라 결이 조금 어긋난다. todo 본문이 정확히 이 세 파일(DesktopShell·
+  ScannerDockWidget·ScanCameraStart)이 같은 트리거 모듈을 import하는 그림을 명시적으로
+  그려서 그대로 따랐다 — 대안(트리거 함수를 services/로 옮기기)도 검토했지만, 그러면
+  "카메라는 셸 관심사"라는 ADR-026의 프레이밍과 어긋나고(services/는 플랫폼 중립이어야
+  하는데 창 위치/크기는 데스크톱 전용 개념) todo의 제안 파일 경로(`shells/desktop/
+  ScannerWindow.tsx` 인접)와도 맞지 않아 원래 설계를 존중했다.

@@ -266,29 +266,25 @@
 }
 
 /* ── 스캐너 도크 위젯 ─────────────────────────────────────────────── */
+/* ADR-026: 미리보기·연속모드 체크박스·종료 버튼은 ScannerWindow.css/.tsx로 이관됐다 — 위젯
+   자체가 이제 버튼 하나(상태점+아이콘+라벨)로 축소됐다. .scanner-dock__continuous는 여기 남겨
+   ScannerWindow.tsx의 연속 모드 체크박스가 그대로 재사용한다(같은 시각 언어). */
 .scanner-dock {
   position: fixed;
   right: 16px;
   bottom: 16px;
-  background: var(--panel);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-window);
-  overflow: hidden;
-  z-index: 700;
-}
-
-.scanner-dock__toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
   background: var(--deep);
   color: #fff;
-  border: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-window);
   padding: 8px 12px;
   cursor: pointer;
   font: 600 var(--fs-xs) var(--sans);
+  z-index: 700;
 }
 
 .scanner-dock__dot {
@@ -297,31 +293,6 @@
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
-}
-
-.scanner-dock__body {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.scanner-dock__preview {
-  width: 180px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: var(--radius);
-  background: #000;
-  display: block;
-}
-
-.scanner-dock__status {
-  font-size: var(--fs-xs);
-  color: var(--ink-2);
-}
-
-.scanner-dock__actionBtn {
-  width: 100%;
 }
 
 .scanner-dock__continuous {
@@ -336,7 +307,9 @@
 }
 
 /* ── 토스트 위치(데스크톱) — 우하단 스캐너 도크 위 ─────────────────────── */
+/* ADR-026 이후 도크 위젯이 버튼 한 줄(~34px)로 줄어들어 오프셋도 그만큼 줄였다(구: 위젯이
+   미리보기까지 펼쳐졌을 때의 높이를 기준으로 236px였음). */
 .desktop-shell .toast-stack {
   right: 16px;
-  bottom: 236px;
+  bottom: 60px;
 }

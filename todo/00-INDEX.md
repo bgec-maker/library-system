@@ -13,7 +13,7 @@
 
 ## 큐
 - [x] **H1 camera-ui-mobile — 🔥 긴급: 모바일 스캔 무대 (등록 스프린트 품질)**
-- [ ] **H2 scanner-window-desktop — 🔥 긴급: 데스크톱 스캐너 창 (ADR-026 포함)**
+- [x] **H2 scanner-window-desktop — 🔥 긴급: 데스크톱 스캐너 창 (ADR-026 포함)**
 - [x] 10 i18n-debt — 린트 JSX밖 확장 + 창 제목 로케일 구독
 - [x] 11 book-detail — 스텁(28줄) → 완성
 - [ ] 12 reservations-front — 예약 걸기 + 관리 뷰

@@ -3,13 +3,14 @@ import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { getViewMeta } from '../../registry';
 import { subscribeScan } from '../../services/scanBus';
-import { cameraSession } from '../../services/cameraSession';
 import { currentWindowDeepLink, subscribeWindowDeepLink } from '../../deepLink';
 import { useLocale } from '../../i18n';
 import DashboardBaseLayer from './DashboardBaseLayer';
 import { Dock } from './Dock';
 import { Window } from './Window';
 import { ScannerDockWidget } from './ScannerDockWidget';
+import { ScannerWindow } from './ScannerWindow';
+import { toggleScannerWindow } from '../../services/scannerWindowStore';
 import { DOCK_WIDTH, useWindowStore } from './useWindowStore';
 import './desktop.css';
 
@@ -42,17 +43,17 @@ export default function DesktopShell() {
     return subscribeWindowDeepLink((target) => openWindow(target.viewId, target.params));
   }, [openWindow]);
 
-  // ADR-020 "단축키 S" 시작 트리거 — 셸 계층에서만(뷰가 아니라) 전역으로 건다. 입력 요소에
-  // 포커스가 있을 때는 타이핑 중 'S'를 가로채면 안 되므로 무시한다. 이미 켜져 있으면 끄고,
-  // 꺼져 있으면 켠다(위젯의 종료 버튼과 같은 cameraSession.stop()/start() 호출).
+  // ADR-026 "단축키 S" — 이제 카메라를 직접 켜고 끄는 게 아니라 ScannerWindow를 열고 닫는다
+  // (그 창을 여는 것 자체가 카메라 시작이다 — scannerWindowStore.ts). 입력 요소에 포커스가
+  // 있을 때는 타이핑 중 'S'를 가로채면 안 되므로 무시한다. 토글 의미는 이전과 동일: 닫혀
+  // 있으면 열고, 열려 있으면(최소화 포함) 닫는다.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
-      if (cameraSession.getStatus().running) cameraSession.stop();
-      else cameraSession.start('shortcut');
+      toggleScannerWindow();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -70,6 +71,7 @@ export default function DesktopShell() {
         ))}
       </div>
       <ScannerDockWidget />
+      <ScannerWindow />
       <ToastHost />
       <ScanFlashOverlay />
     </div>
