@@ -1823,3 +1823,65 @@
   9. `무결성 점검` 실행 → `issueCount: 0` 확인(수용 기준 "아카이브 후 무결성 0건"). 일부러
      아카이브 시트의 `copy_id`를 존재하지 않는 값으로 바꿔 보면 `ORPHAN_FOREIGN_KEY` 이슈가
      새로 잡히는지도 확인해 추가된 FK 검사가 실제로 동작하는지 검증할 수 있다.
+
+---
+
+## todo/24 · 연간 운영 보고서 (2026-07-15)
+
+- **기간 선택의 기본값은 "달력 연도"(payload.year, 생략 시 오늘 연도)**로 임의 지정했다
+  (`reportAnnualOperations_`, Code.gs). FEATURES.md는 "연간"이라고만 쓰고 학년도·회계연도 등
+  정확한 시작월을 못박지 않았다 — `reportRecallNotice_`(todo/09)가 이미 확인한 것과 같은 근거로
+  CONFIG 시트에 학사력 개념이 없다(`getConfig_`로 조회 가능한 키 없음). 대신 호출측이
+  `payload.startDate`+`payload.endDate`(반드시 둘 다 지정)로 임의 구간을 완전히 덮어쓸 수 있게
+  열어뒀다 — 프론트는 체크박스 하나로 "연도 입력" ↔ "기간 직접 지정" 두 모드를 전환한다
+  (`AnnualOperationsReportPanel.tsx`). 잘못된 구간(수십~수백 년)이 들어와 `byMonth` 배열이
+  무한정 커지는 걸 막기 위해 최대 10년(`ANNUAL_REPORT_MAX_PERIOD_MONTHS_ = 120`)으로
+  `VALIDATION_ERROR`를 낸다.
+
+- **"장서 현황(증감)"은 08_COPIES에 철회 시각(withdrawn_at)이 없어 근사치로 계산**했다.
+  스키마(HEADERS 확인됨)에는 `status_code` 현재값만 있고 "언제 WITHDRAWN/LOST로 바뀌었는지"는
+  기록되지 않는다 — `updated_at`은 다른 필드 변경에도 갱신되므로 신뢰할 대리 지표가 못 된다.
+  그래서 "현재 유통 상태(WITHDRAWN/LOST 제외)인 소장본" 중 `acquired_at`이 기간 시작 전이면
+  `startCount`(이미 있던 장서), 기간 중이면 `acquiredInPeriodCount`(신규 입수)로 나누고
+  `endCount = startCount + acquiredInPeriodCount`로 정의했다. **한계**: 기간 중에 철회된
+  소장본은 이 근사에서 통째로 빠진다(철회 시점을 모르므로 "그때는 있었다"를 재구성할 수
+  없음) — 즉 `endCount`는 "그 시점 실제 서가 재고"가 아니라 "현재도 살아있는 소장본 중 그
+  시점까지 입수분"에 더 가깝다. 완전히 정확하게 하려면 `08_COPIES`에 `withdrawn_at` 컬럼을
+  추가해야 하는데 이번 항목(읽기 전용 리포트 추가)의 스코프 밖이라 하지 않았다.
+
+- **연체 요약의 미납액은 `12_FINES`의 두 유형(OVERDUE·REPLACEMENT) 모두를 합산**한다.
+  기존 `apiWebUnpaidFines_`(book-detail·미변상 목록용)는 `fine_type_code === 'REPLACEMENT'`만
+  걸러 보여주지만, 그건 "분실 변상 완료 여부"라는 좁은 화면 목적 때문이다. 이 리포트는 예산
+  증빙 성격의 총괄 문서라 ADR-017이 실제로 허용하는 두 유형의 미수금을 전부 더하는 게 "학교가
+  받아야 할 돈의 총액"에 더 가깝다고 판단했다 — 다만 학교 정책상 `overdue_fee_per_day`가
+  보통 0으로 설정돼 있어(ADR-017 "연체 페널티 = 대출 정지, 연체료 아님") 실제로는 OVERDUE
+  유형 금액이 대부분 0이거나 존재하지 않을 것으로 예상한다. 반환값에 `unpaidFineCount`(건수)도
+  함께 내려 화면/인쇄본에서 "0건"과 "0원"을 구분할 수 있게 했다.
+
+- **"상위 대출"은 상위 10건으로 고정**했다(`ANNUAL_REPORT_TOP_LOANS_LIMIT_ = 10`).
+  FEATURES.md는 개수를 명시하지 않았다 — `reportHomeroomClass_`의 popularBooks가 반 단위라
+  5건으로 충분했던 것과 달리, 이 리포트는 전교 단위라 10건이 A4 인쇄 밀도상 적절하다고
+  판단했다.
+
+- **`budget` 필드는 `computeBudgetViz_`(보호 함수, todo/11/19)의 반환값을 그대로 옮기고
+  `periodAcquisitionTotal`(선택 기간에 해당하는 연도들의 `total` 합)만 추가**했다 — 예산
+  차트(`BudgetPicture.tsx`, todo/19가 "todo/24가 이 재료를 인쇄에 쓸 것"이라 예고해 둔 그대로)를
+  새로 만들지 않고 그대로 재사용한다. 다만 `BudgetPicture`는 `useVizData('budget-picture')`로
+  자기 자신의 데이터를 다시 조회한다(20_VIZ_CACHE 일배치 결과) — `reportAnnualOperations_`가
+  `computeBudgetViz_`를 직접 호출해 얻은 `budget` 필드와 값 출처는 같지만(둘 다 결국
+  `computeBudgetViz_`가 원본) 조회 시점이 서로 다를 수 있다(리포트는 요청 시점 실시간 계산,
+  차트는 어제 자정 일배치 캐시). 두 값이 하루 정도 어긋날 수 있다는 뜻이라 완전한 실시간
+  일치를 보장하지는 않지만, "예산 증빙 문서에 예산 차트를 삽입"이라는 완료 조건 자체는
+  충족한다고 판단했다.
+
+- **REPORT_TYPES의 6번째 카드는 `dashboard.quietSignal.*` 라벨 키 재사용 관례에서 의도적으로
+  벗어났다.** 기존 5개 R1 리포트는 대시보드 "조용한 신호" 패널과 아이콘·라벨을 공유하지만,
+  이 항목은 FEATURES.md R3(행정 자동화)이고 원칙 문서가 "조용한 신호"의 근거로 든 것은
+  R1("로그인 불필요")뿐이다 — R3에는 대시보드 진입점 요구사항이 없다. 그래서 새 전용 키
+  (`views.reports.annualOperations.cardLabel`)를 만들고, `dashboard.quietSignal` 네임스페이스는
+  건드리지 않았다.
+
+- **인쇄 레이아웃은 새 CSS 클래스를 추가하지 않고 기존 `.print-table`/`.reports-summary-line`만
+  재사용**했다. 회수 쪽지(R1-4)처럼 형태가 완전히 다른 레이아웃(절취선 등)이 필요하지 않다고
+  판단했다 — 이 리포트는 담임 리포트(R1-2)와 마찬가지로 "표+요약 문단"의 조합으로 충분히
+  표현되는 문서라 `styles/print.css`를 건드리지 않았다.

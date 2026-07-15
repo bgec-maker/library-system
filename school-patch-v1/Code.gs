@@ -3386,6 +3386,7 @@ function apiWebReport_(payload) {
   if (type === 'weeding-recommend') return reportWeedingRecommend_(payload || {});
   if (type === 'recall-notice') return reportRecallNotice_(payload || {});
   if (type === 'donor-thanks') return reportDonorThanks_(payload || {});
+  if (type === 'annual-operations-report') return reportAnnualOperations_(payload || {});
   fail_('VALIDATION_ERROR', '지원하지 않는 리포트 종류입니다: ' + type);
 }
 
@@ -3692,6 +3693,165 @@ function reportDonorThanks_(payload) {
     generatedAt: formatDateTime_(now),
     donorGroups: donorGroups,
     skippedNoSource: skippedNoSource
+  };
+}
+
+// R3 연간 운영 보고서 — FEATURES.md "대출 통계·장서 현황·입수 단가 합계(예산 증빙)... 운영위·
+// 교육청 제출 부담 제거", 완료 조건 "A4 2~3장 인쇄, 예산 차트(19) 삽입 + 기간 선택". 기간은
+// 달력 연도가 기본이다(payload.year, 생략 시 오늘 연도) — 학년도/회계연도 등 학교마다 기준
+// 시작월이 달라 CONFIG 시트에 학사력 개념이 없다(reportRecallNotice_ 주석과 같은 근거) — 대신
+// payload.startDate·endDate(반드시 둘 다 지정)로 임의 구간으로 완전히 덮어쓸 수 있게 열어뒀다
+// (docs/ASSUMPTIONS.md todo/24 참고). 5개 필요 항목을 아래 5개 필드에 그대로 매핑한다:
+// loanStats=대출 통계, collection=장서 현황(증감), budget=입수 단가 합계(예산 증빙,
+// computeBudgetViz_ 그대로 재사용 — 보호 함수라 수정하지 않음), topLoans=상위 대출,
+// overdueSummary=연체 요약.
+var ANNUAL_REPORT_TOP_LOANS_LIMIT_ = 10;
+var ANNUAL_REPORT_MAX_PERIOD_MONTHS_ = 120; // 잘못된 startDate/endDate로 수십~수백 년 구간이
+  // 들어와도(GAS 할당량 보호) byMonth 배열이 무한정 커지지 않도록 최대 10년으로 막는다.
+
+function reportAnnualOperations_(payload) {
+  var now = new Date();
+  var hasRangeOverride = !!(payload.startDate || payload.endDate);
+  var start, end, year;
+  if (hasRangeOverride) {
+    if (!payload.startDate || !payload.endDate) fail_('VALIDATION_ERROR', 'startDate·endDate는 함께 지정해야 합니다.');
+    start = parseOptionalDate_(payload.startDate);
+    var endInput = parseOptionalDate_(payload.endDate);
+    end = endInput ? endOfDay_(endInput) : null;
+    if (!start || !end) fail_('VALIDATION_ERROR', '기간 형식이 올바르지 않습니다: ' + payload.startDate + ' ~ ' + payload.endDate);
+    if (start.getTime() > end.getTime()) fail_('VALIDATION_ERROR', 'startDate가 endDate보다 늦을 수 없습니다.');
+    year = null;
+  } else {
+    var yearRaw = payload.year !== undefined && payload.year !== null && payload.year !== '' ? payload.year : now.getFullYear();
+    year = Number(yearRaw);
+    if (!/^\d{4}$/.test(String(yearRaw)) || !isFinite(year) || year < 2000 || year > 2100) {
+      fail_('VALIDATION_ERROR', 'year는 2000~2100 사이 4자리 연도여야 합니다: ' + payload.year);
+    }
+    start = new Date(year, 0, 1);
+    end = endOfDay_(new Date(year, 11, 31));
+  }
+  var totalMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+  if (totalMonths > ANNUAL_REPORT_MAX_PERIOD_MONTHS_) {
+    fail_('VALIDATION_ERROR', '기간이 너무 깁니다(최대 10년): ' + formatDate_(start) + ' ~ ' + formatDate_(end));
+  }
+
+  var loans = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows;
+  var copies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows;
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var copyById = indexBy_(copies, 'copy_id');
+
+  // 대출 통계 — 기간 내 checked_out_at 기준 월별 집계(reportHomeroomClass_의 month 필터와
+  // 같은 formatDate_().slice(0,7) 관례).
+  var loansInPeriod = loans.filter(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    return checkedOut && checkedOut.getTime() >= start.getTime() && checkedOut.getTime() <= end.getTime();
+  });
+  var countByMonth = {};
+  loansInPeriod.forEach(function(loan) {
+    var label = formatDate_(loan.checked_out_at).slice(0, 7);
+    countByMonth[label] = (countByMonth[label] || 0) + 1;
+  });
+  var byMonth = [];
+  var cursorYear = start.getFullYear();
+  var cursorMonth = start.getMonth();
+  for (var i = 0; i < totalMonths; i++) {
+    var y = cursorYear + Math.floor((cursorMonth + i) / 12);
+    var m = (cursorMonth + i) % 12;
+    var label = y + '-' + String(m + 1).padStart(2, '0');
+    byMonth.push({ month: label, count: countByMonth[label] || 0 });
+  }
+
+  // 상위 대출 — 기간 내 대출을 소장본→서명으로 묶어 대출건수 상위 N(reportHomeroomClass_의
+  // popularBooks와 같은 조인·집계 패턴, 범위만 반 단위가 아니라 전교 전체).
+  var countByTitle = {};
+  loansInPeriod.forEach(function(loan) {
+    var copy = copyById[loan.copy_id] || {};
+    if (!copy.title_id) return;
+    countByTitle[copy.title_id] = (countByTitle[copy.title_id] || 0) + 1;
+  });
+  var topLoans = Object.keys(countByTitle).map(function(titleId) {
+    return { title: (titleById[titleId] || {}).title || titleId, loanCount: countByTitle[titleId] };
+  }).sort(function(a, b) { return b.loanCount - a.loanCount || a.title.localeCompare(b.title); })
+    .slice(0, ANNUAL_REPORT_TOP_LOANS_LIMIT_);
+
+  // 장서 현황(증감) — 08_COPIES에는 철회 시각(withdrawn_at)이 없어(HEADERS 확인됨, status_code
+  // 현재값만 존재) 과거 특정 시점의 정확한 재구성이 불가능하다. 대신 "현재 유통 상태(WITHDRAWN/
+  // LOST 제외)인 소장본 중 acquired_at이 언제인가"로 근사한다: 기간 시작 전에 이미 입수된 것 =
+  // startCount(이미 있던 장서), 기간 중 입수된 것 = acquiredInPeriodCount(신규), 그 합이
+  // endCount다. 기간 중 철회된 소장본은 (철회 시점이 기록되지 않아) 이 근사에서 아예 빠진다는
+  // 한계가 있다 — docs/ASSUMPTIONS.md todo/24에 명시.
+  var startCount = 0;
+  var acquiredInPeriodCount = 0;
+  var collectionSkippedNoAcquiredDate = 0;
+  copies.forEach(function(copy) {
+    if (copy.status_code === 'WITHDRAWN' || copy.status_code === 'LOST') return;
+    var acquired = asDate_(copy.acquired_at);
+    if (!acquired) { collectionSkippedNoAcquiredDate++; return; }
+    if (acquired.getTime() < start.getTime()) startCount++;
+    else if (acquired.getTime() <= end.getTime()) acquiredInPeriodCount++;
+  });
+
+  // 입수 단가 합계(예산 증빙) — computeBudgetViz_(보호 함수, 수정 금지)를 그대로 호출해 재사용.
+  // periodAcquisitionTotal만 이 함수가 추가로 계산하는 파생값(선택한 기간에 걸친 연도들의 합).
+  var budgetViz = computeBudgetViz_(now);
+  var startYear = start.getFullYear();
+  var endYear = end.getFullYear();
+  var periodAcquisitionTotal = budgetViz.years
+    .filter(function(y) { return y.year >= startYear && y.year <= endYear; })
+    .reduce(function(sum, y) { return sum + y.total; }, 0);
+
+  // 연체 요약 — 연체 건수는 reportHomeroomClass_/reportRecallNotice_와 같은 "생성 시점(now)
+  // 기준 스냅샷"(기간 필터 없음 — 연체는 그 순간의 상태이지 기간에 걸친 사건이 아니다).
+  // 미납액은 apiWebUnpaidFines_와 같은 조인 관례(remaining = amount - paid_amount, UNPAID/
+  // PARTIAL만)를 재사용하되, 그 함수는 fine_type_code === 'REPLACEMENT'만 화면에 보여주는
+  // 좁은 용도(분실 변상 목록)라 REPLACEMENT만 필터하지만, 여기는 예산 증빙 성격의 총괄
+  // 보고서라 ADR-017이 허용하는 두 유형(OVERDUE·REPLACEMENT) 모두의 미수금을 합산한다.
+  var openOverdueCount = loans.filter(function(loan) {
+    if (loan.status_code !== 'OPEN' || loan.returned_at) return false;
+    var due = asDate_(loan.due_at);
+    return due && due.getTime() < now.getTime();
+  }).length;
+
+  var unpaidFineAmount = 0;
+  var unpaidFineCount = 0;
+  readTable_(LIBRARY_MVP.SHEETS.FINES).rows.forEach(function(row) {
+    if (row.status_code !== 'UNPAID' && row.status_code !== 'PARTIAL') return;
+    var remaining = Number(row.amount || 0) - Number(row.paid_amount || 0);
+    if (remaining <= 0) return;
+    unpaidFineAmount += remaining;
+    unpaidFineCount++;
+  });
+
+  return {
+    libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
+    generatedAt: formatDateTime_(now),
+    year: year,
+    periodStartText: formatDate_(start),
+    periodEndText: formatDate_(end),
+    loanStats: {
+      totalCount: loansInPeriod.length,
+      byMonth: byMonth
+    },
+    collection: {
+      startCount: startCount,
+      endCount: startCount + acquiredInPeriodCount,
+      acquiredInPeriodCount: acquiredInPeriodCount,
+      netChange: acquiredInPeriodCount,
+      skippedNoAcquiredDate: collectionSkippedNoAcquiredDate
+    },
+    budget: {
+      sourceOrder: budgetViz.sourceOrder,
+      years: budgetViz.years,
+      skippedNoSource: budgetViz.skippedNoSource,
+      skippedNoAcquiredDate: budgetViz.skippedNoAcquiredDate,
+      periodAcquisitionTotal: periodAcquisitionTotal
+    },
+    topLoans: topLoans,
+    overdueSummary: {
+      openOverdueCount: openOverdueCount,
+      unpaidFineAmount: unpaidFineAmount,
+      unpaidFineCount: unpaidFineCount
+    }
   };
 }
 

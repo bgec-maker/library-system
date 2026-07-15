@@ -1,4 +1,5 @@
 import type {
+  AnnualOperationsReport,
   DonorThanksReport,
   HomeroomReport,
   NoLoanFinderReport,
@@ -139,4 +140,91 @@ export const mockDonorThanksReport: DonorThanksReport = {
     }
   ],
   skippedNoSource: 12
+};
+
+// R3 연간 운영 보고서(todo/24) — 완결된 한 해(2025년)를 기본 샘플로 든다(진행 중인 해보다
+// "제출용 연간 보고서"라는 성격에 더 잘 맞는 예시). 12개월 전부 값이 있어야 인쇄 화면에서
+// 월별 표/예산 차트가 비어 보이지 않는다.
+export const mockAnnualOperationsReport: AnnualOperationsReport = {
+  libraryName: 'BGEC 도서관 (샘플)',
+  generatedAt: '2026-07-15 09:00',
+  year: 2025,
+  periodStartText: '2025-01-01',
+  periodEndText: '2025-12-31',
+  loanStats: {
+    totalCount: 615,
+    byMonth: [
+      { month: '2025-01', count: 32 },
+      { month: '2025-02', count: 40 },
+      { month: '2025-03', count: 55 },
+      { month: '2025-04', count: 48 },
+      { month: '2025-05', count: 66 },
+      { month: '2025-06', count: 70 },
+      { month: '2025-07', count: 42 },
+      { month: '2025-08', count: 50 },
+      { month: '2025-09', count: 60 },
+      { month: '2025-10', count: 58 },
+      { month: '2025-11', count: 44 },
+      { month: '2025-12', count: 50 }
+    ]
+  },
+  collection: {
+    startCount: 4820,
+    endCount: 5000,
+    acquiredInPeriodCount: 180,
+    netChange: 180,
+    skippedNoAcquiredDate: 3
+  },
+  budget: {
+    sourceOrder: ['예산-도서관운영비', '기증-학부모회', '그 외 출처'],
+    years: [
+      {
+        year: 2023,
+        total: 1200000,
+        sources: [
+          { sourceLabel: '예산-도서관운영비', amount: 900000 },
+          { sourceLabel: '기증-학부모회', amount: 200000 },
+          { sourceLabel: '그 외 출처', amount: 100000 }
+        ]
+      },
+      {
+        year: 2024,
+        total: 1500000,
+        sources: [
+          { sourceLabel: '예산-도서관운영비', amount: 1080000 },
+          { sourceLabel: '기증-학부모회', amount: 280000 },
+          { sourceLabel: '그 외 출처', amount: 140000 }
+        ]
+      },
+      {
+        year: 2025,
+        total: 1800000,
+        sources: [
+          { sourceLabel: '예산-도서관운영비', amount: 1300000 },
+          { sourceLabel: '기증-학부모회', amount: 350000 },
+          { sourceLabel: '그 외 출처', amount: 150000 }
+        ]
+      }
+    ],
+    skippedNoSource: 5,
+    skippedNoAcquiredDate: 2,
+    periodAcquisitionTotal: 1800000
+  },
+  topLoans: [
+    { title: '아몬드', loanCount: 28 },
+    { title: '어린 왕자', loanCount: 24 },
+    { title: '해리 포터와 마법사의 돌', loanCount: 21 },
+    { title: '완득이', loanCount: 18 },
+    { title: '구름빵', loanCount: 15 },
+    { title: '아기 돼지 삼형제', loanCount: 12 },
+    { title: '나무를 심은 사람', loanCount: 10 },
+    { title: '마당을 나온 암탉', loanCount: 9 },
+    { title: '괴물들이 사는 나라', loanCount: 7 },
+    { title: '이상한 나라의 앨리스', loanCount: 6 }
+  ],
+  overdueSummary: {
+    openOverdueCount: 9,
+    unpaidFineAmount: 45000,
+    unpaidFineCount: 3
+  }
 };

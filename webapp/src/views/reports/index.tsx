@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, Banknote, BookX, ChartColumn, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
+import { ArrowLeft, Banknote, BookX, ChartColumn, FileBarChart, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
 import type { ShellContext, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { PrintDocument } from '../../components/PrintDocument';
@@ -27,6 +27,7 @@ import {
   type WeedingRecommendReport
 } from '../../services/reportData';
 import { fetchUnpaidFines, payFine, type UnpaidFineRow } from '../../services/loanActionsData';
+import { AnnualOperationsReportPanel } from './AnnualOperationsReportPanel';
 import { subscribeDataChange } from '../../services/dataChangeBus';
 import {
   BudgetPicture,
@@ -52,7 +53,13 @@ import './reports.css';
 // src/student/** 어디서도 이 뷰나 services/reportData.ts를 import하지 않는다 — 학생 표면에는
 // 다른 학생의 미대출·연체가 노출될 경로 자체가 없다.
 
-type ReportTypeId = 'no-loan-finder' | 'homeroom-report' | 'weeding-recommend' | 'recall-notice' | 'donor-thanks';
+type ReportTypeId =
+  | 'no-loan-finder'
+  | 'homeroom-report'
+  | 'weeding-recommend'
+  | 'recall-notice'
+  | 'donor-thanks'
+  | 'annual-operations-report';
 
 // todo/06 — 리포트 허브의 6번째 「허브 진입」 카드(docs/VIZ.md 구현 노트 "대시보드·reports에
 // 착륙"). report 액션의 type 파라미터(ReportTypeId)와는 무관한 별개 화면(viz 액션으로 조회)이라
@@ -75,12 +82,23 @@ interface ReportTypeMeta {
 // 아이콘·라벨 키는 DashboardBaseLayer.tsx의 QUIET_SIGNALS와 의도적으로 동일하다(DESIGN.md
 // "같은 행동 같은 이름 관통") — reportType 문자열도 todo/04가 잠정 지정한 것을 그대로 채택했다
 // (docs/ASSUMPTIONS.md todo/04 참고).
+//
+// todo/24 — 마지막 항목(연간 운영 보고서)은 FEATURES.md R3(행정 자동화)로, R1 "조용한 신호"
+// 5종과 달리 대시보드 진입점이 없다(FEATURES.md 원칙 "R1은 로그인 불필요"가 조용한 신호의
+// 근거였고 R3는 해당 없음) — 그래서 위 QUIET_SIGNALS 재사용 규칙에서 의도적으로 벗어나 이
+// 리포트 전용 라벨 키(views.reports.annualOperations.cardLabel)를 새로 둔다.
 const REPORT_TYPES: ReportTypeMeta[] = [
   { id: 'no-loan-finder', labelKey: 'dashboard.quietSignal.noLoanFinder', icon: UserSearch, implemented: true },
   { id: 'homeroom-report', labelKey: 'dashboard.quietSignal.homeroomReport', icon: FileText, implemented: true },
   { id: 'weeding-recommend', labelKey: 'dashboard.quietSignal.weedingRecommend', icon: BookX, implemented: true },
   { id: 'recall-notice', labelKey: 'dashboard.quietSignal.recallNotice', icon: Megaphone, implemented: true },
-  { id: 'donor-thanks', labelKey: 'dashboard.quietSignal.donorThanks', icon: Gift, implemented: true }
+  { id: 'donor-thanks', labelKey: 'dashboard.quietSignal.donorThanks', icon: Gift, implemented: true },
+  {
+    id: 'annual-operations-report',
+    labelKey: 'views.reports.annualOperations.cardLabel',
+    icon: FileBarChart,
+    implemented: true
+  }
 ];
 
 function isReportTypeId(value: string): value is ReportTypeId {
@@ -1184,6 +1202,7 @@ export default function ReportsView({ shell, params }: ViewProps) {
       {selectedType === 'weeding-recommend' && <WeedingRecommendPanel shell={shell} />}
       {selectedType === 'recall-notice' && <RecallNoticePanel shell={shell} />}
       {selectedType === 'donor-thanks' && <DonorThanksPanel shell={shell} />}
+      {selectedType === 'annual-operations-report' && <AnnualOperationsReportPanel shell={shell} />}
       {selectedType === 'viz-insights' && <VizInsightsPanel shell={shell} />}
       {selectedType === 'unpaid-fines' && <UnpaidFinesPanel shell={shell} />}
     </div>

@@ -1,5 +1,6 @@
 import { apiCall } from './api';
 import {
+  mockAnnualOperationsReport,
   mockDonorThanksReport,
   mockHomeroomReport,
   mockNoLoanFinderReport,
@@ -145,6 +146,79 @@ export interface DonorThanksReport {
   skippedNoSource: number;
 }
 
+// R3 연간 운영 보고서 — reportAnnualOperations_(Code.gs)의 반환 모양 그대로. FEATURES.md가
+// 요구하는 5개 항목(대출 통계·장서 현황 증감·입수 단가 합계·상위 대출·연체 요약)이 각각
+// loanStats/collection/budget/topLoans/overdueSummary 필드로 나뉘어 내려온다.
+export interface AnnualOperationsLoanMonth {
+  /** yyyy-MM */
+  month: string;
+  count: number;
+}
+
+export interface AnnualOperationsLoanStats {
+  totalCount: number;
+  byMonth: AnnualOperationsLoanMonth[];
+}
+
+// 08_COPIES에 철회 시각(withdrawn_at)이 없어(school-patch-v1/Code.gs reportAnnualOperations_
+// 주석 참고) "기간 시작 전 입수 vs 기간 중 입수"로 근사한다 — 기간 중 철회분은 이 수치에서
+// 빠진다(docs/ASSUMPTIONS.md todo/24).
+export interface AnnualOperationsCollection {
+  startCount: number;
+  endCount: number;
+  acquiredInPeriodCount: number;
+  netChange: number;
+  skippedNoAcquiredDate: number;
+}
+
+// computeBudgetViz_(예산 그림, todo/19)가 이미 계산한 연도×출처 표를 그대로 담고,
+// periodAcquisitionTotal만 reportAnnualOperations_가 선택 기간에 맞춰 추가로 더한 값이다.
+export interface AnnualOperationsBudgetSource {
+  sourceLabel: string;
+  amount: number;
+}
+
+export interface AnnualOperationsBudgetYear {
+  year: number;
+  total: number;
+  sources: AnnualOperationsBudgetSource[];
+}
+
+export interface AnnualOperationsBudget {
+  sourceOrder: string[];
+  years: AnnualOperationsBudgetYear[];
+  skippedNoSource: number;
+  skippedNoAcquiredDate: number;
+  periodAcquisitionTotal: number;
+}
+
+export interface AnnualOperationsTopLoan {
+  title: string;
+  loanCount: number;
+}
+
+export interface AnnualOperationsOverdueSummary {
+  openOverdueCount: number;
+  unpaidFineAmount: number;
+  unpaidFineCount: number;
+}
+
+export interface AnnualOperationsReport {
+  libraryName: string;
+  generatedAt: string;
+  /** 달력 연도 모드일 때만 값이 있음 — startDate/endDate로 임의 구간을 준 경우 null. */
+  year: number | null;
+  /** yyyy-MM-dd */
+  periodStartText: string;
+  /** yyyy-MM-dd */
+  periodEndText: string;
+  loanStats: AnnualOperationsLoanStats;
+  collection: AnnualOperationsCollection;
+  budget: AnnualOperationsBudget;
+  topLoans: AnnualOperationsTopLoan[];
+  overdueSummary: AnnualOperationsOverdueSummary;
+}
+
 export type ReportFetchOutcome<T> = { ok: true; data: T; sample: boolean } | { ok: false; message: string };
 
 async function fetchReport<T>(type: string, params: Record<string, unknown>, sampleData: T): Promise<ReportFetchOutcome<T>> {
@@ -181,4 +255,24 @@ export function fetchRecallNoticeReport(): Promise<ReportFetchOutcome<RecallNoti
 /** R1-5 기증 감사장 — 파라미터 없음(acquisition_source별 그룹 전체를 받는다). */
 export function fetchDonorThanksReport(): Promise<ReportFetchOutcome<DonorThanksReport>> {
   return fetchReport('donor-thanks', {}, mockDonorThanksReport);
+}
+
+/**
+ * R3 연간 운영 보고서. 기본은 달력 연도(`year`, 생략 시 서버가 오늘 연도로 처리) — 학년도 같은
+ * 학사력 개념이 CONFIG에 없어(docs/ASSUMPTIONS.md todo/24) `startDate`+`endDate`(둘 다 줘야
+ * 함, yyyy-MM-dd)로 임의 구간을 완전히 덮어쓸 수도 있다.
+ */
+export function fetchAnnualOperationsReport(params: {
+  year?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ReportFetchOutcome<AnnualOperationsReport>> {
+  const payload: Record<string, unknown> = {};
+  if (params.startDate && params.endDate) {
+    payload.startDate = params.startDate;
+    payload.endDate = params.endDate;
+  } else if (params.year !== undefined) {
+    payload.year = params.year;
+  }
+  return fetchReport('annual-operations-report', payload, mockAnnualOperationsReport);
 }
