@@ -5,7 +5,7 @@ import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
 import { pushToast } from '../../services/toastBus';
-import { t } from '../../i18n';
+import { subscribeLocale, t } from '../../i18n';
 import {
   getEffectiveScanRoute,
   isScanRoutePinned,
@@ -38,6 +38,13 @@ export function Window({ win }: WindowProps) {
   const openWindow = useWindowStore((s) => s.openWindow);
 
   const [title, setTitleState] = useState(meta?.title ?? win.viewId);
+  // todo/10 — 로케일 토글 시 이미 열린 창의 타이틀바도 즉시 갱신하기 위한 판별 플래그.
+  // 거의 모든 뷰가 마운트 시 `shell.setTitle(getViewMeta(id)?.title ?? t(...))`로 레지스트리
+  // 기본값을 "그대로" 재확인만 하므로(커스텀 제목을 쓰는 뷰가 아직 없음, book-detail은 todo/11
+  // 몫), setTitle에 넘어온 값이 그 시점의 레지스트리 기본값과 같으면 "기본 제목"으로 간주해
+  // 로케일이 바뀔 때 새 기본값으로 계속 따라가게 하고, 다르면 "커스텀 제목"으로 간주해 로케일
+  // 토글이 건드리지 않는다 — docs/ASSUMPTIONS.md `## todo/10`에 이 트레이드오프를 문서화했다.
+  const isCustomTitleRef = useRef(false);
   const [scanRoute, setScanRouteState] = useState(getEffectiveScanRoute());
 
   const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(null);
@@ -62,9 +69,28 @@ export function Window({ win }: WindowProps) {
     if (isFocused && meta?.scan === 'focus') setScanRoute(win.viewId);
   }, [isFocused, meta?.scan, win.viewId]);
 
+  // todo/10 — 알려진 한계 해소: 로케일이 바뀌면 registry.ts의 subscribeLocale 콜백이 이미
+  // VIEW_REGISTRY[i].title을 새 언어로 mutate해 두므로, 여기서는 "커스텀 제목이 아닐 때만"
+  // 그 새 값을 다시 읽어와 이 창의 title state에 반영한다. 뷰가 마운트 시 1회만 호출하는
+  // shell.setTitle(...)이 재실행되길 기다리지 않아도(그 effect의 deps=[shell]은 로케일과
+  // 무관해 재실행되지 않는다) 창이 열려 있는 동안 즉시 갱신된다.
+  useEffect(
+    () =>
+      subscribeLocale(() => {
+        if (isCustomTitleRef.current) return;
+        setTitleState(getViewMeta(win.viewId)?.title ?? win.viewId);
+      }),
+    [win.viewId]
+  );
+
   const shell: ShellContext = useMemo<ShellContext>(
     () => ({
-      setTitle: (t: string) => setTitleState(t),
+      setTitle: (next: string) => {
+        // 이 창의 뷰가 지금 이 순간의 레지스트리 기본 제목과 다른 값을 넣으면 "커스텀 제목"으로
+        // 표시해 둔다 — 아래 로케일 구독 effect가 커스텀 제목을 덮어쓰지 않도록.
+        isCustomTitleRef.current = next !== (getViewMeta(win.viewId)?.title ?? win.viewId);
+        setTitleState(next);
+      },
       requestClose: () => closeWindow(win.id),
       open: (viewId: ViewId, params?: Record<string, unknown>) => openWindow(viewId, params),
       toast: (message: string, kind) => pushToast(message, kind),
@@ -85,7 +111,7 @@ export function Window({ win }: WindowProps) {
         window.print();
       }
     }),
-    [win.id, closeWindow, openWindow]
+    [win.id, win.viewId, closeWindow, openWindow]
   );
 
   function bringToFront() {

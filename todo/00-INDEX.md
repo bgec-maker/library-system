@@ -12,7 +12,7 @@
 질문 금지(가정→ASSUMPTIONS.md) · 실패 2회 후 BLOCKERS.md 기록하고 다음 항목 · 멈춤 사유는 파괴 행위 직전뿐(spike 삭제·force push·비밀값·Code.gs 기존 함수 수정) · 새 doPost 액션은 **「샘플 데이터」 배지 폴백 필수** · Code.gs는 추가만
 
 ## 큐
-- [ ] 10 i18n-debt — 린트 JSX밖 확장 + 창 제목 로케일 구독
+- [x] 10 i18n-debt — 린트 JSX밖 확장 + 창 제목 로케일 구독
 - [ ] 11 book-detail — 스텁(28줄) → 완성
 - [ ] 12 reservations-front — 예약 걸기 + 관리 뷰
 - [ ] 13 renew-lost-compensate — 연장·분실·변상 웹앱 처리

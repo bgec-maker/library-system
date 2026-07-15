@@ -450,3 +450,54 @@
   판별할 수 없어 자동화 범위 밖으로 뒀다 — en.json 전체(330개 키)를 사람이 직접 훑어 실제
   의미가 통하는 영어로 옮기는 작업은 이번 항목에서 수동으로 수행했다(스크립트는 회귀 방지용
   이중 방어선).
+
+## todo/10 · i18n 부채 상환 (2026-07-15)
+
+- **JSX 밖 한글 리터럴 검출 범위는 "toast(shell.toast/pushToast) · throw(new Error(...) 포함,
+  bare throw 포함) · alert()" 세 호출 패턴으로 한정**했다(`eslint.config.js`의
+  `i18nLiteralRules` 뒤쪽 6개 선택자 + `check-i18n-literals.mjs`의 `CALL_TRIGGERS`/
+  `THROW_TRIGGER`). todo 원문 "toast·throw·alert 인자 등"의 "등"을 "화면에 그대로 노출되는
+  다른 함수 호출까지 무한정 확장"으로 읽지 않고 이 세 가지로 좁혔다 — 임의의 문자열 리터럴을
+  전부 막는 규칙("no string literals anywhere")은 오탐이 너무 많아진다는 todo 본문의 명시적
+  경고를 따른 것. **`console.error`/`console.warn`/`console.log`는 별도의 "허용목록" 코드 없이
+  구조적으로 제외**된다 — 새 선택자/트리거가 애초에 콜백 이름을 `toast`/`pushToast`/`alert`
+  또는 `throw` 키워드로만 좁혀서 짚기 때문에, 콘솔 호출(`callee.property.name === 'error'`
+  등)은 매칭 대상 자체에 들어오지 않는다. 검증: 스크래치 파일에 `shell.toast('한글')`·
+  `pushToast('한글')`·`throw new Error('한글')`·`throw '한글'`·`alert('한글')` 5종을 넣고
+  eslint(`no-restricted-syntax`)·`check-i18n-literals.mjs` 둘 다 5건 전부 잡는 것을 확인했고,
+  같은 파일의 `console.error('한글')`는 둘 다 잡지 않는 것도 함께 확인한 뒤 파일을 삭제해
+  되돌렸다(최종 diff에 남지 않음).
+
+- **`check-i18n-literals.mjs`의 호출-인자 검사는 정규식 하나로 "인자 문자열이 어디 있는지"를
+  정확히 파싱하지 않고, 트리거(`.toast(`/`pushToast(`/`alert(`/`throw`) 다음 지점부터
+  depth-aware(괄호·대괄호·중괄호 + quote-aware)로 statement 끝까지 잘라낸 뒤 그 구간 안
+  어디든 한글이 든 따옴표/템플릿 리터럴이 있으면 위반으로 잡는 방식(`scanStatementSpan` +
+  `QUOTED_HANGUL`)으로 구현**했다 — eslint 쪽 `CallExpression[...] Literal[...]`/
+  `ThrowStatement Literal[...]`가 자손 전체를 보는 것(첫 번째 인자든 `new Error(...)`처럼
+  한 겹 더 감싸져 있든 다 잡음)과 동치가 되도록 맞춘 것이다. 대신 이론적으로 그 statement
+  안에 중첩된, 실제로는 무관한 콜백의 한글 리터럴(예: `shell.toast(process(() => { ... }))`
+  형태의 아주 드문 코드)까지 같이 잡힐 수 있는 과탐 여지가 있다 — 이 프로젝트의 실제 호출
+  스타일(토스트 인자는 항상 그 자리에서 조립되는 문자열/템플릿)에서는 발생하지 않는 패턴이라
+  감수할 만한 트레이드오프로 판단했다.
+
+- **`Window.tsx`가 로케일 변경(`subscribeLocale`)을 구독해 열린 창의 타이틀바를 "기본 제목"
+  일 때만 즉시 갱신**하도록 만들었다(ASSUMPTIONS todo/02가 명시한 "알려진 한계" 해소).
+  판별 방법: `shell.setTitle(next)`가 호출될 때마다 그 시점의 `getViewMeta(viewId)?.title`
+  (레지스트리 기본값)과 `next`를 비교해 다르면 `isCustomTitleRef.current = true`로 표시한다.
+  로케일 변경 콜백은 이 플래그가 true면 아무것도 하지 않고(커스텀 제목을 건드리지 않음),
+  false면 그 순간의(이미 `registry.ts`의 `subscribeLocale` 콜백이 새 언어로 mutate해 둔)
+  `getViewMeta(viewId)?.title`을 다시 읽어 title state에 반영한다. **지금은 사실상 모든 뷰가
+  마운트 시 `shell.setTitle(getViewMeta(id)?.title ?? t(...))`로 레지스트리 기본값을 그대로
+  재확인만 하므로(book-detail도 todo/11 전까지는 스텁이라 마찬가지) 이 플래그는 지금 항상
+  false로 유지되고, 열려 있는 모든 창의 타이틀바가 로케일 토글에 즉시 반응한다.**
+  **todo/11(book-detail)이 알아야 할 것**: book-detail이 실제 서지 제목(예: "아몬드")으로
+  `shell.setTitle("아몬드")`를 호출하는 순간 그 값은 레지스트리 기본값("도서 상세"/"Book
+  Detail")과 달라지므로 `isCustomTitleRef.current`가 true가 되고, **그 뒤로는 로케일을
+  토글해도 이 Window.tsx 메커니즘이 제목을 다시 건드리지 않는다** — "아몬드"라는 값 자체는
+  책 제목(데이터)이라 ADR-023 "서명은 사전에 넣지 않는다" 원칙상 로케일에 따라 바뀔 이유가
+  없으므로 이대로도 대부분 무해하지만, 만약 book-detail이 제목에 번역 가능한 텍스트를 덧붙이는
+  형태(예: `"아몬드" + " · " + t('registry.bookDetail.title')` 같은 접미사)를 쓴다면 그
+  번역 부분은 로케일 토글에 반응하지 않고 고정된 채로 남는다 — book-detail이 그런 동적 접미사를
+  원한다면 자기 자신의 `useLocale()` 구독으로 로케일이 바뀔 때마다 직접 `shell.setTitle(...)`을
+  다시 호출해 스스로 최신화해야 한다(그러면 그 호출도 위 판별 로직을 다시 통과해 여전히 레지스트리
+  기본값과 다르므로 커스텀으로 남는다 — 문제 없음, 매번 스스로 다시 세팅하는 쪽 책임이다).

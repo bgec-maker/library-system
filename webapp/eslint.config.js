@@ -44,9 +44,15 @@ const viewBoundaryRules = {
 // JSXText(마크업 텍스트) · JSX 속성값 문자열 리터럴(예: title="저장") · JSX 표현식 컨테이너
 // 안의 템플릿 리터럴(예: title={`${x} (최소화됨)`}). 코드 주석은 이 AST 노드들에 애초에
 // 안 걸린다(주석은 이 셀렉터들이 보는 트리에 없다) — 이 프로젝트 컨벤션(CLAUDE.md: "주석 =
-// 한국어")과 자연히 공존한다. shell.toast()/console.error() 같은 순수 함수 인자 문자열은
-// 의도적으로 범위 밖(ADR-023 문구 그대로 "JSX 내"에 한정) — 그 문자열들은 4번 요구사항에
-// 따라 수동으로 t()로 이관했다.
+// 한국어")과 자연히 공존한다. (todo/02 당시) shell.toast()/console.error() 같은 순수 함수
+// 인자 문자열은 의도적으로 범위 밖이었다(ADR-023 문구 그대로 "JSX 내"에 한정) — 그 문자열들은
+// 4번 요구사항에 따라 수동으로 t()로 이관했었다.
+//
+// **todo/10에서 이 갭(ASSUMPTIONS todo/02 "회귀 방지가 안 됨")을 메운다**: 아래 배열 뒤쪽
+// 6개 선택자가 JSX 밖 toast·throw·alert 호출 인자의 한글 리터럴/템플릿도 잡는다.
+// console.error/warn/log 같은 개발자 전용 진단 로그는 여전히 범위 밖이다 — 별도 허용목록이
+// 필요 없다, 아래 선택자들이 애초에 콜백 이름을 toast/pushToast/alert/throw로만 좁혀서
+// 짚기 때문에 console.* 호출 자체가 구조적으로 매칭 대상에 들어오지 않는다.
 const HANGUL = '/[\\uAC00-\\uD7A3]/';
 const i18nLiteralRules = {
   'no-restricted-syntax': [
@@ -62,6 +68,33 @@ const i18nLiteralRules = {
     {
       selector: `JSXExpressionContainer TemplateElement[value.raw=${HANGUL}]`,
       message: 'JSX 표현식 안 템플릿 리터럴에 한글 리터럴 금지 — t(\'key\', {…})로 옮기세요(ADR-023).'
+    },
+    // todo/10 — JSX 밖: shell.toast()/pushToast() 호출 인자, throw 문(new Error(...) 포함),
+    // alert() 호출 인자. 셋 다 사용자에게 그대로 노출되는 문구(토스트·경고창) 또는 예외
+    // 메시지라 위 JSX 규칙과 같은 근거(ADR-023)로 한글 리터럴/템플릿을 금지한다.
+    {
+      selector: `CallExpression[callee.property.name='toast'] Literal[value=${HANGUL}], CallExpression[callee.name='pushToast'] Literal[value=${HANGUL}]`,
+      message: 'toast() 인자에 한글 리터럴 금지 — t(\'key\')로 옮기세요(ADR-023, todo/10).'
+    },
+    {
+      selector: `CallExpression[callee.property.name='toast'] TemplateElement[value.raw=${HANGUL}], CallExpression[callee.name='pushToast'] TemplateElement[value.raw=${HANGUL}]`,
+      message: 'toast() 인자 템플릿 리터럴에 한글 금지 — t(\'key\', {…})로 옮기세요(ADR-023, todo/10).'
+    },
+    {
+      selector: `ThrowStatement Literal[value=${HANGUL}]`,
+      message: 'throw 인자에 한글 리터럴 금지 — t(\'key\')로 옮기세요(ADR-023, todo/10).'
+    },
+    {
+      selector: `ThrowStatement TemplateElement[value.raw=${HANGUL}]`,
+      message: 'throw 인자 템플릿 리터럴에 한글 금지 — t(\'key\', {…})로 옮기세요(ADR-023, todo/10).'
+    },
+    {
+      selector: `CallExpression[callee.name='alert'] Literal[value=${HANGUL}]`,
+      message: 'alert() 인자에 한글 리터럴 금지 — t(\'key\')로 옮기세요(ADR-023, todo/10).'
+    },
+    {
+      selector: `CallExpression[callee.name='alert'] TemplateElement[value.raw=${HANGUL}]`,
+      message: 'alert() 인자 템플릿 리터럴에 한글 금지 — t(\'key\', {…})로 옮기세요(ADR-023, todo/10).'
     }
   ]
 };
