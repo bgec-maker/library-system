@@ -7,3 +7,8 @@ dist/
 .clasp.json
 .claspignore
 *.tsbuildinfo
+
+# todo/27 — Playwright 실행 산출물(webapp/).
+test-results/
+playwright-report/
+blob-report/

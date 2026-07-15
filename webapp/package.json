@@ -12,7 +12,8 @@
     "check-i18n-literals": "node scripts/check-i18n-literals.mjs",
     "check-i18n-completeness": "node scripts/check-i18n-completeness.mjs",
     "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && tsc -b --noEmit",
-    "size": "node scripts/check-bundle-size.mjs"
+    "size": "node scripts/check-bundle-size.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "lucide-react": "^1.24.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "^1.61.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^8.5.0",

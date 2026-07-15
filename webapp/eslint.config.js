@@ -146,6 +146,27 @@ export default [
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: globals.node }
   },
   {
+    // todo/27 E2E 스모크 — src/** 밖(webapp/e2e/)이라 위 src/**/*.{ts,tsx} 블록의 TS 파서
+    // 지정을 안 받는다. 이대로 두면 이 폴더는 js.configs.recommended(espree)로만 걸려
+    // TS 전용 문법(type Route, 인터페이스, 제네릭 등)에서 파싱 에러가 난다 — Playwright
+    // 테스트는 Node에서 실행되지 브라우저 전역이 필요 없으므로 globals.node를 쓴다(브라우저
+    // 쪽 상호작용은 전부 page.*/locator.* API를 통해서만 하지 window.*를 직접 참조하지 않는다).
+    files: ['e2e/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+      parser: tsParser
+    },
+    plugins: { '@typescript-eslint': tseslint },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-unused-vars': 'off',
+      'no-undef': 'off'
+    }
+  },
+  {
     // 설정 파일 자체 — Node 전역에서 실행됨.
     files: ['*.config.{js,ts}'],
     languageOptions: { globals: globals.node }
