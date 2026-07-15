@@ -1,6 +1,10 @@
 import type {
   CategoryTreemapData,
+  ClassParticipationData,
   LoanHeatmapData,
+  LoanTimeOfDayData,
+  MonthlyLoanCurveData,
+  OverdueFlowData,
   ReservationPressureData,
   TurnoverQuadrantData
 } from '../services/vizData';
@@ -91,3 +95,57 @@ export const mockReservationPressure: ReservationPressureData = {
     { titleId: 'T-0005', title: '완득이', queueLength: 1, trend: [0, 0, 0, 0, 1, 1] }
   ]
 };
+
+// todo/18 — #2 하루의 파도 샘플. 점심(12~13시)·방과후(15~17시) 두 봉우리를 흉내낸 결정론적
+// 패턴(등교 전·수업 중 시간대는 낮게).
+function buildMockLoanTimeOfDay(): LoanTimeOfDayData {
+  const shape = [0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 14, 12, 5, 8, 10, 6, 2, 1, 0, 0, 0, 0];
+  return { hours: shape.map((count, hour) => ({ hour, count })) };
+}
+
+export const mockLoanTimeOfDay: LoanTimeOfDayData = buildMockLoanTimeOfDay();
+
+// todo/18 — #8 연체 흐름 샘플. 발생이 서서히 줄고 해소가 발생을 바짝 뒤쫓는(정책이 듣고 있는)
+// 모양을 흉내낸다.
+function buildMockOverdueFlow(): OverdueFlowData {
+  const occurred = [22, 20, 21, 18, 17, 15, 14, 13, 11, 10, 9, 8];
+  const resolved = [18, 19, 20, 17, 16, 15, 13, 12, 11, 9, 9, 8];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weeks = occurred.map((occurredCount, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (occurred.length - 1 - i) * 7);
+    return { weekStart: toDateKey(d), occurredCount, resolvedCount: resolved[i] };
+  });
+  return { weeks };
+}
+
+export const mockOverdueFlow: OverdueFlowData = buildMockOverdueFlow();
+
+// todo/18 — #10 반 참여 링 샘플. 2개 학년 × 3개 반, 참여도가 반마다 다르게 보이도록 무대출
+// 비율을 의도적으로 흩어 놓았다.
+export const mockClassParticipation: ClassParticipationData = {
+  sinceDate: toDateKey(new Date(Date.now() - 90 * 86400000)),
+  classes: [
+    { grade: 1, classNo: 1, studentCount: 24, noLoanCount: 3, noLoanRatio: 3 / 24 },
+    { grade: 1, classNo: 2, studentCount: 23, noLoanCount: 9, noLoanRatio: 9 / 23 },
+    { grade: 1, classNo: 3, studentCount: 25, noLoanCount: 14, noLoanRatio: 14 / 25 },
+    { grade: 2, classNo: 1, studentCount: 22, noLoanCount: 1, noLoanRatio: 1 / 22 },
+    { grade: 2, classNo: 2, studentCount: 24, noLoanCount: 6, noLoanRatio: 6 / 24 },
+    { grade: 2, classNo: 3, studentCount: 23, noLoanCount: 18, noLoanRatio: 18 / 23 }
+  ]
+};
+
+// todo/18 — #12 열두 달 곡선 샘플. 3개년, 방학월(1·2·8월) 골짜기·개학월(3·9월) 산을 흉내낸
+// 결정론적 패턴이며 해마다 전체 대출량이 조금씩 늘어나는 모양(최근 연도가 더 높게).
+function buildMockMonthlyLoanCurve(): MonthlyLoanCurveData {
+  const shape = [40, 55, 90, 80, 75, 70, 60, 20, 95, 85, 78, 35]; // 1~12월 기준 패턴
+  const currentYear = new Date().getFullYear();
+  const years = [2, 1, 0].map((yearsAgo, i) => {
+    const scale = 1 + i * 0.12; // 오래된 해일수록 낮게(최근 해가 더 높게)
+    return { year: currentYear - yearsAgo, months: shape.map((v) => Math.round(v * scale)) };
+  });
+  return { years };
+}
+
+export const mockMonthlyLoanCurve: MonthlyLoanCurveData = buildMockMonthlyLoanCurve();

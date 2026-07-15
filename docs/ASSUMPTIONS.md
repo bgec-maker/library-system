@@ -1171,3 +1171,90 @@
   예외로 취급했다. `git diff`로 확인한 결과 `buildLibraryMenu_` 함수 안에서 실제로 바뀐 줄은
   이 두 줄(종결자 변경 1줄 + 신규 `.addItem` 1줄)뿐이고, 그 함수의 다른 어떤 줄도 건드리지
   않았다.
+
+## todo/18 · 시각화 V1 2차 (2026-07-15)
+
+- **`runVizDailyBatch_`의 `rows` 배열·`apiWebViz_`의 `validTypes` 배열에 각각 4줄만 추가**했다
+  (`computeLoanTimeOfDayViz_`/`computeOverdueFlowViz_`/`computeClassParticipationViz_`/
+  `computeMonthlyLoanCurveViz_`, 타입 문자열 `loan-time-of-day`/`overdue-flow`/
+  `class-participation`/`monthly-loan-curve`) — todo/06이 만든 기존 4행·4개 타입 문자열의
+  순서·값은 그대로다. `git diff`로 두 배열 다 순수 추가만 있었음을 확인했다(사용 방식은
+  `installLibraryTriggers`/`buildLibraryMenu_`에 이미 쓰인 것과 같은 급의 "배열 확장" 예외).
+
+- **연체 "발생"/"해소"의 정확한 정의**(`computeOverdueFlowViz_`) — 발생(occurred) = `due_at`이
+  그 주에 속하고 이미 지난 날짜(`due_at < now`)이며, 아직 안 돌아왔거나(`returned_at` 없음 =
+  지금도 연체 중) 늦게 돌아온 경우(`returned_at > due_at`). 해소(resolved) = `returned_at`이 그
+  주에 속하고 `returned_at > due_at`인 경우만(제때 반납은 애초에 연체였던 적이 없으므로 "해소"로
+  세지 않는다). 둘 다 계산 시점(`now`)과 무관하게 고정되는 사건이라(발생은 `due_at`, 해소는
+  `returned_at` 기준) 언제 다시 돌려도 같은 주에 같은 값이 나온다 — 이 정합성이 "정책이 듣고
+  있나"를 실제로 판단할 수 있게 하는 전제다. 창은 12주(≈1분기)로 잡았다 — VIZ.md가 정확한 주
+  수를 명시하지 않아 임의 지정이지만, "추세가 꺾였는가"를 봐야 하는 목적이라 예약 압력의 6주
+  (todo/06, 그냥 스파크라인 원재료)보다 길게 잡았다.
+
+- **"반 참여 링"의 `noLoanRatio`는 VIZ.md 원문 "반별 미대출 비율" 그대로 방향을 유지**했다
+  (`computeClassParticipationViz_`) — 값이 높을수록 그 반의 참여가 낮다는 뜻이다. 프론트
+  (`ClassParticipation.tsx`)만 링을 채울 때 `participationRatio = 1 - noLoanRatio`로 뒤집어
+  쓴다 — 링이 꽉 찰수록 "잘 빌리는 반"으로 직관적으로 읽히게 하려는 화면 쪽 선택일 뿐, 서버
+  지표 자체의 이름·방향은 바꾸지 않아 둘의 관계가 나중에 헷갈리지 않게 했다. 무대출 판정 기간은
+  reportNoLoanFinder_(todo/05)가 이미 쓰는 "최근 90일" 기본값을 그대로 재사용했다 — 정확히 같은
+  질문("누가 최근에 안 빌렸나")을 반 단위로 다시 묻는 것뿐이라 별도 기간 정의를 또 만들지
+  않았다.
+
+- **하루의 파도(`computeLoanTimeOfDayViz_`)는 대출 잔디의 365일 창 대신 "최근 90일" 창을
+  썼다** — 이 차트가 답하는 질문("점심 피크 — 스테이션·도우미 배치 근거")은 지금 이 학기
+  운영에 필요한 인력 배치라, 방학처럼 패턴이 전혀 다른 옛 데이터가 섞이면 피크가 흐려진다.
+  reportNoLoanFinder_가 이미 쓰는 "최근 90일" 창을 그대로 재사용해 새 기간 정의를 늘리지
+  않았다. 시각(hour)은 스크립트 런타임 시간대가 아니라 `Utilities.formatDate(…, TIMEZONE,
+  'H')`로 뽑는다 — `formatDate_`/`formatDateTime_`과 같은 관례(시간대 명시)를 그대로 따른
+  것이다.
+
+- **열두 달 곡선(`computeMonthlyLoanCurveViz_`)은 "현재 연도 포함 최근 4개년"으로 상한을
+  뒀다** — VIZ.md는 "다년 겹침"이라고만 하고 몇 년인지 명시하지 않아 임의 지정이다. 겹쳐
+  그리는 라인이 그보다 많아지면 방학 골짜기·개학 산의 대비가 오히려 흐려진다고 판단했다.
+  대출 기록이 전혀 없는 연도는 결과 배열에서 뺐다(빈 0라인을 그리지 않는다 — 도서관 시스템
+  가동 초기라 아직 데이터가 없는 지난 연도가 있을 수 있어서). 연·월 추출은 `formatDate_`
+  (TIMEZONE 고정) 문자열을 슬라이스하는 방식을 썼다 — reportHomeroomClass_가 이미 쓰는 것과
+  같은 관례.
+
+- **연체 흐름의 두 계열(발생/해소) 색은 DESIGN.md의 범주(≤6) 고정 순서(deep·brass·pass·wait·
+  ink-2·fail) 대신 발산 램프의 양 끝(`--viz-div-1`=fail·`--viz-div-5`=pass)을 썼다**
+  (`OverdueFlow.tsx`) — DESIGN.md가 발산 램프를 정확히 "fail↔paper↔pass의 ±비교"용으로
+  정의해 두었고, 발생(나쁜 쪽이 늘어나는 것)과 해소(좋은 쪽이 늘어나는 것)는 문자 그대로 그
+  ±비교이지, 회전율 사분면의 4분류(스타/신참/잠자는/죽은, 딱히 좋고 나쁨의 축이 아닌 이름
+  나열형 범주)와는 성격이 달라서다. 범주 고정 순서 규칙은 "이름 나열형 범주"에 적용하고, 이미
+  존재하는 발산 램프의 원래 의미(±비교)에 정확히 들어맞는 경우에는 그 램프를 쓰는 것이 더
+  DESIGN.md의 취지에 맞는다고 판단했다.
+
+- **열두 달 곡선의 다년 라인 색은 순차 램프(`--viz-seq-1~5`)를 "최근성" 축에 재해석해 배정**
+  했다(`MonthlyLoanCurve.tsx`) — 가장 최근 연도가 항상 `--viz-seq-5`(가장 짙음), 오래된
+  해일수록 한 단계씩 옅어지되 `--viz-seq-2` 밑으로는 내려가지 않는다(1단은 paper에 너무
+  가까워 선이 안 보인다). 순차 램프는 원래 "적음↔많음" 크기 비교용(DESIGN.md)이지만, "오래됨
+  ↔최근"이라는 또 다른 단일 축의 크기 비교로 재사용한 것뿐이라 새 토큰을 만들지 않았다.
+
+- **대시보드 착륙 지점 = 대출 잔디 + 예약 압력(기존) + 하루의 파도 + 열두 달 곡선(신규),
+  리포트 허브 `viz-insights` 착륙 지점 = 트리맵 + 사분면(기존) + 연체 흐름 + 반 참여 링
+  (신규)**으로 나눴다(task 노트가 제안한 분할을 그대로 채택) — 앞 둘 다 "매일 훑어보는 운영
+  신호"(하루의 파도·열두 달 곡선도 시계열 관찰용이라 대출 잔디·예약 압력과 같은 성격)이고,
+  뒤 둘은 "가끔 들여다보는 반/정책 단위 의사결정 자료"에 가깝다.
+
+- **하루의 파도·열두 달 곡선은 행동 버튼을 달지 않았다** — 둘 다 순수 관찰용 질문("언제
+  붐비나", "방학 골짜기·개학 산")이고 이 항목 범위에는 근무 배치 화면 같은 자연스러운 이동
+  목적지가 없다(`registry.ts`의 `ViewId`에 그런 뷰가 없음). 대출 잔디(todo/06)가 이미 쓴 것과
+  같은 VIZ.md 원칙 ③ 예외를 그대로 따랐다.
+
+- **연체 흐름의 행동 버튼은 회수 쪽지(`recall-notice`) 리포트로 연결**했다
+  (`onNavigate('reports', { type: 'recall-notice' })`) — "연체가 쌓이고 있다"를 본 다음 취할
+  수 있는 가장 직접적인 다음 행동이 담임별 회수 쪽지 인쇄이기 때문이다. 아이콘도
+  DashboardBaseLayer.tsx의 `QUIET_SIGNALS.recallNotice`와 같은 `Megaphone`을 재사용했다
+  (DESIGN.md "같은 행동 같은 이름 관통").
+
+- **반 참여 링의 행동은 카드 전체에 버튼 하나를 다는 대신, 링(반) 하나하나를 클릭 가능한
+  버튼으로 만들어 그 반의 `grade`/`classNo`를 담임 리포트로 그대로 넘기는 방식**으로
+  구현했다(`ClassParticipation.tsx`) — 카드 전체 버튼 하나로는 "어느 반인지" 특정할 수 없어
+  task 노트가 요구한 "직행"이 되지 않는다. 이어서 `views/reports/index.tsx`의
+  `HomeroomReportPanel`이 `initialGrade`/`initialClassNo` props(반 참여 링에서 넘어온
+  경우에만 존재)를 받으면 입력칸을 채우고 진입 즉시 1회 자동으로 미리보기까지 실행하도록
+  확장했다 — 담임 리포트 5개 패널 중 유일하게 이미 예외였던 `UnpaidFinesPanel`(진입 즉시
+  자동 조회) 급의 새 예외가 하나 더 생긴 셈이다. 반 참여 링을 거치지 않고 리포트 허브 카드로
+  직접 들어오면(`initialGrade`/`initialClassNo` 둘 다 없음) 기존과 동일하게 1학년 1반
+  기본값 + 수동 미리보기 버튼 그대로다(과거 동작 보존).

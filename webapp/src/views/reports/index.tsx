@@ -28,7 +28,7 @@ import {
 } from '../../services/reportData';
 import { fetchUnpaidFines, payFine, type UnpaidFineRow } from '../../services/loanActionsData';
 import { subscribeDataChange } from '../../services/dataChangeBus';
-import { CategoryTreemap, TurnoverQuadrant, VizLazyMount } from '../../viz';
+import { CategoryTreemap, ClassParticipation, OverdueFlow, TurnoverQuadrant, VizLazyMount } from '../../viz';
 import { intlLocaleTag, t } from '../../i18n';
 import './reports.css';
 
@@ -130,6 +130,12 @@ function TypeSelector({ onSelect }: TypeSelectorProps) {
   );
 }
 
+// todo/18 — 연체 흐름·반 참여 링을 여기 더했다(트리맵·사분면과 같은 칸): 둘 다 "반/정책
+// 단위로 뭘 할지" 판단 자료라 매일 훑는 대시보드 시계열(대출 잔디·예약 압력·하루의 파도·
+// 열두 달 곡선)보다 "가끔 들여다보는 의사결정 자료"에 가깝다고 판단했다(task 노트의 제안을
+// 그대로 채택, docs/ASSUMPTIONS.md todo/18). 반 참여 링의 「담임 리포트로 직행」은 링 각각이
+// onNavigate를 grade/classNo와 함께 호출하고, 아래 HomeroomReportPanel이 그 params를 받아
+// 입력칸을 채운 뒤 자동으로 미리보기까지 실행한다.
 function VizInsightsPanel({ shell }: { shell: ShellContext }) {
   return (
     <div>
@@ -146,6 +152,16 @@ function VizInsightsPanel({ shell }: { shell: ShellContext }) {
         <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
           <VizLazyMount>
             <TurnoverQuadrant onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <OverdueFlow onNavigate={(viewId, params) => shell.open(viewId, params)} />
+          </VizLazyMount>
+        </Suspense>
+        <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
+          <VizLazyMount>
+            <ClassParticipation onNavigate={(viewId, params) => shell.open(viewId, params)} />
           </VizLazyMount>
         </Suspense>
       </div>
@@ -416,17 +432,21 @@ const homeroomPopularColumns: DataTableColumn<HomeroomPopularBook>[] = [
 
 interface HomeroomReportPanelProps {
   shell: ShellContext;
+  /** todo/18 — 반 참여 링(ClassParticipation.tsx)이 「담임 리포트로 직행」할 때 넘기는 반
+   *  지정. 둘 다 없으면 기존과 동일하게 1학년 1반이 기본값이다(과거 동작 그대로 보존). */
+  initialGrade?: number | null;
+  initialClassNo?: number | null;
 }
 
-function HomeroomReportPanel({ shell }: HomeroomReportPanelProps) {
-  const [grade, setGrade] = useState(1);
-  const [classNo, setClassNo] = useState(1);
+function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomReportPanelProps) {
+  const [grade, setGrade] = useState(initialGrade ?? 1);
+  const [classNo, setClassNo] = useState(initialClassNo ?? 1);
   const [month, setMonth] = useState(() => currentMonthDefault());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ data: HomeroomReport; sample: boolean } | null>(null);
 
-  async function handlePreview() {
+  const handlePreview = useCallback(async () => {
     setLoading(true);
     setError(null);
     const outcome = await fetchHomeroomReport(grade, classNo, month);
@@ -436,7 +456,19 @@ function HomeroomReportPanel({ shell }: HomeroomReportPanelProps) {
       setResult(null);
       setError(outcome.message);
     }
-  }
+  }, [grade, classNo, month]);
+
+  // todo/18 — 반 참여 링에서 특정 반을 지정해 넘어온 경우에만 "직행"답게 진입 즉시 한 번
+  // 자동으로 미리보기를 실행한다(그 외 나머지 4개 리포트 패널과 동일하게 평소엔 버튼을
+  // 눌러야만 조회하는 온디맨드 방식을 그대로 유지 — UnpaidFinesPanel 정도만 예외였는데
+  // 여기 새 예외가 하나 더 생긴 셈이다). 최초 마운트 시 1회만 실행되도록 플래그로 막는다.
+  const [autoPreviewDone, setAutoPreviewDone] = useState(false);
+  useEffect(() => {
+    if (autoPreviewDone) return;
+    if (initialGrade == null || initialClassNo == null) return;
+    setAutoPreviewDone(true);
+    void handlePreview();
+  }, [autoPreviewDone, initialGrade, initialClassNo, handlePreview]);
 
   return (
     <div>
@@ -1078,6 +1110,12 @@ function DonorThanksPanel({ shell }: DonorThanksPanelProps) {
   );
 }
 
+// todo/18 — 반 참여 링이 넘기는 grade/classNo(둘 다 number)만 골라낸다. 그 외 출처(직접 URL
+// 조작 등)로 이상한 값이 들어와도 조용히 null로 떨어뜨려 기존 기본값(1학년 1반) 동작을 지킨다.
+function numberParam(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export default function ReportsView({ shell, params }: ViewProps) {
   const requestedType = typeof params.type === 'string' && isSelectedPanelId(params.type) ? params.type : null;
   const [selectedType, setSelectedType] = useState<SelectedPanelId | null>(requestedType);
@@ -1107,7 +1145,9 @@ export default function ReportsView({ shell, params }: ViewProps) {
       )}
 
       {selectedType === 'no-loan-finder' && <NoLoanFinderPanel shell={shell} />}
-      {selectedType === 'homeroom-report' && <HomeroomReportPanel shell={shell} />}
+      {selectedType === 'homeroom-report' && (
+        <HomeroomReportPanel shell={shell} initialGrade={numberParam(params.grade)} initialClassNo={numberParam(params.classNo)} />
+      )}
       {selectedType === 'weeding-recommend' && <WeedingRecommendPanel shell={shell} />}
       {selectedType === 'recall-notice' && <RecallNoticePanel shell={shell} />}
       {selectedType === 'donor-thanks' && <DonorThanksPanel shell={shell} />}

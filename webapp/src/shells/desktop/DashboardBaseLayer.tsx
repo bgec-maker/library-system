@@ -20,7 +20,7 @@ import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { useReadyReservationCount } from '../../services/reservationData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
-import { LoanHeatmap, ReservationPressure, VizLazyMount } from '../../viz';
+import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, VizLazyMount } from '../../viz';
 import { useWindowStore } from './useWindowStore';
 import './dashboard.css';
 
@@ -199,7 +199,11 @@ export default function DashboardBaseLayer() {
       {/* todo/06 시각화 V1 — 대출 잔디·예약 압력(캘린더/사분면 트리맵은 리포트 허브 쪽,
           views/reports/index.tsx 「장서 시각화」 6번째 카드). 각 차트는 VizLazyMount로
           뷰포트에 들어오기 전까지 마운트되지 않고(fetch도 그때 처음 실행), Suspense는
-          viz/index.ts의 React.lazy() JS 청크 로딩만 담당한다(완료 조건 "지연 로딩"). */}
+          viz/index.ts의 React.lazy() JS 청크 로딩만 담당한다(완료 조건 "지연 로딩").
+          todo/18 — 하루의 파도·열두 달 곡선을 여기 더했다: 둘 다 "요즘 도서관이 어떻게
+          돌아가나"를 매일 훑어보는 관찰용 시계열이라(연체 흐름·반 참여 링처럼 반/정책
+          단위 의사결정 자료가 아니다) 대출 잔디·예약 압력과 같은 성격이라고 판단했다
+          (docs/ASSUMPTIONS.md todo/18 착륙 지점 근거). */}
       <section className="dash-viz-section">
         <h2>{t('dashboard.vizRow.heading')}</h2>
         <div className="dash-viz-grid">
@@ -211,6 +215,16 @@ export default function DashboardBaseLayer() {
           <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
             <VizLazyMount>
               <ReservationPressure onNavigate={openWindow} />
+            </VizLazyMount>
+          </Suspense>
+          <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
+            <VizLazyMount>
+              <LoanTimeOfDay />
+            </VizLazyMount>
+          </Suspense>
+          <Suspense fallback={<div className="dash-viz-loading">{t('common.loading')}</div>}>
+            <VizLazyMount>
+              <MonthlyLoanCurve />
             </VizLazyMount>
           </Suspense>
         </div>

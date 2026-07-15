@@ -1627,7 +1627,13 @@ function runVizDailyBatch_() {
     ['loan-heatmap', now, JSON.stringify(computeLoanHeatmapViz_(now))],
     ['category-treemap', now, JSON.stringify(computeCategoryTreemapViz_())],
     ['turnover-quadrant', now, JSON.stringify(computeTurnoverQuadrantViz_(now))],
-    ['reservation-pressure', now, JSON.stringify(computeReservationPressureViz_(now))]
+    ['reservation-pressure', now, JSON.stringify(computeReservationPressureViz_(now))],
+    // todo/18 — 승인된 방식(추가만): 아래 4행은 새로 추가한 항목이고, 위 4행의 로직·순서는
+    // 그대로다(dailyVizBatch/runVizDailyBatch_ 본문 자체는 손대지 않았다).
+    ['loan-time-of-day', now, JSON.stringify(computeLoanTimeOfDayViz_(now))],
+    ['overdue-flow', now, JSON.stringify(computeOverdueFlowViz_(now))],
+    ['class-participation', now, JSON.stringify(computeClassParticipationViz_(now))],
+    ['monthly-loan-curve', now, JSON.stringify(computeMonthlyLoanCurveViz_(now))]
   ];
   var sheet = getRequiredSheet_(LIBRARY_MVP.SHEETS.VIZ_CACHE);
   var lastRow = sheet.getLastRow();
@@ -1802,6 +1808,168 @@ function computeReservationPressureViz_(now) {
   }).sort(function(a, b) { return b.queueLength - a.queueLength; }).slice(0, VIZ_RESERVATION_MAX_TITLES_);
 
   return { titles: titles };
+}
+
+// #2 하루의 파도 — LOANS.checked_out_at의 시각(0~23시)별 분포. computeLoanHeatmapViz_의 365일
+// 창(연간 계절성 관찰용)과 달리, 이 차트가 답하는 질문("점심 피크 — 스테이션·도우미 배치 근거")은
+// "지금 이 학기 운영에 필요한 인력 배치"라 방학처럼 패턴이 전혀 다른 옛 데이터가 섞이면 피크가
+// 흐려진다 — reportNoLoanFinder_(todo/05)가 이미 쓰는 "최근 90일" 창을 그대로 재사용해(새 기간
+// 정의를 또 만들지 않음) "요즘 어떻게 붐비나"를 반영한다(docs/ASSUMPTIONS.md todo/18). 시각(hour)은
+// 스크립트 런타임 시간대가 아니라 항상 LIBRARY_MVP.TIMEZONE 기준으로 뽑는다(formatDate_/
+// formatDateTime_과 같은 관례 — Utilities.formatDate에 시간대를 명시).
+var VIZ_TIME_OF_DAY_WINDOW_DAYS_ = 90;
+
+function computeLoanTimeOfDayViz_(now) {
+  var since = addDays_(now, -VIZ_TIME_OF_DAY_WINDOW_DAYS_);
+  var countByHour = new Array(24).fill(0);
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (!checkedOut || checkedOut.getTime() < since.getTime()) return;
+    var hour = Number(Utilities.formatDate(checkedOut, LIBRARY_MVP.TIMEZONE, 'H'));
+    countByHour[hour]++;
+  });
+  return { hours: countByHour.map(function(count, hour) { return { hour: hour, count: count }; }) };
+}
+
+// #8 연체 흐름 — LOANS의 연체 "발생"·"해소"를 각각 due_at·returned_at 기준 주간 버킷으로 센다.
+//
+// 발생(occurred) = due_at이 그 주에 속하고, 이미 지난 날짜(due_at < now, 과거에 실제로 연체로
+// 넘어갈 수 있었던 대출만)이며, 아직 안 돌아왔거나(returned_at 없음 = 지금도 연체 중) 늦게
+// 돌아왔다(returned_at > due_at) — due_at 기준이라 계산 시점과 무관하게 고정되는 사건이다.
+// 해소(resolved) = returned_at이 그 주에 속하고 returned_at > due_at인 경우만(제때 반납은 애초에
+// 연체였던 적이 없으므로 "해소"로 세지 않는다) — returned_at 기준으로 고정되는 사건.
+// 같은 대출 하나가 발생 주 하나 + (반납되면) 해소 주 하나를 낼 수 있고 두 주가 다를 수 있다 —
+// 그 간격이 벌어지는지 좁혀지는지가 "정책(정지 배수)이 듣고 있나"에 대한 답이다.
+//
+// 창은 12주(≈1분기)로 잡았다 — computeReservationPressureViz_의 6주(스파크라인 원재료, 그냥
+// "최근 추이 몇 점"이면 충분)보다 길게 잡은 이유는 이 차트는 "추세가 꺾였는가"를 판단해야 해서다
+// (VIZ.md는 정확한 주 수를 명시하지 않아 임의 지정, docs/ASSUMPTIONS.md todo/18).
+var VIZ_OVERDUE_FLOW_WEEKS_ = 12;
+var VIZ_OVERDUE_FLOW_WEEK_DAYS_ = 7;
+
+function computeOverdueFlowViz_(now) {
+  var windowMs = VIZ_OVERDUE_FLOW_WEEK_DAYS_ * 86400000;
+  var horizonStart = now.getTime() - VIZ_OVERDUE_FLOW_WEEKS_ * windowMs;
+  var nowMs = now.getTime();
+  var occurred = new Array(VIZ_OVERDUE_FLOW_WEEKS_).fill(0);
+  var resolved = new Array(VIZ_OVERDUE_FLOW_WEEKS_).fill(0);
+
+  function weekIndexOf(timeMs) {
+    if (timeMs < horizonStart || timeMs > nowMs) return -1;
+    return Math.min(VIZ_OVERDUE_FLOW_WEEKS_ - 1, Math.floor((timeMs - horizonStart) / windowMs));
+  }
+
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var due = asDate_(loan.due_at);
+    var returned = asDate_(loan.returned_at);
+    if (due && due.getTime() < nowMs) {
+      var wentOverdue = !returned || returned.getTime() > due.getTime();
+      if (wentOverdue) {
+        var occurredIdx = weekIndexOf(due.getTime());
+        if (occurredIdx >= 0) occurred[occurredIdx]++;
+      }
+    }
+    if (due && returned && returned.getTime() > due.getTime()) {
+      var resolvedIdx = weekIndexOf(returned.getTime());
+      if (resolvedIdx >= 0) resolved[resolvedIdx]++;
+    }
+  });
+
+  var weeks = [];
+  for (var i = 0; i < VIZ_OVERDUE_FLOW_WEEKS_; i++) {
+    weeks.push({
+      weekStart: formatDate_(new Date(horizonStart + i * windowMs)),
+      occurredCount: occurred[i],
+      resolvedCount: resolved[i]
+    });
+  }
+  return { weeks: weeks };
+}
+
+// #10 반 참여 링 — 09_MEMBERS(STUDENT·ACTIVE)를 반(grade+class_no)별로 묶어 "최근 N일 무대출
+// 비율"을 낸다. 창은 reportNoLoanFinder_(todo/05)가 이미 쓰는 "최근 90일" 기본값을 그대로
+// 재사용했다 — 정확히 같은 질문("누가 최근에 안 빌렸나")을 반 단위로 다시 묻는 것뿐이라 별도
+// 기간 정의를 또 만들 이유가 없다(docs/ASSUMPTIONS.md todo/18).
+//
+// noLoanRatio = 무대출 학생 수 / 반 학생 수(0~1) — VIZ.md 원문 "반별 미대출 비율" 그 축 이름과
+// 방향을 그대로 유지한다: 값이 높을수록 그 반의 "참여가 낮다"는 뜻이다. 프론트
+// (ClassParticipation.tsx)는 링을 채울 때 participationRatio = 1 - noLoanRatio로 뒤집어 쓴다 —
+// 링이 꽉 찰수록 "잘 빌리는 반"으로 직관적으로 읽히게 하려는 화면 쪽 선택일 뿐, 서버가 내려주는
+// 원 지표 자체는 VIZ.md가 명시한 이름·방향 그대로 유지해 둘의 관계가 나중에 헷갈리지 않게 했다.
+var VIZ_CLASS_PARTICIPATION_WINDOW_DAYS_ = 90;
+
+function computeClassParticipationViz_(now) {
+  var since = addDays_(now, -VIZ_CLASS_PARTICIPATION_WINDOW_DAYS_);
+  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE';
+  });
+  var loanedMemberIds = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (checkedOut && checkedOut.getTime() >= since.getTime()) loanedMemberIds[loan.member_id] = true;
+  });
+
+  var classesByKey = {};
+  members.forEach(function(m) {
+    var grade = Number(m.grade) || 0;
+    var classNo = Number(m.class_no) || 0;
+    var key = grade + '-' + classNo;
+    if (!classesByKey[key]) classesByKey[key] = { grade: grade, classNo: classNo, studentCount: 0, noLoanCount: 0 };
+    classesByKey[key].studentCount++;
+    if (!loanedMemberIds[m.member_id]) classesByKey[key].noLoanCount++;
+  });
+
+  var classes = Object.keys(classesByKey).map(function(key) {
+    var cls = classesByKey[key];
+    return {
+      grade: cls.grade,
+      classNo: cls.classNo,
+      studentCount: cls.studentCount,
+      noLoanCount: cls.noLoanCount,
+      noLoanRatio: cls.studentCount > 0 ? cls.noLoanCount / cls.studentCount : 0
+    };
+  }).sort(function(a, b) { return a.grade - b.grade || a.classNo - b.classNo; });
+
+  return { sinceDate: formatDate_(since), classes: classes };
+}
+
+// #12 열두 달 곡선 — LOANS.checked_out_at를 (연도, 월)로 묶어 프론트가 Jan~Dec 공통 축에 여러
+// 해를 겹쳐 그리게 한다. computeLoanHeatmapViz_와 같은 이유로(연도 아카이브 시트가 아직 없음 —
+// docs/ASSUMPTIONS.md todo/06) 살아있는 10_LOANS 한 시트만 훑되, 연도 자체는 "현재 연도 포함
+// 최근 4개년"으로 상한을 둔다 — 겹쳐 그리는 라인이 그보다 많아지면 "방학 골짜기·개학 산"의 대비가
+// 오히려 흐려진다(VIZ.md는 "다년 겹침"이라고만 하고 몇 년인지 명시하지 않아 임의 지정,
+// docs/ASSUMPTIONS.md todo/18). 대출 기록이 전혀 없는 연도는 결과 배열에서 빼(빈 0라인을 그리지
+// 않는다). 연·월 추출은 스크립트 런타임 시간대가 아니라 formatDate_(TIMEZONE 고정)의 문자열을
+// 그대로 슬라이스한다 — reportHomeroomClass_가 이미 쓰는 것과 같은 관례.
+var VIZ_MONTHLY_CURVE_MAX_YEARS_ = 4;
+
+function computeMonthlyLoanCurveViz_(now) {
+  var currentYear = Number(formatDate_(now).slice(0, 4));
+  var minYear = currentYear - (VIZ_MONTHLY_CURVE_MAX_YEARS_ - 1);
+  var countByYearMonth = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(loan) {
+    var checkedOut = asDate_(loan.checked_out_at);
+    if (!checkedOut) return;
+    var dateKey = formatDate_(checkedOut); // yyyy-MM-dd, TZ-safe
+    var year = Number(dateKey.slice(0, 4));
+    if (year < minYear || year > currentYear) return;
+    var month = Number(dateKey.slice(5, 7)) - 1; // 0-11
+    var key = year + '-' + month;
+    countByYearMonth[key] = (countByYearMonth[key] || 0) + 1;
+  });
+
+  var years = [];
+  for (var y = minYear; y <= currentYear; y++) {
+    var months = [];
+    var hasAny = false;
+    for (var m = 0; m < 12; m++) {
+      var count = countByYearMonth[y + '-' + m] || 0;
+      if (count > 0) hasAny = true;
+      months.push(count);
+    }
+    if (hasAny) years.push({ year: y, months: months });
+  }
+  return { years: years };
 }
 
 // --------------------------- Repository and common helpers ---------------------------
@@ -3026,7 +3194,11 @@ function reportDonorThanks_(payload) {
 // 목적으로만 둘을 같이 다룬다(services/vizData.ts 주석 참고).
 function apiWebViz_(payload) {
   var type = cleanText_(payload && payload.type);
-  var validTypes = ['loan-heatmap', 'category-treemap', 'turnover-quadrant', 'reservation-pressure'];
+  // todo/18 — 승인된 방식(추가만): 아래 4개는 새 타입이고, 앞 4개의 순서·값은 그대로다.
+  var validTypes = [
+    'loan-heatmap', 'category-treemap', 'turnover-quadrant', 'reservation-pressure',
+    'loan-time-of-day', 'overdue-flow', 'class-participation', 'monthly-loan-curve'
+  ];
   if (validTypes.indexOf(type) === -1) fail_('VALIDATION_ERROR', '지원하지 않는 시각화 종류입니다: ' + type);
   var row = readTable_(LIBRARY_MVP.SHEETS.VIZ_CACHE).rows.find(function(r) { return r.viz_type === type; });
   if (!row) fail_('VIZ_NOT_READY', '아직 집계되지 않았습니다(일배치 미실행): ' + type);

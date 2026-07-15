@@ -10,4 +10,11 @@ export const CategoryTreemap = lazy(() => import('./CategoryTreemap'));
 export const TurnoverQuadrant = lazy(() => import('./TurnoverQuadrant'));
 export const ReservationPressure = lazy(() => import('./ReservationPressure'));
 
+// todo/18 — VIZ.md V1 2·8·10·12번(하루의 파도·연체 흐름·반 참여 링·열두 달 곡선). 위 4종과
+// 같은 패턴 그대로(React.lazy() 청크 분리).
+export const LoanTimeOfDay = lazy(() => import('./LoanTimeOfDay'));
+export const OverdueFlow = lazy(() => import('./OverdueFlow'));
+export const ClassParticipation = lazy(() => import('./ClassParticipation'));
+export const MonthlyLoanCurve = lazy(() => import('./MonthlyLoanCurve'));
+
 export { VizLazyMount } from './VizLazyMount';

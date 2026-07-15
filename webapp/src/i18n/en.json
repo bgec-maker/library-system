@@ -559,6 +559,50 @@
       "tableCaption": "Reservation queue by title",
       "empty": "No titles currently have an active queue.",
       "actionButton": "Open the most urgent title — {title}"
+    },
+    "loanTimeOfDay": {
+      "title": "Daily wave",
+      "subtitle": "Loans by hour of day over the last 90 days — the lunch peak, a basis for station and helper staffing",
+      "hourSuffix": ":00",
+      "legendPeak": "Busiest hour",
+      "colHour": "Hour",
+      "colCount": "Loans",
+      "tableCaption": "Loans by hour of day",
+      "empty": "No loans recorded in the last 90 days."
+    },
+    "overdueFlow": {
+      "title": "Overdue flow",
+      "subtitle": "Is the suspension policy working? — weekly overdue occurrences vs. resolutions",
+      "legendOccurred": "Occurred",
+      "legendResolved": "Resolved",
+      "colWeek": "Week starting",
+      "colOccurred": "Occurred",
+      "colResolved": "Resolved",
+      "tableCaption": "Weekly overdue occurrences and resolutions",
+      "empty": "No recent overdue history.",
+      "actionButton": "Open the recall-notice report"
+    },
+    "classParticipation": {
+      "title": "Class participation rings",
+      "subtitle": "Loan participation by class over the last 90 days — straight to the homeroom report",
+      "classLabel": "Grade {grade}, Class {classNo}",
+      "ringTitle": "{label} · {pct}% participation (enrolled {count})",
+      "legendLow": "Low",
+      "legendHigh": "High",
+      "colClass": "Class",
+      "colStudentCount": "Enrolled",
+      "colNoLoanCount": "No-loan count",
+      "colParticipationRatio": "Participation",
+      "tableCaption": "Loan participation by class",
+      "empty": "No classes to show."
+    },
+    "monthlyLoanCurve": {
+      "title": "Twelve-month curve",
+      "subtitle": "Monthly loan volume, years overlaid — vacation valleys, back-to-school peaks",
+      "colMonth": "Month",
+      "colCount": "Loans",
+      "tableCaption": "Monthly loan counts by year",
+      "empty": "No loan history to show."
     }
   },
   "student": {

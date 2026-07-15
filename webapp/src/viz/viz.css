@@ -206,3 +206,65 @@
 .viz-sparkline-dot {
   fill: var(--brass);
 }
+
+/* ── #2 하루의 파도 — 시간대 바 ──────────────────────────────────────────── */
+.viz-bar-axis-label {
+  font-size: 9px;
+  fill: var(--ink-3);
+  text-anchor: middle;
+}
+
+/* ── #8 연체 흐름 — 발생·해소 라인 ───────────────────────────────────────── */
+.viz-overdue-line {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── #10 반 참여 링 ──────────────────────────────────────────────────────── */
+.viz-ring-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 10px;
+}
+.viz-ring-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--radius);
+  font: inherit;
+  color: inherit;
+}
+.viz-ring-btn:not(:disabled) {
+  cursor: pointer;
+}
+.viz-ring-btn:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.viz-ring-btn:not(:disabled):hover {
+  background: var(--panel);
+}
+.viz-ring-pct {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--ink);
+  text-anchor: middle;
+}
+.viz-ring-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+
+/* ── #12 열두 달 곡선 — 다년 겹침 라인 ────────────────────────────────────── */
+.viz-curve-line {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

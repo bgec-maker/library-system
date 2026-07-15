@@ -559,6 +559,50 @@
       "tableCaption": "서명별 예약 대기열 표",
       "empty": "현재 대기열이 있는 서명이 없습니다.",
       "actionButton": "가장 급한 책 상세 보기 — {title}"
+    },
+    "loanTimeOfDay": {
+      "title": "하루의 파도",
+      "subtitle": "최근 90일 시각별 대출 건수 — 점심 피크, 스테이션·도우미 배치 근거",
+      "hourSuffix": "시",
+      "legendPeak": "가장 붐비는 시간대",
+      "colHour": "시각",
+      "colCount": "대출 건수",
+      "tableCaption": "시각별 대출 건수 표",
+      "empty": "최근 90일간 대출 기록이 없습니다."
+    },
+    "overdueFlow": {
+      "title": "연체 흐름",
+      "subtitle": "정책(정지 배수)이 듣고 있나 — 주간 연체 발생·해소 추이",
+      "legendOccurred": "발생",
+      "legendResolved": "해소",
+      "colWeek": "주 시작일",
+      "colOccurred": "발생 건수",
+      "colResolved": "해소 건수",
+      "tableCaption": "주간 연체 발생·해소 건수 표",
+      "empty": "최근 연체 이력이 없습니다.",
+      "actionButton": "회수 쪽지 리포트로"
+    },
+    "classParticipation": {
+      "title": "반 참여 링",
+      "subtitle": "최근 90일 반별 대출 참여율 — 담임 리포트로 직행",
+      "classLabel": "{grade}학년 {classNo}반",
+      "ringTitle": "{label} · 참여율 {pct}% (재적 {count}명)",
+      "legendLow": "낮음",
+      "legendHigh": "높음",
+      "colClass": "반",
+      "colStudentCount": "재적 수",
+      "colNoLoanCount": "미대출 수",
+      "colParticipationRatio": "참여율",
+      "tableCaption": "반별 대출 참여율 표",
+      "empty": "표시할 반이 없습니다."
+    },
+    "monthlyLoanCurve": {
+      "title": "열두 달 곡선",
+      "subtitle": "월별 대출량(다년 겹침) — 방학 골짜기·개학 산",
+      "colMonth": "월",
+      "colCount": "대출 건수",
+      "tableCaption": "연도별 월간 대출 건수 표",
+      "empty": "표시할 대출 기록이 없습니다."
     }
   },
   "student": {

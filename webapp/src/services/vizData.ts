@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { apiCall } from './api';
 import {
   mockCategoryTreemap,
+  mockClassParticipation,
   mockLoanHeatmap,
+  mockLoanTimeOfDay,
+  mockMonthlyLoanCurve,
+  mockOverdueFlow,
   mockReservationPressure,
   mockTurnoverQuadrant
 } from '../mocks/viz';
@@ -18,7 +22,20 @@ import {
 // 반환값(computeLoanHeatmapViz_/computeCategoryTreemapViz_/computeTurnoverQuadrantViz_/
 // computeReservationPressureViz_)에 맞춰져 있다.
 
-export type VizType = 'loan-heatmap' | 'category-treemap' | 'turnover-quadrant' | 'reservation-pressure';
+// todo/18 — 4종 추가: 하루의 파도·연체 흐름·반 참여 링·열두 달 곡선(VIZ.md V1 2·8·10·12번).
+// 앞 4종(todo/06)과 같은 계약 모양(useVizData 훅 하나로 8종 전부 커버) — apiWebViz_가 돌려주는
+// {type, computedAt, data} 모양을 그대로 옮긴 타입이며 school-patch-v1/Code.gs의
+// computeLoanTimeOfDayViz_/computeOverdueFlowViz_/computeClassParticipationViz_/
+// computeMonthlyLoanCurveViz_ 반환값에 맞춰져 있다.
+export type VizType =
+  | 'loan-heatmap'
+  | 'category-treemap'
+  | 'turnover-quadrant'
+  | 'reservation-pressure'
+  | 'loan-time-of-day'
+  | 'overdue-flow'
+  | 'class-participation'
+  | 'monthly-loan-curve';
 
 export interface VizDay {
   /** yyyy-MM-dd */
@@ -69,11 +86,66 @@ export interface ReservationPressureData {
   titles: ReservationPressureTitle[];
 }
 
+// #2 하루의 파도 — computeLoanTimeOfDayViz_ 그대로(hour 0~23).
+export interface LoanTimeOfDayHour {
+  hour: number;
+  count: number;
+}
+
+export interface LoanTimeOfDayData {
+  hours: LoanTimeOfDayHour[];
+}
+
+// #8 연체 흐름 — computeOverdueFlowViz_ 그대로. occurredCount/resolvedCount의 정확한 정의는
+// Code.gs computeOverdueFlowViz_ 주석 참고(요약: 발생=그 주에 처음 연체로 넘어간 대출 수 —
+// due_at 기준, 해소=그 주에 연체 상태로 반납된 대출 수 — returned_at 기준).
+export interface OverdueFlowWeek {
+  /** yyyy-MM-dd(그 주의 시작일). */
+  weekStart: string;
+  occurredCount: number;
+  resolvedCount: number;
+}
+
+export interface OverdueFlowData {
+  weeks: OverdueFlowWeek[];
+}
+
+// #10 반 참여 링 — computeClassParticipationViz_ 그대로. noLoanRatio는 "미대출 비율"
+// (높을수록 참여가 낮다) — 프론트가 링을 채울 때만 1 - noLoanRatio로 뒤집어 쓴다.
+export interface ClassParticipationClass {
+  grade: number;
+  classNo: number;
+  studentCount: number;
+  noLoanCount: number;
+  /** 0~1, 미대출 학생 비율 — 높을수록 참여가 낮다(VIZ.md "반별 미대출 비율" 그대로). */
+  noLoanRatio: number;
+}
+
+export interface ClassParticipationData {
+  /** yyyy-MM-dd — 무대출 판정 기준 시작일(최근 90일). */
+  sinceDate: string;
+  classes: ClassParticipationClass[];
+}
+
+// #12 열두 달 곡선 — computeMonthlyLoanCurveViz_ 그대로. months는 항상 12칸(1월=index0).
+export interface MonthlyLoanCurveYear {
+  year: number;
+  months: number[];
+}
+
+export interface MonthlyLoanCurveData {
+  years: MonthlyLoanCurveYear[];
+}
+
 export type VizDataMap = {
   'loan-heatmap': LoanHeatmapData;
   'category-treemap': CategoryTreemapData;
   'turnover-quadrant': TurnoverQuadrantData;
   'reservation-pressure': ReservationPressureData;
+  'loan-time-of-day': LoanTimeOfDayData;
+  'overdue-flow': OverdueFlowData;
+  'class-participation': ClassParticipationData;
+  'monthly-loan-curve': MonthlyLoanCurveData;
 };
 
 interface VizApiResponse<T> {
@@ -101,7 +173,11 @@ const SAMPLE_BY_TYPE: { [K in VizType]: VizDataMap[K] } = {
   'loan-heatmap': mockLoanHeatmap,
   'category-treemap': mockCategoryTreemap,
   'turnover-quadrant': mockTurnoverQuadrant,
-  'reservation-pressure': mockReservationPressure
+  'reservation-pressure': mockReservationPressure,
+  'loan-time-of-day': mockLoanTimeOfDay,
+  'overdue-flow': mockOverdueFlow,
+  'class-participation': mockClassParticipation,
+  'monthly-loan-curve': mockMonthlyLoanCurve
 };
 
 export interface VizFetchState<T> {
