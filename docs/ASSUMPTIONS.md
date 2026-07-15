@@ -1375,3 +1375,92 @@
   `.viz-grade-strip-*`/`.viz-budget-*`)했고 기존 클래스는 손대지 않았다 — 여전히 색상 리터럴
   없이 `var(--token)`/`var(--viz-seq-*)`/`var(--viz-div-*)`/DESIGN.md 범주 고정 토큰만
   참조한다(`grep -rEn '#[0-9a-fA-F]{3,6}' src/viz` 0건으로 확인).
+
+## todo/20 · /b/ 공개 책 페이지 (읽기 전용) (2026-07-15)
+
+- **핵심 설계 결정 — `doPost`를 건드리지 않고 완전히 독립된 `doGet(e)`을 새로 추가**했다
+  (`school-patch-v1/Code.gs`, `doPost` 함수 바로 뒤). 기존 모든 action은
+  `assertMobileToken_(MOBILE_REG_TOKEN)`을 거치는데, 이 토큰은 "사서 기기만 아는 공유 비밀"이
+  존재 이유다 — 학생 공개 번들(`webapp/src/student/**`)에 이 토큰을 심으면(어떤 형태로든) 누구나
+  네트워크 탭에서 추출해 대출·반납 같은 쓰기 액션까지 흉내 낼 수 있어 토큰 자체의 존재 이유가
+  무너진다. GAS Web App은 `doPost`·`doGet`을 동시에 정의할 수 있다는 점을 이용해, 인증이 아예
+  없는 순수 읽기 전용 진입점을 별도로 뒀다 — `doPost`·`assertMobileToken_`·`executeWrite_`·
+  `checkout_`·`return_` 등 기존 함수는 `git diff`로 삭제/수정 라인 0건(순수 추가)임을 확인했다.
+  `apiPublicBookPage_`/`publicAvailability_`도 새 함수이고, 기존 조회 헬퍼(`findCopyByKey_`·
+  `findByIdRequired_`·`readTable_`·`runApi_`·`indexBy_`·`findBookCacheRow_` 등)만 읽기 전용으로
+  재사용했다 — 쓰기 로직(`executeWrite_`)은 아예 거치지 않는다(바꿀 상태가 없다).
+
+- **응답 필드를 8개로 엄격히 고정**했다(barcode 에코 포함): `barcode · title · subtitle ·
+  authors · publisher · coverUrl · classification · pageCount · availability`. 이 목록에 없는
+  것 — 회원/대출자 이름, 예약 대기열(`11_RESERVATIONS`), `title_id`/`copy_id` 등 내부 ID,
+  `isbn13`, `description`, `08_COPIES.status_code` 원문. `apiWebTitleDetail_`(사서 전용,
+  대출이력·회원명·예약 대기열까지 포함)과 조인 로직은 같지만 반환 객체는 완전히 다른, 훨씬 좁은
+  셰이프다 — 같은 함수를 얇게 감싸는 방식(사서용 결과에서 민감 필드만 사후 제거)이 아니라 처음부터
+  별도 함수(`apiPublicBookPage_`)로 새로 짜서 "실수로 필드 하나가 새 나가는" 리스크 자체를
+  구조적으로 없앴다.
+
+- **대출 가능 여부를 3단(`AVAILABLE`/`ON_LOAN`/`UNAVAILABLE`)으로만 뭉갰다**
+  (`publicAvailability_`). `08_COPIES.status_code` 6종 중 `HOLD_READY`(특정 회원에게 배정된
+  예약)·`REPAIR`·`LOST`·`WITHDRAWN`을 전부 `UNAVAILABLE`로 합친다 — 특히 `HOLD_READY`를
+  `ON_LOAN`이 아니라 `UNAVAILABLE`로 묶은 것은 의도적 선택이다: 이 소장본은 대출 중이 아니라
+  서가에 있지만 특정 회원을 위해 배정된 상태라, 3단 중 어느 쪽에 넣어도 "정확한 사정"은 아니지만
+  `UNAVAILABLE`(지금은 빌릴 수 없어요) 쪽이 "누군가 이 책을 찜해 둠"이라는 예약 관련 정보를 조금이라도
+  흘릴 위험이 없다.
+
+- **"권장학년" 데이터 소스는 존재하지 않아 만들어내지 않고 그대로 생략했다.** 전체 저장소를
+  훑어봐도(`06_CATEGORIES`/`16_CODEBOOK`/`03_TITLES` 헤더 전부 확인) 학년·연령 추천을 나타내는
+  컬럼이나 코드군이 전혀 없다 — `grade`는 `09_MEMBERS`(학생 자신의 학년)에만 존재하고 도서 쪽에는
+  대응 개념이 없다. 과제 노트가 "classification을 '권장학년'-스러운 프레이밍에 쓸 수 있으면 쓰고,
+  없으면 지어내지 말고 생략하라"고 명시적으로 허락한 대로, `classification`(06_CATEGORIES의
+  대표 분류, 예: "문학")은 반환하되 화면(`BookPage.tsx`)에는 **"권장학년"이 아니라 "분류"라는
+  정직한 라벨**로 보여준다 — 분류를 학년 추천인 것처럼 재포장하지 않았다.
+
+- **프론트가 GAS `doGet` URL을 아는 방법 — 이 라운드의 가장 애매했던 결정.** 사서 표면의
+  `apiUrl`(`services/session.ts`)은 register.html 흐름으로 "기기별" localStorage에 저장되는
+  값이라, 책 QR을 처음 찍어보는 낯선 방문자·학생의 브라우저에는 애초에 존재하지 않는다. 그렇다고
+  `student/**`가 `services/session.ts`를 import하면 `StudentRoot.tsx`가 이미 명시한 번들 격리
+  원칙(사서 셸·zustand 세션 스토어 미로딩)이 깨진다. 새 파일 `webapp/src/config/publicBackend.ts`를
+  만들어 두 단계로 해석하게 했다: ① 빌드 시 채워 넣는 상수 `PUBLIC_GAS_EXEC_URL`(기본값 빈
+  문자열 — CLAUDE.md 🟡 "도메인"·"Code.gs 새 버전 배포"가 둘 다 아직 사용자 결정 대기라 이
+  라운드에서 실제 학교 URL을 하드코딩하지 않았다), ② `localStorage.getItem('lib.session.apiUrl')`을
+  `services/session.ts`를 import하지 않고 **원시 키 이름만** 재사용(zustand 스토어는 전혀 딸려오지
+  않음, 문자열 하나 읽는 것뿐 — 이 학교는 1교 1시트 단일 배포라 사서 기기에 이미 저장된 URL과
+  공개 페이지가 불러야 할 URL이 사실상 같은 값이라는 점에 기댄 로컬 테스트 편의). 둘 다 없으면
+  (즉 배포 담당자가 ①을 아직 채우지 않았고, 이 브라우저에 사서 세션도 없으면) 네트워크 요청 자체를
+  시도하지 않고 곧장 샘플로 렌더한다 — "배포 전 = 항상 샘플" 관례를 그대로 따른다. **실제 학생
+  방문자에게 진짜 데이터가 뜨려면 배포 담당자가 ①에 실제 GAS 배포 URL을 채워 넣는 후속 조치가
+  필요하다** — 이 항목의 범위 밖(🟡 도메인 결정 이후)이라 다음 라운드로 넘긴다.
+
+- **`services/publicBookData.ts`의 실패 처리 범위를 `services/titleDetail.ts`보다 의도적으로
+  넓혔다.** `titleDetail.ts`는 `UNKNOWN_ACTION`일 때만 샘플로 폴백하고 그 밖의 서버 오류(예:
+  `COPY_NOT_FOUND`)는 진짜 오류로 그대로 올려보낸다. 이 파일은 네트워크 실패·JSON 파싱 실패·
+  `{ok:false}` 오류 응답을 **전부** 샘플 폴백으로 처리한다 — 과제 노트가 "network error, 404, or
+  a JSON error response"를 전부 UNKNOWN_ACTION과 동일하게 취급하라고 명시했고, 두 가지 이유로도
+  타당하다고 판단했다: (1) `doGet`은 `doPost`처럼 action 문자열을 검사하는 디스패치가 없어서,
+  "아직 배포 전(구버전에 `doGet` 자체가 없음)"이라는 신호가 깨끗한 `UNKNOWN_ACTION` JSON이 아니라
+  GAS가 자체적으로 뱉는 HTML 오류 페이지로 나타난다 — 우리 JSON 계약과 모양이 달라 파싱 단계에서부터
+  실패하므로, "배포 전"과 "이 바코드는 진짜 없음"을 프론트에서 안정적으로 구분할 방법이 없다.
+  (2) 이 표면은 인증 없는 낯선 방문자용이고 읽기 전용이라(되돌릴 데이터가 없음) 최악의 경우가
+  "실재하지 않는 바코드에 샘플 표지가 뜬다" 정도다 — `SampleDataBadge`가 항상 같이 뜨므로 가짜
+  성공은 아니다(CLAUDE.md 검증 원칙 준수). 사서 화면(`titleDetail.ts`)은 반대로 진행 중인 거래
+  한복판에서 잘못된 샘플이 실제 오류를 가릴 위험이 더 크다고 봐서 그 화면은 기존의 좁은 폴백
+  범위를 그대로 뒀다(이 항목에서 손대지 않음).
+
+- **속도 제한(rate limiting)·쿼터 보호는 이번 라운드에 추가하지 않았다** — `doGet`은 인증이
+  없는 공개 엔드포인트라 원리상 누구나 대량 호출로 컬렉션 전체 표지를 긁어갈 수 있다(과제 노트가
+  이미 "실제 도서관 OPAC도 마찬가지"라고 명시적으로 허용한 위협 모델). GAS 자체의 실행 쿼터(6분
+  실행 제한·일일 URL Fetch/트리거 총량)가 유일한 자연 방어선이고, 이 항목은 그 이상의 방어(예:
+  `CacheService` 기반 IP 버킷)를 추가로 설계하지 않았다 — 실사용 트래픽이 나오기 전까지는
+  과설계로 판단했다. 실제로 문제가 되면 후속 항목으로 넘길 사안이라 `docs/BLOCKERS.md`에는
+  적지 않았다(지금 당장 막는 항목이 아니라 관측 대상).
+
+- **cover 이미지가 없을 때(`coverUrl === ''`)도 같은 크기(120×180)의 자리표시자를 렌더**해
+  레이아웃 시프트를 0으로 유지했다(FRONTEND.md 성능 예산 "표지 이미지: lazy + width/height
+  명시"). 실제 `<img>`는 `coverUrl`이 있을 때만 그리고 `loading="lazy"` + 명시적 `width`/
+  `height`를 붙였다 — 자리표시자 쪽은 이미지가 아니므로 lazy 속성 자체가 필요 없다.
+
+- **`알라딘 인터넷서점` 출처 문구는 로케일과 무관하게 두 언어 사전 모두 한국어 원문 그대로
+  뒀다**(`student.bookPage.footerAttribution`, ko.json·en.json 동일 값). VIZ.md가 이 문구를
+  "(약관)"이라고 명시해 계약상 요구되는 고정 문자열로 취급했고, ADR-023이 애초에 번역 대상에서
+  제외한 "데이터"류(서명·저자 등)에 준한다고 판단했다 — UI 언어가 en이어도 이 귀속 문구만은
+  바뀌면 안 된다고 봤다.

@@ -663,7 +663,25 @@
       "notReady": "Login method not yet decided — route only."
     },
     "bookPage": {
-      "title": "Student Book Page"
+      "title": "Student Book Page",
+      "barcodeLabel": "Copy number",
+      "coverAlt": "Cover of {title}",
+      "coverMissing": "Cover coming soon",
+      "pageCountLabel": "Pages",
+      "pageCountUnknown": "Not available",
+      "classificationLabel": "Category",
+      "status": {
+        "available": "You can borrow this now",
+        "onLoan": "Another student is reading this now",
+        "unavailable": "Not available to borrow right now"
+      },
+      "borrowButton": "Borrow this book",
+      "loginGateMessage": "Coming soon — ask your librarian to check it out",
+      "ratingHeading": "Rating",
+      "ratingPlaceholder": "Available after logging in",
+      "reviewHeading": "One-line review",
+      "reviewPlaceholder": "Available after logging in",
+      "footerAttribution": "도서 DB 제공: 알라딘 인터넷서점"
     },
     "myShelf": {
       "title": "My Shelf"

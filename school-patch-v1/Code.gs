@@ -2956,6 +2956,99 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// --------------------------- 공개 책 페이지 Web App (todo/20, TASK_PUBLIC_BOOK_PAGE) ---------------------------
+//
+// ADR-004 "책 QR = URL, 학생 QR = 불투명 ID"의 실제 배선: 책에 붙은 QR을 폰 기본 카메라로 찍으면
+// 로그인 없이 표지·서지·대출 가능 여부만 보는 공개 페이지가 열려야 한다(webapp/src/student/**).
+// doPost의 모든 action은 assertMobileToken_(MOBILE_REG_TOKEN, 사서 기기 전용 공유 비밀)을 거친다
+// — 그 토큰을 이 공개 표면에 재사용하면(프론트 번들에 심든, 로그인 없이 통과시키든) 토큰이 사서
+// 기기만 아는 값이어야 한다는 존재 이유 자체가 무너진다(번들 네트워크 탭에서 누구나 추출해 대출·
+// 반납 같은 쓰기 액션까지 흉내 낼 수 있다). 그래서 doPost와 완전히 독립된 진입점 doGet(e)을
+// 새로 추가한다 — GAS Web App은 doPost·doGet을 동시에 정의할 수 있고, 이 함수는 doPost·
+// assertMobileToken_·executeWrite_ 등 기존 함수를 단 한 줄도 바꾸지 않는다(순수 추가).
+//
+// 이 경로는 읽기 전용이라 executeWrite_(락·감사로그·되돌리기)를 거칠 필요가 없다 — 바꿀 수 있는
+// 상태가 애초에 없다. findCopyByKey_/findByIdRequired_/readTable_/runApi_ 등 기존 조회 헬퍼만
+// 그대로 재사용한다.
+//
+// 노출 필드는 의도적으로 이 8개로 고정한다(barcode 에코 포함, 사유는 docs/ASSUMPTIONS.md
+// todo/20 참고): barcode · title · subtitle · authors · publisher · coverUrl · classification ·
+// pageCount · availability. 노출하지 않는 것 — 회원/대출자 이름, 예약 대기열, title_id/copy_id
+// 등 내부 ID, isbn13, description, 08_COPIES.status_code 원문(publicAvailability_로 3단 이상
+// 뭉갬). 누구나 아무 barcode로나 호출할 수 있다는 전제 자체가 이 설계다(실제 도서관 OPAC과 같은
+// 위협 모델) — 그 바코드가 존재하는지·표지가 뭔지 정도는 공개돼도 안전하다고 판단했다.
+function doGet(e) {
+  var response;
+  try {
+    var barcode = cleanText_((e && e.parameter && e.parameter.barcode) || '');
+    if (!barcode) fail_('VALIDATION_ERROR', 'barcode 쿼리 파라미터가 필요합니다.');
+    response = runApi_(function() {
+      return apiPublicBookPage_(barcode);
+    });
+  } catch (error) {
+    response = {
+      ok: false, data: null,
+      error: { code: error.code || 'BAD_REQUEST', message: error.message || String(error), details: error.details || null }
+    };
+  }
+  return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// apiWebTitleDetail_(사서 전용, 대출이력·예약대기·회원명까지 포함)과 조회 로직(저자·분류 조인,
+// 21_BOOK_CACHE 페이지수 최선노력)은 같은 패턴을 재사용하되, 반환 필드는 공개해도 안전한
+// 서지 정보 + 대출 가능 여부로만 엄격히 제한한다.
+function apiPublicBookPage_(barcodeInput) {
+  var copy = findCopyByKey_(barcodeInput);
+  var title = findByIdRequired_(LIBRARY_MVP.SHEETS.TITLES, 'title_id', copy.title_id, '연결된 도서');
+
+  var authorById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.AUTHORS).rows, 'author_id');
+  var authorNames = readTable_(LIBRARY_MVP.SHEETS.TITLE_AUTHORS).rows
+    .filter(function(ta) { return ta.title_id === copy.title_id; })
+    .sort(function(a, b) { return Number(a.sort_order || 0) - Number(b.sort_order || 0); })
+    .map(function(ta) { return (authorById[ta.author_id] || {}).display_name || ''; })
+    .filter(function(name) { return Boolean(name); });
+
+  var categoryById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.CATEGORIES).rows, 'category_id');
+  var titleCategoryRows = readTable_(LIBRARY_MVP.SHEETS.TITLE_CATEGORIES).rows.filter(function(tc) { return tc.title_id === copy.title_id; });
+  var primaryCategoryRow = titleCategoryRows.filter(function(tc) { return truthy_(tc.is_primary); })[0] || titleCategoryRows[0];
+  var primaryCategory = primaryCategoryRow ? categoryById[primaryCategoryRow.category_id] : null;
+
+  // apiWebTitleDetail_과 같은 이유로 같은 방식의 최선노력 값이다 — 03_TITLES엔 페이지수 컬럼이
+  // 없고, 21_BOOK_CACHE(ISBN 조회 부가 캐시)에 이 서지의 isbn13으로 찾히는 행이 있을 때만 곁들인다.
+  var pageCount = '';
+  if (title.isbn13) {
+    var cacheRow = findBookCacheRow_(normalizeIsbnLoose_(title.isbn13));
+    if (cacheRow && cacheRow.page_count !== '' && cacheRow.page_count !== null && cacheRow.page_count !== undefined) {
+      pageCount = cacheRow.page_count;
+    }
+  }
+
+  return {
+    barcode: copy.barcode,
+    title: title.title || '',
+    subtitle: title.subtitle || '',
+    authors: authorNames.join(' · '),
+    publisher: title.publisher || '',
+    coverUrl: title.cover_url || '',
+    classification: primaryCategory ? (primaryCategory.name_ko || primaryCategory.category_code || '') : '',
+    pageCount: pageCount,
+    availability: publicAvailability_(copy.status_code)
+  };
+}
+
+// 08_COPIES.status_code 6종(AVAILABLE/ON_LOAN/HOLD_READY/REPAIR/LOST/WITHDRAWN, 데이터 검증
+// 배열 LIBRARY_MVP.VALIDATIONS 참고) 원문을 공개 표면에 그대로 보여주지 않는다 — HOLD_READY(다른
+// 회원에게 배정된 예약)·REPAIR/LOST/WITHDRAWN(내부 서가 사정)은 방문자 입장에서 전부 "지금은 못
+// 빌린다"일 뿐이라 3단으로만 뭉갠다(todo/20 명시 규약). HOLD_READY를 ON_LOAN이 아니라
+// UNAVAILABLE로 묶는 이유: 이 소장본은 대출 중이 아니라 서가에 있지만 특정 회원을 위해 배정된
+// 상태라 "누가 찜해 놓음" 같은 예약 정보를 조금이라도 흘리지 않으려면 대출 중과 구분 없이 그냥
+// "못 빌린다"로만 보여주는 편이 안전하다.
+function publicAvailability_(statusCode) {
+  if (statusCode === 'AVAILABLE') return 'AVAILABLE';
+  if (statusCode === 'ON_LOAN') return 'ON_LOAN';
+  return 'UNAVAILABLE';
+}
+
 // 소장본 상태 조회(읽기 전용) — 웹앱 loan-return이 "스캔 → 대출중이면 즉시 반납 / 가능하면
 // 대출 대기"를 판단하는 데 쓴다. 대출 중이면 누가 빌렸는지(반납 확인 표시용)도 함께 돌려준다.
 function apiCopyStatus_(payload) {

@@ -663,7 +663,25 @@
       "notReady": "로그인 방식 미결정으로 라우트만 준비됨."
     },
     "bookPage": {
-      "title": "학생용 도서 페이지"
+      "title": "학생용 도서 페이지",
+      "barcodeLabel": "등록번호",
+      "coverAlt": "{title} 표지",
+      "coverMissing": "표지 준비 중",
+      "pageCountLabel": "쪽수",
+      "pageCountUnknown": "정보 없음",
+      "classificationLabel": "분류",
+      "status": {
+        "available": "지금 빌릴 수 있어요",
+        "onLoan": "지금은 다른 학생이 읽고 있어요",
+        "unavailable": "지금은 빌릴 수 없어요"
+      },
+      "borrowButton": "이 책 빌리기",
+      "loginGateMessage": "준비 중 — 사서 선생님께 대출하세요",
+      "ratingHeading": "별점",
+      "ratingPlaceholder": "로그인 후 이용 가능",
+      "reviewHeading": "한줄평",
+      "reviewPlaceholder": "로그인 후 이용 가능",
+      "footerAttribution": "도서 DB 제공: 알라딘 인터넷서점"
     },
     "myShelf": {
       "title": "내 서가"
