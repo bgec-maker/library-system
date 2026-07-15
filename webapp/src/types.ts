@@ -12,7 +12,8 @@ export type ViewId =
   | 'inventory'
   | 'catalog'
   | 'recent-ops'
-  | 'reports';
+  | 'reports'
+  | 'reservations';
 
 export type ScanInterest = 'focus' | 'none';
 

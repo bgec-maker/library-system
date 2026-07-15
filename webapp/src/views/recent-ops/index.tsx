@@ -16,7 +16,11 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
   RETURN: 'views.recentOps.action.return',
   RENEW: 'views.recentOps.action.renew',
   RESERVE: 'views.recentOps.action.reserve',
-  CANCEL_RESERVATION: 'views.recentOps.action.cancelReservation',
+  // cancelReservation_(Code.gs)이 writeAudit_에 실제로 남기는 action_code는 'CANCEL'이다(todo/12
+  // 확인 — executeWrite_에 넘기는 operationType 'CANCEL_RESERVATION'과는 별개 값이다. 이전엔
+  // 이 키가 'CANCEL_RESERVATION'이라 절대 매칭되지 않아 예약 취소 로그가 번역 없이 원문 코드로
+  // 표시되는 잠재 버그였다).
+  CANCEL: 'views.recentOps.action.cancelReservation',
   REGISTER_MEMBER: 'views.recentOps.action.registerMember',
   UPDATE_MEMBER: 'views.recentOps.action.updateMember',
   REGISTER_TITLE: 'views.recentOps.action.registerTitle',

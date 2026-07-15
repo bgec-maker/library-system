@@ -1,0 +1,45 @@
+/* views/reservations/reservations.css — 화면 배치만 담당(색상 리터럴 없음, 전부 var(--token)).
+   표 자체의 시각 규칙은 components/DataTable/DataTable.css가 전담한다. */
+.rsv-view {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rsv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rsv-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rsv-tabs button {
+  padding: 8px 14px;
+  min-height: 40px;
+}
+
+.rsv-tabs button.is-active {
+  background: var(--deep);
+  color: #fff;
+}
+
+.rsv-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rsv-row-actions button {
+  padding: 6px 10px;
+  min-height: 32px;
+  font-size: var(--fs-sm);
+}

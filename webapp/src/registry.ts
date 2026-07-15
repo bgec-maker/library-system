@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search } from 'lucide-react';
+import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -18,7 +18,8 @@ const TITLE_KEYS: Record<ViewId, string> = {
   catalog: 'registry.catalog.title',
   'book-detail': 'registry.bookDetail.title',
   'recent-ops': 'registry.recentOps.title',
-  reports: 'registry.reports.title'
+  reports: 'registry.reports.title',
+  reservations: 'registry.reservations.title'
 };
 
 export const VIEW_REGISTRY: ViewMeta[] = [
@@ -102,6 +103,19 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [560, 520] },
+    mobile: {}
+  },
+  {
+    // 예약 관리(reservations, todo/12) — 걸기(book-detail의 「예약」 버튼)·자동배정(반납 시
+    // reserve_/checkout_/return_ 안에서 이미 처리됨, 이 뷰는 새 쓰기 로직이 아니라 그 결과를
+    // 보여주는 관리 뷰다)의 대기/도착 현황을 DataTable로 본다. catalog·recent-ops·reports와
+    // 같은 「더보기」 경로(모바일 탭 슬롯 없음).
+    id: 'reservations',
+    title: t(TITLE_KEYS.reservations),
+    icon: BellRing,
+    roles: ['LIBRARIAN'],
+    scan: 'none',
+    desktop: { min: [640, 520] },
     mobile: {}
   }
 ];

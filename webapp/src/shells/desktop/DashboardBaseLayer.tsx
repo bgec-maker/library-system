@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
+  BellRing,
   BookMarked,
   BookOpen,
   BookX,
@@ -16,6 +17,7 @@ import {
   Users
 } from 'lucide-react';
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
+import { useReadyReservationCount } from '../../services/reservationData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
 import { LoanHeatmap, ReservationPressure, VizLazyMount } from '../../viz';
@@ -59,6 +61,11 @@ const QUIET_SIGNALS: QuietSignalItem[] = [
 export default function DashboardBaseLayer() {
   const { data, sample, loading, error, refreshedAt } = useDashboardData();
   const openWindow = useWindowStore((s) => s.openWindow);
+  // 「예약 도착」 카드(todo/12) — 기존 "예약대기" KPI(dashboard.kpi.activeReservations)는
+  // getDashboardData_() stats.activeReservations 그대로라 WAITING+READY 합산값이다(수정 금지
+  // 대상). READY(수령 준비 완료)만 따로 보여주려면 그 필드 하나로는 부족해서(도착 여부가 안
+  // 갈라짐) reservations 액션에서 별도로 가져온다 — services/reservationData.ts 주석 참고.
+  const readyPickup = useReadyReservationCount();
 
   // "진입 시" 갱신(FRONTEND.md 4트리거 중 하나) — 이 컴포넌트는 셸 부팅 시 1회만 마운트되므로
   // 이 effect도 1회만 실행된다. ensureAutoRefresh()가 5분 인터벌·트랜잭션-후 구독도 함께 건다.
@@ -171,6 +178,21 @@ export default function DashboardBaseLayer() {
               {t('dashboard.recentOps.openButton')}
             </button>
           </div>
+        </section>
+
+        {/* 예약 도착(todo/12) — 기존 "예약대기" KPI(WAITING+READY 합산)와 별개로 READY(수령
+            준비 완료) 건수만 보여주는 클릭형 카드. reservations 뷰(도착알림 탭)로 직행한다. */}
+        <section className="dash-panel panel dash-arrivals">
+          <h2>
+            {t('dashboard.readyPickup.title')}
+            {readyPickup.sample && <SampleDataBadge />}
+          </h2>
+          <button type="button" className="dash-arrivals-btn" onClick={() => openWindow('reservations', { filter: 'READY' })}>
+            <BellRing size={20} aria-hidden />
+            <span className="dash-arrivals-value">{readyPickup.loading ? '—' : readyPickup.count}</span>
+            <span className="dash-arrivals-label">{t('dashboard.readyPickup.label')}</span>
+            <ChevronRight size={16} aria-hidden className="dash-signal-chevron" />
+          </button>
         </section>
       </div>
 

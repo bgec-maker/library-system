@@ -2499,6 +2499,9 @@ function doPost(e) {
       if (action === 'copyStatus') return apiCopyStatus_(payload);
       if (action === 'checkout') return apiWebCheckout_(payload);
       if (action === 'return') return apiWebReturn_(payload);
+      if (action === 'reserve') return apiWebReserve_(payload);
+      if (action === 'cancelReservation') return apiWebCancelReservation_(payload);
+      if (action === 'reservations') return apiWebReservations_(payload);
       if (action === 'dashboard') return apiWebDashboard_(payload);
       if (action === 'report') return apiWebReport_(payload);
       if (action === 'viz') return apiWebViz_(payload);
@@ -2554,6 +2557,23 @@ function apiWebCheckout_(payload) {
 function apiWebReturn_(payload) {
   return executeWrite_('RETURN', payload || {}, function(actor, requestId, transaction) {
     return return_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+// 웹앱용 예약 걸기/취소(todo/12) — 위 apiWebCheckout_/apiWebReturn_과 정확히 같은 패턴(사이드바
+// apiReserve/apiCancelReservation과 동일하게 executeWrite_·reserve_/cancelReservation_을 그대로
+// 재사용, doPost가 이미 바깥 runApi_ 1겹을 제공하므로 이중 래핑하지 않음). reserve_/
+// cancelReservation_ 본문은 이 항목에서 전혀 수정하지 않는다(절대 규칙) — payload 키(memberKey·
+// titleKey / reservationId)도 그 함수들이 이미 기대하는 이름을 그대로 쓴다.
+function apiWebReserve_(payload) {
+  return executeWrite_('RESERVE', payload || {}, function(actor, requestId, transaction) {
+    return reserve_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebCancelReservation_(payload) {
+  return executeWrite_('CANCEL_RESERVATION', payload || {}, function(actor, requestId, transaction) {
+    return cancelReservation_(payload || {}, actor, requestId, transaction);
   });
 }
 
@@ -3239,6 +3259,76 @@ function apiWebTitleDetail_(payload) {
       readyCount: activeReservationRows.filter(function(r) { return r.status_code === 'READY'; }).length,
       items: reservationItems
     }
+  };
+}
+
+// --------------------------- 웹앱 예약 관리(reservations, todo/12) ---------------------------
+//
+// 걸기(reserve)·취소(cancelReservation)는 위 apiWebReserve_/apiWebCancelReservation_이 담당한다
+// (executeWrite_로 reserve_/cancelReservation_ 재사용, 쓰기 없음 아님 — 그 둘은 쓰기 액션이고
+// 이 함수만 읽기 전용). 이 함수는 관리 뷰(webapp/src/views/reservations)의 목록 조회 전용 —
+// 11_RESERVATIONS를 직접 읽어 TITLES/MEMBERS/COPIES와 조인한다(reportRecallNotice_·
+// apiWebCatalogSync_·getDashboardData_와 같은 indexBy_ 조인 패턴 재사용, 새 로직 없음).
+//
+// payload.status(선택, 'WAITING'|'READY')로 목록(items)만 좁혀 받을 수 있다 — waitingCount/
+// readyCount는 status 필터와 무관하게 항상 전체(WAITING+READY) 기준으로 돌려준다(탭 배지 숫자가
+// 현재 보고 있는 탭에 따라 줄어들지 않게 하기 위함, docs/ASSUMPTIONS.md todo/12 참고). "만료임박"은
+// 서버 개념이 아니다 — 프론트가 pickupExpiresAtMs를 now와 비교해 클라이언트에서 판정한다(todo
+// 본문 지시, "no server-side urgency concept").
+function apiWebReservations_(payload) {
+  payload = payload || {};
+  var statusFilter = cleanText_(payload.status || '');
+  if (statusFilter && statusFilter !== 'WAITING' && statusFilter !== 'READY') {
+    fail_('VALIDATION_ERROR', '지원하지 않는 status입니다: ' + statusFilter);
+  }
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var memberById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows, 'member_id');
+  var copyById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.COPIES).rows, 'copy_id');
+
+  var active = readTable_(LIBRARY_MVP.SHEETS.RESERVATIONS).rows.filter(function(row) {
+    return row.status_code === 'WAITING' || row.status_code === 'READY';
+  });
+  var rows = statusFilter ? active.filter(function(row) { return row.status_code === statusFilter; }) : active;
+
+  // READY(만료 임박 우선) 먼저, 그다음 WAITING(queue_seq 순) — todo 지시 "READY-with-nearest
+  // -expiry first, then WAITING by queue position".
+  rows = rows.slice().sort(function(a, b) {
+    if (a.status_code !== b.status_code) return a.status_code === 'READY' ? -1 : 1;
+    if (a.status_code === 'READY') {
+      var ae = asDate_(a.pickup_expires_at);
+      var be = asDate_(b.pickup_expires_at);
+      return (ae ? ae.getTime() : Number.MAX_SAFE_INTEGER) - (be ? be.getTime() : Number.MAX_SAFE_INTEGER);
+    }
+    return reservationSort_(a, b);
+  });
+
+  var items = rows.map(function(row) {
+    var title = titleById[row.title_id] || {};
+    var member = memberById[row.member_id] || {};
+    var copy = row.assigned_copy_id ? copyById[row.assigned_copy_id] : null;
+    var expires = asDate_(row.pickup_expires_at);
+    return {
+      reservationId: row.reservation_id,
+      titleId: row.title_id,
+      title: title.title || row.title_id,
+      memberId: row.member_id,
+      memberNo: member.member_no || row.member_id,
+      memberName: member.name || '',
+      statusCode: row.status_code,
+      queueSeq: Number(row.queue_seq || 0),
+      assignedCopyId: row.assigned_copy_id || '',
+      assignedBarcode: copy ? copy.barcode : '',
+      requestedAt: formatDateTime_(row.requested_at),
+      readyAt: row.ready_at ? formatDateTime_(row.ready_at) : '',
+      pickupExpiresAt: row.pickup_expires_at ? formatDateTime_(row.pickup_expires_at) : '',
+      pickupExpiresAtMs: expires ? expires.getTime() : 0
+    };
+  });
+
+  return {
+    items: items,
+    waitingCount: active.filter(function(row) { return row.status_code === 'WAITING'; }).length,
+    readyCount: active.filter(function(row) { return row.status_code === 'READY'; }).length
   };
 }
 

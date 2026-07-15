@@ -24,7 +24,8 @@
     "catalog": { "title": "장서 대장" },
     "bookDetail": { "title": "도서 상세" },
     "recentOps": { "title": "최근 처리" },
-    "reports": { "title": "리포트" }
+    "reports": { "title": "리포트" },
+    "reservations": { "title": "예약 관리" }
   },
   "dashboard": {
     "title": "대시보드",
@@ -57,6 +58,10 @@
       "title": "최근 처리",
       "hint": "최근 대출·반납 내역은 최근 처리 화면에서 확인하세요.",
       "openButton": "최근 처리 더 보기"
+    },
+    "readyPickup": {
+      "title": "예약 도착",
+      "label": "수령 대기 중"
     },
     "lastBackup": {
       "label": "마지막 백업",
@@ -285,11 +290,15 @@
       "opsEmpty": "운영 기록이 없습니다.",
       "reservationsEmpty": "예약이 없습니다.",
       "reservationSummary": "대기 {waiting}명 · 수령대기 {ready}건",
-      "actionsHint": "예약·연장·분실·변상 처리는 다음 항목(todo/12·13)에서 연결됩니다.",
+      "actionsHint": "예약은 아래 버튼으로 바로 처리합니다 — 연장·분실·변상 처리는 다음 항목(todo/13)에서 연결됩니다.",
       "actionReserve": "예약",
       "actionRenew": "연장",
       "actionMarkLost": "분실 처리",
-      "actionCompensate": "변상"
+      "actionCompensate": "변상",
+      "reserveWaitingScan": "학생증을 스캔하세요",
+      "reserveDoneWaiting": "{title} 예약 완료 — 대기 {queue}번째",
+      "reserveDoneReady": "{title} 즉시 대출 가능 — {barcode} 준비 완료",
+      "reserveFailed": "예약 실패 — {message}"
     },
     "recentOps": {
       "refresh": "새로고침",
@@ -399,6 +408,27 @@
       "cardLabel": "장서 시각화",
       "title": "장서 시각화",
       "subtitle": "장서 vs 대출 트리맵 · 회전율 사분면 — todo/06"
+    },
+    "reservations": {
+      "refresh": "새로고침",
+      "empty": "이 상태의 예약이 없습니다.",
+      "searchPlaceholder": "도서명·회원명으로 검색",
+      "col": {
+        "title": "도서명",
+        "member": "신청자",
+        "status": "상태",
+        "queueOrExpiry": "대기순번 · 만료일시",
+        "requestedAt": "신청일시",
+        "actions": "처리"
+      },
+      "queuePosition": "대기 {seq}번째",
+      "bucketWaiting": "대기 {count}",
+      "bucketReady": "도착알림 {count}",
+      "bucketUrgent": "만료임박 {count}",
+      "actionArrival": "도착 처리",
+      "cancelDone": "{title} 예약을 취소했습니다.",
+      "cancelFailed": "예약 취소 실패 — {message}",
+      "arrivalHint": "대출·반납 화면에서 바코드 {barcode} · 회원 {member}을(를) 스캔하세요."
     }
   },
   "viz": {

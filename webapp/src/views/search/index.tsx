@@ -10,6 +10,11 @@ import { t } from '../../i18n';
 // school-patch-v1/Code.gs apiWebCatalogSync_)으로 채워지는 COPY 단위 미러로 재설계됐으므로,
 // 이 뷰가 구현될 때는 services/catalog.ts의 useCatalogSync()/getCatalogState()에서 바로
 // 검색하면 된다(더 이상 백엔드 공백이 아니다).
+//
+// todo/12(예약 프론트) 메모 — 실 검색 결과 목록이 아직 없어(위 스텁) 여기 「예약」 버튼을 붙일
+// 곳이 없다. todo/15가 실제 검색 결과 리스트를 만들 때 book-detail/index.tsx가 쓰는 것과 같은
+// services/reservationData.ts(createReservation/fetchReservations, book-detail 전용이 아닌
+// 제네릭 서비스로 설계됨)를 그대로 재사용해 각 결과 행에 「예약」 버튼을 달면 된다.
 export default function SearchView({ shell }: ViewProps) {
   useEffect(() => {
     shell.setTitle(getViewMeta('search')?.title ?? t('registry.search.title'));

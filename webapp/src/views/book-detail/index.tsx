@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Banknote, BookMarked, BookOpen, RefreshCw } from 'lucide-react';
 import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
@@ -13,6 +13,7 @@ import {
   type TitleDetailReservationItem
 } from '../../services/titleDetail';
 import { fetchRecentOps, type RecentOpRow } from '../../services/recentOpsData';
+import { createReservation } from '../../services/reservationData';
 import { getEffectiveScanRoute, subscribeScan } from '../../services/scanBus';
 import { t } from '../../i18n';
 import './book-detail.css';
@@ -30,8 +31,14 @@ import './book-detail.css';
 //   소장본으로 못 좁혀진다는 걸 Code.gs writeAudit_ 호출부에서 확인했다 — 그래서 정확한 "대출
 //   이력"은 titleDetail의 loanHistory(10_LOANS)가 1차 소스이고, 이 운영 기록은 보조 표시다.
 //
-// 조작 버튼(예약·연장·분실·변상)은 todo/12·13 몫 — 여기서는 죽은 버튼을 만들지 않기 위해
-// 명확히 비활성 상태로만 자리를 마련한다(아래 「처리」 절).
+// 조작 버튼(예약·연장·분실·변상) 중 「예약」은 이 항목(todo/12)이 실제로 연결한다 — 나머지
+// (연장·분실·변상)는 todo/13 몫이라 여전히 비활성 상태로만 자리를 마련한다(아래 「처리」 절).
+//
+// 예약 흐름(FRONTEND.md loan-return의 "누가 빌리나요?" 대기 패턴을 그대로 빌림): 「예약」 클릭 →
+// 학생증 스캔 대기 → apiWebReserve_(reserve_ 그대로) 호출 → 결과(대기 순번 또는 즉시 대출가능)를
+// shell.toast로 안내 + 예약 현황 재조회. book-detail은 scan:'focus'라 포커스/핀 상태면 이 화면이
+// 스캔을 받는다(registry.ts, todo/11) — 기존 「책 스캔 → 갱신」 구독에 「학생 스캔 → 예약 제출」
+// 분기만 추가했다(별도 구독을 새로 만들지 않음).
 
 interface BookQuery {
   copyKey?: string;
@@ -115,15 +122,92 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   const [opsSample, setOpsSample] = useState(false);
   const [opsLoading, setOpsLoading] = useState(false);
 
+  // 예약 걸기 대기 상태 — loan-return의 "누가 빌리나요?" 대기 슬롯과 같은 개념(학생증 스캔을
+  // 기다린다). reserveBusy는 apiWebReserve_ 왕복 중 버튼 연타/중복 스캔을 막는다.
+  const [reserving, setReserving] = useState(false);
+  const [reserveBusy, setReserveBusy] = useState(false);
+
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
+
   useEffect(() => {
     shell.setTitle(detail?.title || (getViewMeta('book-detail')?.title ?? t('registry.bookDetail.title')));
   }, [shell, detail?.title]);
+
+  // 서지 재조회 — 최초 진입뿐 아니라 예약 성공 후에도 이 함수를 다시 호출해 예약 현황
+  // (waitingCount/readyCount/items)을 갱신한다(refetch, 아래 submitReservation 참고).
+  const refreshDetail = useCallback(async () => {
+    if (!hasQuery) return;
+    setLoading(true);
+    setError(null);
+    const outcome = await fetchTitleDetail({ copyKey: query.copyKey, titleId: query.titleId });
+    if (!mountedRef.current) return;
+    setLoading(false);
+    if (outcome.ok) {
+      setDetail(outcome.data);
+      setDetailSample(outcome.sample);
+    } else {
+      setDetail(null);
+      setError(outcome.message);
+    }
+  }, [hasQuery, query.copyKey, query.titleId]);
+
+  useEffect(() => {
+    void refreshDetail();
+  }, [refreshDetail]);
+
+  // 보고 있는 책이 바뀌면(새 스캔·딥링크) 이전 책에 걸려 있던 예약 대기 상태를 함께 접는다 —
+  // "학생증을 스캔하세요" 안내가 이미 화면을 벗어난 책에 남아 있으면 혼란스럽다.
+  useEffect(() => {
+    setReserving(false);
+  }, [query.copyKey, query.titleId]);
+
+  // 예약 제출 — apiWebReserve_(reserve_ 그대로) 호출. 성공하면 대기 순번(WAITING) 또는 즉시
+  // 대출가능(READY, 배정 등록번호 포함)을 토스트로 안내하고 서지를 재조회한다.
+  const submitReservation = useCallback(
+    async (memberKey: string) => {
+      if (!detail) return;
+      setReserveBusy(true);
+      const res = await createReservation(memberKey, detail.titleId);
+      if (!mountedRef.current) return;
+      setReserveBusy(false);
+      setReserving(false);
+      if (res.ok) {
+        const message =
+          res.data.status === 'READY'
+            ? t('views.bookDetail.reserveDoneReady', { title: detail.title, barcode: res.data.assignedBarcode })
+            : t('views.bookDetail.reserveDoneWaiting', { title: detail.title, queue: res.data.queueSeq });
+        shell.toast(message, 'success');
+        void refreshDetail();
+      } else {
+        console.error('[book-detail] reserve 실패', { code: res.code, message: res.message, memberKey, titleId: detail.titleId });
+        shell.toast(t('views.bookDetail.reserveFailed', { message: res.message }), 'error');
+      }
+    },
+    [detail, refreshDetail, shell]
+  );
+
+  const handleReserveClick = useCallback(() => {
+    setReserving(true);
+  }, []);
+
+  const handleReserveCancel = useCallback(() => {
+    setReserving(false);
+  }, []);
 
   // 이 창이 유효 스캔 라우트(포커스 또는 핀)일 때 책 스캔이 들어오면 같은 창을 그 책으로 갱신
   // 한다 — FRONTEND.md 스캔 라우팅 계약("포커스 창 전환 시 스캔이 새 포커스 창으로 감, 핀 시
   // 핀 창")을 book-detail도 이제 따른다(registry.ts에서 scan:'focus'로 전환, todo/11). 새 창을
   // shell.open으로 여는 대신 이 컴포넌트의 내부 state를 바꿔 "같은 창이 갱신"되게 한다 —
   // book-detail은 desktop.single이 아니라서 shell.open을 쓰면 스캔마다 창이 늘어난다.
+  // todo/12 — 「예약」 대기 중(reserving)에 학생 스캔이 들어오면 그 학생으로 예약을 제출한다
+  // (loan-return의 book/student 두 슬롯 패턴과 달리 이 화면은 책이 이미 고정돼 있으므로 학생
+  // 슬롯 하나만 기다리면 된다).
   useEffect(
     () =>
       subscribeScan((evt) => {
@@ -131,32 +215,15 @@ export default function BookDetailView({ shell, params }: ViewProps) {
         const target = evt.target;
         if (target.kind === 'book' || target.kind === 'book-url') {
           setQuery({ copyKey: target.barcode, titleId: undefined });
+          return;
         }
-        // isbn/student/unknown → 무시(이 화면은 등록번호 스캔만 의미가 있다).
+        if (target.kind === 'student' && reserving && !reserveBusy) {
+          void submitReservation(target.studentCode);
+        }
+        // isbn/unknown → 무시(이 화면은 등록번호·[예약 대기 중]학생증 스캔만 의미가 있다).
       }),
-    []
+    [reserving, reserveBusy, submitReservation]
   );
-
-  useEffect(() => {
-    if (!hasQuery) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    void fetchTitleDetail({ copyKey: query.copyKey, titleId: query.titleId }).then((outcome) => {
-      if (cancelled) return;
-      setLoading(false);
-      if (outcome.ok) {
-        setDetail(outcome.data);
-        setDetailSample(outcome.sample);
-      } else {
-        setDetail(null);
-        setError(outcome.message);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [hasQuery, query.copyKey, query.titleId]);
 
   // "운영 기록" 보조 피드 — 서지가 로드된 뒤에야 정확한 entity_id(copy_id)를 알 수 있다(위 헤더
   // 주석 참고: barcode로는 entity_id와 매칭되지 않는다). 포커스된 소장본이 없으면(titleId로만
@@ -387,13 +454,14 @@ export default function BookDetailView({ shell, params }: ViewProps) {
             />
           </section>
 
-          {/* 조작 버튼 자리 — todo/12(예약)·todo/13(연장·분실·변상)가 실제 동작을 연결한다.
-              가짜/죽은 버튼을 만들지 않기 위해 지금은 명확히 비활성 상태로만 자리를 잡아둔다. */}
+          {/* 조작 버튼 자리 — 「예약」은 이 항목(todo/12)이 실제로 연결했다. 연장·분실·변상은
+              여전히 todo/13 몫이라(가짜/죽은 버튼을 만들지 않기 위해) 명확히 비활성 상태로만
+              자리를 잡아둔다. */}
           <section className="bd-section bd-actions">
             <h2>{t('views.bookDetail.sectionActions')}</h2>
             <p className="bd-actions-hint">{t('views.bookDetail.actionsHint')}</p>
             <div className="bd-actions-row">
-              <button type="button" disabled>
+              <button type="button" onClick={handleReserveClick} disabled={reserving || reserveBusy}>
                 <BookMarked size={16} aria-hidden /> {t('views.bookDetail.actionReserve')}
               </button>
               <button type="button" disabled>
@@ -406,6 +474,16 @@ export default function BookDetailView({ shell, params }: ViewProps) {
                 <Banknote size={16} aria-hidden /> {t('views.bookDetail.actionCompensate')}
               </button>
             </div>
+            {reserving && (
+              <p className="bd-reserve-waiting" role="status">
+                <span>{reserveBusy ? t('common.loading') : t('views.bookDetail.reserveWaitingScan')}</span>
+                {!reserveBusy && (
+                  <button type="button" className="ghost" onClick={handleReserveCancel}>
+                    {t('common.cancel')}
+                  </button>
+                )}
+              </p>
+            )}
           </section>
         </>
       )}

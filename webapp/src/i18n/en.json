@@ -24,7 +24,8 @@
     "catalog": { "title": "Catalog" },
     "bookDetail": { "title": "Book Detail" },
     "recentOps": { "title": "Recent Activity" },
-    "reports": { "title": "Reports" }
+    "reports": { "title": "Reports" },
+    "reservations": { "title": "Reservations" }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -57,6 +58,10 @@
       "title": "Recent activity",
       "hint": "See recent checkouts and returns in the Recent Activity view.",
       "openButton": "Open recent activity"
+    },
+    "readyPickup": {
+      "title": "Ready for pickup",
+      "label": "Awaiting pickup"
     },
     "lastBackup": {
       "label": "Last backup",
@@ -285,11 +290,15 @@
       "opsEmpty": "No operation log entries.",
       "reservationsEmpty": "No reservations.",
       "reservationSummary": "{waiting} waiting · {ready} ready for pickup",
-      "actionsHint": "Reserve/renew/lost/compensate actions will be wired up in later items (todo/12, 13).",
+      "actionsHint": "Reserve is wired up below — renew/lost/compensate actions will be wired up in a later item (todo/13).",
       "actionReserve": "Reserve",
       "actionRenew": "Renew",
       "actionMarkLost": "Mark lost",
-      "actionCompensate": "Compensate"
+      "actionCompensate": "Compensate",
+      "reserveWaitingScan": "Scan a student ID",
+      "reserveDoneWaiting": "{title} reserved — position {queue} in line",
+      "reserveDoneReady": "{title} ready to check out now — {barcode}",
+      "reserveFailed": "Reservation failed — {message}"
     },
     "recentOps": {
       "refresh": "Refresh",
@@ -399,6 +408,27 @@
       "cardLabel": "Collection insights",
       "title": "Collection insights",
       "subtitle": "Collection vs. loans treemap · turnover quadrant — todo/06"
+    },
+    "reservations": {
+      "refresh": "Refresh",
+      "empty": "No reservations in this status.",
+      "searchPlaceholder": "Search by title or member name",
+      "col": {
+        "title": "Title",
+        "member": "Requester",
+        "status": "Status",
+        "queueOrExpiry": "Queue / pickup expiry",
+        "requestedAt": "Requested",
+        "actions": "Actions"
+      },
+      "queuePosition": "Position {seq} in line",
+      "bucketWaiting": "Waiting {count}",
+      "bucketReady": "Ready {count}",
+      "bucketUrgent": "Expiring soon {count}",
+      "actionArrival": "Check out",
+      "cancelDone": "Cancelled the reservation for {title}.",
+      "cancelFailed": "Failed to cancel reservation — {message}",
+      "arrivalHint": "In Checkout/Return, scan barcode {barcode} · member {member}."
     }
   },
   "viz": {

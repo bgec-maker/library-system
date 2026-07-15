@@ -201,6 +201,39 @@
   gap: 10px;
 }
 
+/* 예약 도착(todo/12) — 예약대기 KPI(.dash-kpi--wait, WAITING+READY 합산)와 별개로 READY 건수만
+   보여주는 클릭형 카드. .dash-panel 안에 두므로 배경·테두리는 그 규칙을 그대로 물려받는다. */
+.dash-arrivals-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  color: var(--ink);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  text-align: left;
+  min-height: 44px;
+}
+.dash-arrivals-btn:hover {
+  background: var(--paper);
+}
+.dash-arrivals-btn svg:first-child {
+  color: var(--wait);
+  flex-shrink: 0;
+}
+.dash-arrivals-value {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+.dash-arrivals-label {
+  flex: 1;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
 /* todo/06 시각화 — 대출 잔디·예약 압력. 차트 자체 스타일은 src/viz/viz.css(.viz-card 등),
    여기는 대시보드 안에서의 배치만 담당한다. */
 .dash-viz-section {

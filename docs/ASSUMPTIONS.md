@@ -716,3 +716,72 @@
   "카메라는 셸 관심사"라는 ADR-026의 프레이밍과 어긋나고(services/는 플랫폼 중립이어야
   하는데 창 위치/크기는 데스크톱 전용 개념) todo의 제안 파일 경로(`shells/desktop/
   ScannerWindow.tsx` 인접)와도 맞지 않아 원래 설계를 존중했다.
+
+## todo/12 · 예약 프론트 (2026-07-15)
+
+- **"도착 처리"는 새 백엔드 쓰기 액션을 만들지 않고 loan-return으로의 순수 내비게이션
+  단축키로 구현**했다. `checkout_`(Code.gs)을 다시 읽어 확인한 결과, 예약이 "수령 완료"로
+  바뀌는 지점은 배정된 회원이 그 소장본을 정상적으로 대출(체크아웃)하는 순간
+  `checkout_` 안에서 부수효과로 처리된다(`ownReservation`을 찾아 `status_code: 'FULFILLED'`로
+  갱신하는 라인) — 전용 "수령 확인" API가 애초에 없다. 그래서 관리 뷰의 「도착 처리」 버튼은
+  `apiWebReservations_`·`apiWebReserve_`·`apiWebCancelReservation_` 중 무엇도 호출하지 않고
+  `shell.open('loan-return')`만 부른다.
+  **파라미터로 소장본/회원을 미리 채우는 방식(옵션 a)은 검토 후 기각**했다 — `loan-return`은
+  `registry.ts`에서 `desktop.single: true`인데, `useWindowStore.openWindow`의 구현을 확인해보니
+  이미 열려 있는 single 창에 대해서는 포커스/복원만 하고 `params`를 새 값으로 갱신하지
+  않는다(`if (existing) { ...; return; }`로 조기 반환). 즉 loan-return 창이 이미 열려 있는
+  상태(흔한 케이스 — 사서가 대출·반납 업무 중일 때 예약 관리를 함께 열어볼 확률이 높다)에서
+  「도착 처리」를 누르면 prefill 파라미터가 조용히 무시되는, 신뢰할 수 없는 경로가 된다.
+  그래서 옵션 (b)(내비게이션 + 토스트로 바코드·회원 안내)를 택했다 — `loan-return`/`checkout_`
+  본문은 전혀 건드리지 않았고, 신뢰성이 창 상태에 좌우되지 않는다.
+
+- **대시보드 「예약 도착」 카드의 READY 건수는 `getDashboardData_()`의 `readyItems`를 재사용하지
+  않고, 새 `reservations` 액션에서 별도로 가져온다.** `getDashboardData_` 코드를 재확인한
+  결과 `readyItems`는 `.slice(0, 7)`로 상위 7건만 잘라 내려준다("연체 상위"처럼 미리보기
+  목적) — 실제 READY 총건수가 8건 이상이면 `readyItems.length`를 그대로 배지 숫자로 쓰면
+  undercount가 난다. 정확한 총건수가 필요해서(사서가 "지금 몇 건이 수령 대기 중인지" 믿고 볼
+  숫자) `getDashboardData_`를 수정하지 않고(절대 규칙) `apiWebReservations_`의
+  `readyCount`(상한 없음, WAITING+READY 전체를 훑어 계산)를 별도 fetch(`useReadyReservationCount`,
+  `services/reservationData.ts`)로 가져오는 쪽을 택했다. 대시보드 진입 시 API 왕복이 하나
+  늘지만(대시보드 자체 fetch와 별개), 뷰포트 진입 시에만 fetch하는 `VizLazyMount`처럼 이미
+  이 프로젝트가 "패널마다 자기 데이터를 각자 가져온다"는 패턴을 쓰고 있어 과설계로 보지
+  않았다.
+
+- **`apiWebReservations_`의 `waitingCount`/`readyCount`는 `payload.status` 필터와 무관하게
+  항상 전체(WAITING+READY) 기준**으로 계산한다(반환하는 `items` 배열만 필터링됨). 그렇게
+  하지 않으면(필터링된 집합에서 카운트를 뽑으면) 관리 뷰의 탭 배지 숫자가 "지금 보고 있는
+  탭"에 종속돼 예를 들어 READY 탭을 보는 동안 대기(WAITING) 배지가 0으로 보이는 등 혼란스러운
+  UI가 된다 — 탭 배지는 필터와 독립적인 전역 카운트여야 자연스럽다고 판단했다.
+
+- **"만료임박" 임계값은 24시간(READY이고 `pickupExpiresAtMs - now ≤ 24h`)으로 임의
+  지정**했다(`webapp/src/views/reservations/index.tsx`의 `URGENT_WINDOW_MS`). FEATURES.md·
+  VIZ.md 어디에도 구체적인 값이 없어(todo 본문도 "e.g. ≤24h — your call"로 위임) 이미
+  대기(hold) 보관 기본값이 정책상 며칠 단위(`policy.hold_days`, 기본 3일)인 점을 고려해
+  "마지막 하루"를 임박으로 보는 게 합리적이라고 판단했다. 서버는 이 개념을 전혀 모른다(todo
+  본문 지시대로 클라이언트 전용 판정) — `dailyLibraryMaintenance`(수정 금지 대상)가 매일
+  한 번 만료(EXPIRED)를 정리하는 배치라, 이미 만료 시각이 지났지만 아직 그 배치가 돌기 전인
+  READY 행도 있을 수 있는데 이 경우 `pickupExpiresAtMs - now`가 음수라 자동으로 "임박" 판정에
+  포함된다(별도 하한 처리 불필요).
+
+- **`src/views/recent-ops/index.tsx`의 `ACTION_LABEL_KEYS` 매핑 키 하나를 고쳤다**
+  (`CANCEL_RESERVATION` → `CANCEL`) — 예약 취소 흐름을 실제로 연결하며 `cancelReservation_`의
+  `writeAudit_` 호출부를 다시 읽어보니 실제로 기록되는 `action_code`는 `'CANCEL'`이다
+  (`executeWrite_`에 넘기는 `operationType` `'CANCEL_RESERVATION'`과는 별개 값 — 전자는
+  10_OPERATIONS 멱등 키용, 후자는 15_AUDIT_LOG 표시용). 기존 매핑 키가 `'CANCEL_RESERVATION'`
+  이었던 건 이 액션이 프론트에서 실제로 호출된 적이 없어(이 항목 전까지 죽어 있던 조합) 아무도
+  눈치채지 못한 잠재 버그였다 — `cancelReservation_` 자체는 건드리지 않고(절대 규칙 대상) 순수
+  프론트 표시 매핑만 고쳤다.
+
+- **book-detail의 「예약」 버튼은 학생 스캔을 기다리는 새 상태(`reserving`)를 추가**하고,
+  기존 「책 스캔 → 같은 창 갱신」 scanBus 구독 하나에 「학생 스캔 → 예약 제출」 분기를 얹었다
+  (별도 구독을 새로 만들지 않음 — loan-return처럼 book/student 두 슬롯을 동시에 관리할 필요가
+  없다, 이 화면은 이미 책이 고정돼 있으므로 학생 슬롯 하나만 기다리면 된다). 다른 책으로
+  전환되면(`query.copyKey`/`query.titleId` 변경) 대기 상태를 자동으로 접는다 — 이전 책에 걸린
+  "학생증을 스캔하세요" 안내가 새 책 화면에 남아있는 혼란을 막기 위함.
+
+- **`services/reservationData.ts`의 `createReservation`/`cancelReservation`(쓰기)은
+  `fetchReservations`(읽기)와 달리 UNKNOWN_ACTION 샘플 폴백을 두지 않는다** — loan-return의
+  `checkout`/`return`과 같은 원칙이다(쓰기는 흉내 낼 수 없다, CLAUDE.md 검증 원칙 "가짜 성공
+  금지"). 완료 조건 "걸기→반납 시 자동배정→도착 목록 표시 흐름이 샘플 폴백으로도 시연됨"은
+  쓰기를 가짜로 성공시켜서가 아니라, `mocks/reservations.ts`가 이미 그 흐름의 "결과"(대기 1건·
+  도착알림 1건·만료임박 1건)를 미리 갖춘 표본 데이터로 보여줌으로써 만족시켰다.
