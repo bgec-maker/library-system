@@ -1,0 +1,83 @@
+/* views/inventory/inventory.css — 화면 배치만 담당(색상 리터럴 없음, 전부 var(--token)) —
+   views/reservations/reservations.css와 같은 관례. 표 자체의 시각 규칙은 DataTable.css가,
+   인쇄 규칙은 전역 styles/print.css가 전담한다. */
+.inv-view {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inv-sync-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}
+
+.inv-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.inv-progress-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inv-progress-stat .inv-progress-value {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--deep);
+}
+
+.inv-progress-stat .inv-progress-label {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.inv-progress-bar {
+  flex: 1 1 160px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.inv-progress-bar-fill {
+  height: 100%;
+  background: var(--deep);
+}
+
+.inv-note {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+
+.inv-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inv-result-summary {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+}

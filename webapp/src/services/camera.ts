@@ -20,25 +20,19 @@ interface BarcodeDetectorConstructor {
   getSupportedFormats?(): Promise<string[]>;
 }
 
-interface ZXingReader {
-  setHints(hints: Map<unknown, unknown>): void;
-  decode(bitmap: unknown): { getText(): string };
-  reset(): void;
-}
-interface ZXingNamespace {
-  MultiFormatReader: new () => ZXingReader;
-  DecodeHintType: { POSSIBLE_FORMATS: unknown; TRY_HARDER: unknown };
-  BarcodeFormat: { EAN_13: unknown };
-  RGBLuminanceSource: new (data: Uint32Array, width: number, height: number) => unknown;
-  BinaryBitmap: new (binarizer: unknown) => unknown;
-  HybridBinarizer: new (source: unknown) => unknown;
-}
 declare global {
   interface Window {
     BarcodeDetector?: BarcodeDetectorConstructor;
-    ZXing?: ZXingNamespace;
   }
 }
+
+// todo/14 — ZXing 디코드를 메인 스레드에서 Web Worker(public/zxing-worker.js)로 옮긴 뒤 그
+// 워커와 주고받는 메시지 모양. 워커 쪽 ZXing 타입(MultiFormatReader 등)은 이제 이 파일이 전혀
+// 몰라도 된다 — 메인 스레드는 크롭된 픽셀 버퍼를 보내고 {text} 결과만 받는다.
+type ZxingWorkerMessage =
+  | { type: 'ready' }
+  | { type: 'error'; message?: string }
+  | { type: 'result'; text: string | null };
 
 export type CameraState = 'idle' | 'starting' | 'active' | 'error';
 export interface CameraStatus {
@@ -66,8 +60,15 @@ class CameraServiceImpl {
   private lastHitText = '';
   private canvas: HTMLCanvasElement = document.createElement('canvas');
   private detector: BarcodeDetectorLike | null = null;
-  private zxingReader: ZXingReader | null = null;
-  private zxingLoadPromise: Promise<void> | null = null;
+  // ZXing 워커(todo/14) — camera.ts 수명(acquire/release로 여러 번 start/stop)과 무관하게 딱
+  // 한 번만 만든다("카메라는 창이 아니다"와 같은 원칙: 워커도 세션 하나짜리 자원이 아니다).
+  // zxingReady=true가 되기 전까지는 워커에게 프레임을 보내지 않는다.
+  private zxingWorker: Worker | null = null;
+  private zxingWorkerLoadPromise: Promise<void> | null = null;
+  private zxingReady = false;
+  // 워커가 이전 프레임을 아직 처리 중인지 — true면 이번 raf 틱은 디코드 자체를 건너뛴다
+  // (큐잉 금지, "프레임 드랍" 자체가 스로틀의 정상 동작 — 아래 decodeFrame 주석 참고).
+  private zxingWorkerBusy = false;
   private status: CameraStatus = { state: 'idle' };
   private statusListeners = new Set<(s: CameraStatus) => void>();
 
@@ -158,31 +159,58 @@ class CameraServiceImpl {
         /* 네이티브 감지 실패 — ZXing으로 폴백 */
       }
     }
-    await this.ensureZXingLoaded();
-    if (window.ZXing) {
-      const reader = new window.ZXing.MultiFormatReader();
-      const hints = new Map<unknown, unknown>();
-      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [window.ZXing.BarcodeFormat.EAN_13]);
-      hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
-      reader.setHints(hints);
-      this.zxingReader = reader;
-      this.setStatus({ decoder: 'zxing' });
-    } else {
-      this.setStatus({ state: 'error', message: 'ZXing 로드 실패 — 수동 입력을 사용하세요.' });
-    }
+    await this.ensureZxingWorker();
+    // 실패했으면 워커의 onerror/‘error’ 메시지 핸들러(ensureZxingWorker 안)가 이미
+    // setStatus({state:'error', ...})를 호출했다 — 여기서 성공 상태로 덮어쓰지 않는다.
+    // 성공(zxingReady)이면 stop()/start()를 몇 번 반복하든(워커는 최초 1회만 만들고 재사용)
+    // 매번 다시 'zxing' 상태를 알린다 — stop()이 status.decoder를 undefined로 지우기 때문.
+    if (this.zxingReady) this.setStatus({ decoder: 'zxing' });
   }
 
-  private ensureZXingLoaded(): Promise<void> {
-    if (window.ZXing) return Promise.resolve();
-    if (this.zxingLoadPromise) return this.zxingLoadPromise;
-    this.zxingLoadPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `${import.meta.env.BASE_URL}zxing.js`;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('zxing.js 로드 실패'));
-      document.head.appendChild(script);
+  /**
+   * ZXing 디코드 워커(todo/14 「부채 상환 세트」 — 디코드를 메인 스레드 밖으로)를 최초 1회만
+   * 만들고, 이후 start()/stop() 사이클마다는 이미 만든 워커를 그대로 재사용한다(카메라
+   * 스트림처럼 acquire/release 때마다 새로 만들 필요가 없다 — 디코더 자체는 세션에 묶인
+   * 자원이 아니다). public/zxing-worker.js는 public/zxing.js(벤더 UMD 번들, 수정 금지)와
+   * 같은 디렉터리에 두고 importScripts('zxing.js')로 상대 경로 로드한다 — 이 워커 스크립트
+   * 자신의 URL도 배포 서브패스(/library-system/app/ 등)를 타야 하므로, 이전 리비전이 zxing.js를
+   * <script> 태그로 불러올 때 썼던 것과 동일하게 import.meta.env.BASE_URL을 그대로 접두사로 쓴다.
+   */
+  private ensureZxingWorker(): Promise<void> {
+    if (this.zxingReady) return Promise.resolve();
+    if (this.zxingWorkerLoadPromise) return this.zxingWorkerLoadPromise;
+    this.zxingWorkerLoadPromise = new Promise((resolve) => {
+      let worker: Worker;
+      try {
+        worker = new Worker(`${import.meta.env.BASE_URL}zxing-worker.js`);
+      } catch (err) {
+        this.setStatus({ state: 'error', message: `ZXing 워커 생성 실패: ${(err as Error)?.message ?? err} — 수동 입력을 사용하세요.` });
+        resolve();
+        return;
+      }
+      worker.onmessage = (e: MessageEvent<ZxingWorkerMessage>) => {
+        const msg = e.data;
+        if (msg.type === 'ready') {
+          this.zxingReady = true;
+          resolve();
+        } else if (msg.type === 'error') {
+          this.zxingReady = false;
+          this.setStatus({ state: 'error', message: `ZXing 로드 실패: ${msg.message ?? ''} — 수동 입력을 사용하세요.` });
+          resolve();
+        } else if (msg.type === 'result') {
+          // 워커가 응답했으니 다음 틱부터 다시 프레임을 보낼 수 있다(아래 decodeFrame 참고).
+          this.zxingWorkerBusy = false;
+          this.handleDecodedText(msg.text);
+        }
+      };
+      worker.onerror = (ev) => {
+        this.zxingReady = false;
+        this.setStatus({ state: 'error', message: `ZXing 워커 오류: ${ev.message || '알 수 없는 오류'} — 수동 입력을 사용하세요.` });
+        resolve();
+      };
+      this.zxingWorker = worker;
     });
-    return this.zxingLoadPromise;
+    return this.zxingWorkerLoadPromise;
   }
 
   private loop = (): void => {
@@ -204,37 +232,48 @@ class CameraServiceImpl {
     const cropY = Math.round(vh * CROP.yRatio);
     const cropH = Math.round(vh * CROP.hRatio);
 
-    let text: string | null = null;
     try {
       if (this.detector) {
+        // BarcodeDetector 네이티브 경로 — todo/14에서 전혀 손대지 않는다(여전히 메인 스레드에서
+        // 동기적으로 detect()한다, 브라우저 구현이 이미 별도 스레드/프로세스에서 돌 수도 있지만
+        // 그건 이 코드가 관여할 부분이 아니다).
         this.canvas.width = cropW;
         this.canvas.height = cropH;
         const ctx = this.canvas.getContext('2d');
         if (!ctx) return;
         ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
         const [hit] = await this.detector.detect(this.canvas);
-        if (hit) text = hit.rawValue;
-      } else if (this.zxingReader && window.ZXing) {
+        this.handleDecodedText(hit ? hit.rawValue : null);
+      } else if (this.zxingReady && this.zxingWorker) {
+        // ZXing 워커 경로(todo/14) — 워커가 이전 프레임을 아직 처리 중이면(zxingWorkerBusy)
+        // 이번 틱은 크롭조차 하지 않고 완전히 건너뛴다. raf 루프(THROTTLE_MS=100ms 스로틀)는
+        // 이 분기와 무관하게 계속 돌고, 다음 틱에서 다시 시도할 뿐이다 — 메시지를 큐에 쌓지
+        // 않는다("100권 연속 스캔에서 프레임 드랍 없음"은 "디코더가 못 따라갈 프레임을
+        // 버린다"는 뜻이지, 라디안스 프레임 자체를 하나도 안 건너뛴다는 뜻이 아니다: 애초에
+        // 10fps로 스로틀된 시점에서 대부분의 원본 비디오 프레임은 이미 건너뛰고 있다).
+        if (this.zxingWorkerBusy) return;
         this.canvas.width = cropW;
         this.canvas.height = cropH;
         const ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         if (!ctx) return;
         ctx.drawImage(v, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
         const imageData = ctx.getImageData(0, 0, cropW, cropH);
-        const luminanceSource = new window.ZXing.RGBLuminanceSource(new Uint32Array(imageData.data.buffer), cropW, cropH);
-        const bitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(luminanceSource));
-        try {
-          text = this.zxingReader.decode(bitmap).getText();
-        } catch {
-          /* 프레임에 코드 없음 — 정상 */
-        } finally {
-          this.zxingReader.reset();
-        }
+        this.zxingWorkerBusy = true;
+        // 제로카피 transfer — imageData.data.buffer는 이 호출 이후 메인 스레드에서 detached되지만
+        // 이미 위 getImageData()로 필요한 값을 다 뽑아 canvas에 남겨둘 필요가 없으므로 안전하다.
+        this.zxingWorker.postMessage({ width: cropW, height: cropH, buffer: imageData.data.buffer }, [imageData.data.buffer]);
       }
     } catch {
       /* 프레임 처리 오류 — 다음 프레임에서 재시도 */
     }
+  }
 
+  /**
+   * 디코드 성공/실패 후의 공통 처리(중복 스캔 무시·publishScan·성공/실패 사운드) — BarcodeDetector
+   * 분기(동기, decodeFrame 안에서 직접 호출)와 ZXing 워커의 'result' 메시지 핸들러(비동기,
+   * ensureZxingWorker 안에서 호출) 둘 다 이 메서드 하나를 공유한다(todo/14 — 로직 중복 금지).
+   */
+  private handleDecodedText(text: string | null): void {
     if (!text) return;
     const now = performance.now();
     if (text === this.lastHitText && now - this.lastHitAt < DEDUPE_MS) return;

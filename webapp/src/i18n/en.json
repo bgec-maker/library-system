@@ -237,8 +237,22 @@
       "comingSoonDetail": "The catalog mirror search screen will live here."
     },
     "inventory": {
-      "comingSoon": "Inventory check is coming soon.",
-      "comingSoonDetail": "The scan-reconciliation screen will live here."
+      "startSession": "Start inventory session",
+      "endSession": "End session",
+      "sessionHint": "Continuous scan mode is now on — walk the shelves and scan each copy.",
+      "baselineCount": "{count} copies in scope this session (available / hold-ready)",
+      "progress": "Checked {scanned} / {total}",
+      "remaining": "{count} remaining",
+      "scanWriteFailed": "Failed to update last-checked date — {message}",
+      "resultHeading": "Inventory check result",
+      "resultSummary": "Checked {scanned} of {total} · {lost} lost candidates",
+      "lostHeading": "Lost candidates",
+      "lostEmpty": "No lost candidates — every copy in scope was checked.",
+      "shelfGroupHeading": "Shelf {shelf} ({count})",
+      "noShelfGroupHeading": "No shelf assigned ({count})",
+      "backToStart": "Start a new session",
+      "eligibleNote": "In scope: AVAILABLE and HOLD_READY copies. ON_LOAN copies are excluded because they're expected to be absent from the shelves (they're with a member) — that's normal, not a loss. LOST, WITHDRAWN, and REPAIR copies are excluded because their whereabouts are already accounted for.",
+      "notSyncedHint": "The catalog mirror isn't ready yet — try again shortly."
     },
     "catalog": {
       "col": {
@@ -357,7 +371,8 @@
         "reconcileCopyStatus": "Copy status reconciled",
         "upsertStaff": "Staff account updated",
         "updatePolicy": "Policy updated",
-        "dailyMaintenance": "Daily maintenance"
+        "dailyMaintenance": "Daily maintenance",
+        "inventoryScan": "Inventory check scan"
       }
     },
     "reports": {

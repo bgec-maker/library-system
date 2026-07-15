@@ -1180,6 +1180,21 @@ function cancelReservation_(payload, actor, requestId, transaction) {
   return { targetType: 'RESERVATION', targetId: reservationId, reservationId: reservationId, status: 'CANCELLED' };
 }
 
+// 장서 점검 스캔(todo/14) — cancelReservation_와 정확히 같은 구조의 "가장 단순한 쓰기" 패턴:
+// findCopyByKey_로 찾고, transactionUpdateRecord_로 필드 하나(last_inventory_at)만 갱신하고,
+// writeAudit_ 남기고, 결과를 돌려준다. 상태 코드 자체는 건드리지 않는다 — 장서점검은 "이 소장본을
+// 실제로 봤다"는 사실만 기록하는 단순 갱신이지(todo 원문: "쓰기지만 단순 갱신"), 대출/반납/분실
+// 처리 같은 상태 전이가 아니다. 세션 중 같은 소장본을 여러 번 스캔해도(예: 사서가 실수로 재스캔)
+// 이 함수 자체는 멱등하게 last_inventory_at을 그때그때 최신 시각으로 다시 쓸 뿐이라 문제없다 —
+// 중복 호출 자체를 막는 건 프론트(views/inventory/index.tsx의 세션-로컬 Set)의 몫이다.
+function inventoryScan_(payload, actor, requestId, transaction) {
+  var copy = findCopyByKey_(requiredText_(payload.copyKey, '소장본 바코드'));
+  var now = new Date();
+  var updated = transactionUpdateRecord_(transaction, LIBRARY_MVP.SHEETS.COPIES, 'copy_id', copy.copy_id, { last_inventory_at: now }, actor.id);
+  writeAudit_(actor, requestId, 'INVENTORY_SCAN', 'COPY', copy.copy_id, { last_inventory_at: copy.last_inventory_at }, { last_inventory_at: updated.last_inventory_at }, '장서 점검 스캔', transaction);
+  return { targetType: 'COPY', targetId: copy.copy_id, copyId: copy.copy_id, barcode: copy.barcode, lastInventoryAt: updated.last_inventory_at };
+}
+
 function payFine_(payload, actor, requestId, transaction) {
   var fineId = cleanCode_(requiredText_(payload.fineId, '연체료 ID'));
   var fine = findByIdRequired_(LIBRARY_MVP.SHEETS.FINES, 'fine_id', fineId, '연체료');
@@ -2512,6 +2527,7 @@ function doPost(e) {
       if (action === 'markLost') return apiWebMarkLost_(payload);
       if (action === 'payFine') return apiWebPayFine_(payload);
       if (action === 'unpaidFines') return apiWebUnpaidFines_(payload);
+      if (action === 'inventoryScan') return apiWebInventoryScan_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2607,6 +2623,17 @@ function apiWebMarkLost_(payload) {
 function apiWebPayFine_(payload) {
   return executeWrite_('PAY_FINE', payload || {}, function(actor, requestId, transaction) {
     return payFine_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+// 웹앱용 장서 점검 스캔(todo/14 「장서점검 + ZXing Worker」) — 위 apiWeb* 함수들과 정확히 같은
+// 패턴(executeWrite_로 감싸 멱등·감사 로그를 얻는다, doPost가 이미 바깥 runApi_ 1겹을 제공하므로
+// 이중 래핑하지 않음). inventoryScan_ 본문은 이 함수가 유일한 호출자이자 이 항목에서 처음
+// 추가하는 함수라(기존 함수 수정 금지 규칙과 무관, 순수 추가) 별도 "손대지 않는다" 주석이
+// 필요 없다 — payload 키는 updateCopyStatus_와 동일하게 copyKey(바코드 또는 copy_id) 하나뿐.
+function apiWebInventoryScan_(payload) {
+  return executeWrite_('INVENTORY_SCAN', payload || {}, function(actor, requestId, transaction) {
+    return inventoryScan_(payload || {}, actor, requestId, transaction);
   });
 }
 

@@ -37,7 +37,11 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
   RECONCILE_COPY_STATUS: 'views.recentOps.action.reconcileCopyStatus',
   UPSERT_STAFF: 'views.recentOps.action.upsertStaff',
   UPDATE_POLICY: 'views.recentOps.action.updatePolicy',
-  DAILY_MAINTENANCE: 'views.recentOps.action.dailyMaintenance'
+  DAILY_MAINTENANCE: 'views.recentOps.action.dailyMaintenance',
+  // inventoryScan_(Code.gs, todo/14)이 writeAudit_에 남기는 action_code — executeWrite_에 넘기는
+  // operationType과 여기서 처음부터 같은 값('INVENTORY_SCAN')으로 맞춰 만들었다(위 CANCEL/MARK_LOST
+  // 처럼 두 값이 갈라져 죽은 키가 되는 실수를 이번엔 처음부터 피했다).
+  INVENTORY_SCAN: 'views.recentOps.action.inventoryScan'
 };
 
 function actionLabel(code: string): string {

@@ -115,7 +115,9 @@ const OPS_ACTION_LABEL_KEYS: Record<string, string> = {
   // 절대 매칭되지 않는 죽은 키였다).
   MARK_LOST: 'views.recentOps.action.markLoanLost',
   PAY: 'views.recentOps.action.payFine',
-  RECONCILE_COPY_STATUS: 'views.recentOps.action.reconcileCopyStatus'
+  RECONCILE_COPY_STATUS: 'views.recentOps.action.reconcileCopyStatus',
+  // inventoryScan_(Code.gs, todo/14) — 위 recent-ops/index.tsx의 ACTION_LABEL_KEYS와 동일 항목.
+  INVENTORY_SCAN: 'views.recentOps.action.inventoryScan'
 };
 function opsActionLabel(code: string): string {
   const key = OPS_ACTION_LABEL_KEYS[code];
