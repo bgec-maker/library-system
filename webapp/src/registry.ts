@@ -71,11 +71,15 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     mobile: {}
   },
   {
+    // todo/11 — 이전엔 scan:'none'이라 이 창이 스캔 이벤트를 아예 못 받았다(Window.tsx의 핀
+    // 버튼도 meta?.scan === 'focus'에서만 렌더돼 book-detail은 핀조차 불가능했다). FRONTEND.md
+    // "진입: catalog 행·검색 결과·스캔(핀 시)" 완료 조건 때문에 'focus'로 전환 — 포커스/핀
+    // 상태일 때 다른 책을 스캔하면 이 창 자체가 그 책으로 갱신된다(뷰 안 scanBus 구독, index.tsx).
     id: 'book-detail',
     title: t(TITLE_KEYS['book-detail']),
     icon: BookOpen,
     roles: ['LIBRARIAN'],
-    scan: 'none',
+    scan: 'focus',
     desktop: { min: [420, 560] },
     mobile: {}
   },

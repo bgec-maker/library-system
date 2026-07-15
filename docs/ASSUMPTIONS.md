@@ -501,3 +501,88 @@
   원한다면 자기 자신의 `useLocale()` 구독으로 로케일이 바뀔 때마다 직접 `shell.setTitle(...)`을
   다시 호출해 스스로 최신화해야 한다(그러면 그 호출도 위 판별 로직을 다시 통과해 여전히 레지스트리
   기본값과 다르므로 커스텀으로 남는다 — 문제 없음, 매번 스스로 다시 세팅하는 쪽 책임이다).
+
+## todo/11 · book-detail 완성 (2026-07-15)
+
+- **서지 상세 조회는 (a) catalog 미러 확장이 아니라 (b) 신규 읽기 전용 액션 `apiWebTitleDetail_`
+  로 구현**했다(`school-patch-v1/Code.gs`). 미러(services/catalog.ts)는 COPY 1행 = 소장본 1건
+  구조라(todo/08) TITLES 전용 서지 필드(cover_url·description·published_year 등)를 얹으면 소장본
+  10권짜리 서명은 같은 값이 10번 중복 저장되고, catalog 목록 렌더엔 필요 없는 필드로 미러 크기만
+  불어난다. ADR-024가 막는 건 "5,000행 목록의 서버 페이지네이션"이지 "한 건 상세 조회"가 아니라고
+  판단해, book-detail은 매번 살아있는 값을 직접 읽는 왕복 1회를 택했다. 같은 이유로 각 소장본의
+  현재 대출자·반납예정일도 미러의 스냅샷(statusCode)이 아니라 그때그때 10_LOANS를 조인해서
+  내려준다(loan-return의 `copyStatus`와 같은 "신선도가 중요한 값은 실시간 조회" 원칙) — 소장본이
+  많은 인기 서명이라도 서버가 이미 COPIES/LOANS를 한 번씩만 훑으므로 "코피당 N회 호출" 문제
+  자체가 생기지 않는다(다건 조회를 뷰가 아니라 서버가 한 번에 처리).
+
+- **`writeAudit_` 호출부를 전수 확인한 결과, LOAN 이벤트의 `entity_id`는 barcode/copy_id가
+  아니라 loan_id다** — `checkout_`(CHECKOUT)만 `after_json`에 `copy_id`를 함께 남기고,
+  `return_`(RETURN)·`renew_`(RENEW)·`markLoanLost_`(MARK_LOST)는 before/after JSON 어디에도
+  `copy_id`가 없다. 즉 `apiWebRecentOps_`에 아무리 정교한 `entityId` 필터를 걸어도 "이 소장본이
+  언제 반납/연장/분실됐는지"는 감사 로그만으로 재구성할 수 없다 — `checkout_`/`return_`은 이 항목
+  수정 금지 대상이고(절대 규칙), `renew_`/`markLoanLost_`도 "이 항목에서 ONLY 사냥된 수정은
+  `apiWebRecentOps_` 추가뿐"이라는 todo 본문 제약상 손댈 수 없다. 그래서 **"최근 이력"의 1차
+  소스는 감사 로그가 아니라 `apiWebTitleDetail_`이 10_LOANS를 직접 훑어 만드는 `loanHistory`**
+  (copy_id 컬럼을 원장이 항상 갖고 있어 완전히 정확)로 했고, `apiWebRecentOps_`의 새
+  `entityId` 필터(entity_id 직접 일치 + LOAN 타입일 때 `after_json.copy_id` 매칭까지만)는
+  book-detail에서 "운영 기록"이라는 이름의 **보조** 피드(등록·상태변경·CHECKOUT만 잡히는 부분
+  이력)로만 쓴다 — 화면에 두 절을 분리해 두어("최근 이력" = 대출 이력 표, "운영 기록" = 감사
+  로그 표) 반납 이벤트가 빠진 것처럼 보이는 오해를 만들지 않았다.
+
+- **`apiWebRecentOps_`의 `entityId` 필터는 `cleanCode_`로 대소문자·공백을 정규화한 뒤 비교**한다
+  (기존 `findCopyByKey_` 등과 동일 관례). `entityId`를 생략하면 기존 동작과 100% 동일 — 새
+  파라미터 추가일 뿐 기존 정렬·상한 로직은 손대지 않았다(하위호환, todo가 사전 승인한 유일한
+  기존 함수 수정).
+
+- **21_BOOK_CACHE에서 `page_count`를 최선노력으로 곁들였다** — 03_TITLES엔 페이지수 컬럼이
+  없다(HEADERS 배열 확인, `registerByIsbn_`도 같은 이유로 description에 문자열로만 보강 기록).
+  새 TITLES 컬럼을 만드는 건 스키마 확장(더 큰 결정, 이번 스코프 밖)이라, 대신 이미 ISBN 조회
+  캐시로 존재하는 21_BOOK_CACHE(진위 데이터 아님, 부가 캐시)에서 같은 isbn13으로 찾히는 행이
+  있으면 `pageCount`를 곁들이고 없으면 빈 값 그대로 둔다 — 화면(`views/book-detail/index.tsx`)은
+  빈 값을 "정보 없음"(`common.none`)으로 정직하게 표시하고 페이지수를 지어내지 않는다. 폰으로
+  등록되지 않은 서명(사서가 사이드바에서 직접 입력했거나 대량 이관된 구간)은 이 캐시가 없어
+  거의 항상 "정보 없음"으로 보일 것이다 — 알려진 커버리지 한계로 남겨둔다.
+
+- **`#/w/<viewId>?<query>` 딥링크 파서를 `webapp/src/deepLink.ts`(신규, 셸 공용 최상위 모듈)에
+  구현**했다 — `views/**`가 아니라 `registry.ts`/`viewResolver.ts`와 같은 급의 최상위 모듈이라
+  `window.location.hash`/`window.addEventListener`를 직접 써도 check-view-boundary.mjs 대상 밖
+  이다. `DesktopShell.tsx`·`MobileShell.tsx`가 각자 마운트 시 `currentWindowDeepLink()`로 초기
+  해시를 확인하고 `subscribeWindowDeepLink()`로 이후 hashchange까지 구독한 뒤, 각자의 오픈
+  메커니즘(`useWindowStore.openWindow` / `openFn`→탭 전환 또는 `StackNav.push`)에 연결한다 —
+  파싱 로직 자체는 `deepLink.ts` 한 곳에만 있고 두 셸에 중복이 없다. 레지스트리에 없는 viewId나
+  패턴이 안 맞는 해시는 조용히 무시한다(오타·구버전 링크 방어, 에러 토스트를 띄우지 않음 — 첫
+  화면 진입 순간부터 방해되는 걸 피했다).
+
+- **book-detail의 `scan`을 `'none'`에서 `'focus'`로 전환**했다(`registry.ts`). 이전엔 `Window.tsx`
+  의 핀 버튼조차 `meta?.scan === 'focus'`에서만 렌더돼 book-detail은 핀이 아예 불가능했다 —
+  FRONTEND.md "진입: ... 스캔(핀 시)" 완료 조건이 이 전환을 요구한다. **스캔이 들어왔을 때
+  갱신 방식은 `shell.open('book-detail', 새params)`(새 창을 여는 API)이 아니라 뷰 내부
+  `useState`를 바꾸는 방식**을 택했다 — book-detail은 `desktop.single`이 아니므로(카탈로그
+  여러 책을 나란히 비교하는 용도를 남겨두려고 이번 항목에서 `single`을 추가하지 않았다)
+  `shell.open`을 쓰면 스캔할 때마다 새 창이 계속 열린다. 내부 state 갱신은 "핀 고정된 바로 그
+  창"이 그 자리에서 갱신되는 net effect를 정확히 만족시키면서 창 증식을 만들지 않는다.
+
+- **소장본이 많은 인기 서명에서 "copyStatus를 소장본마다 호출할지, 미러의 캐시된 상태로 보여줄지"
+  트레이드오프는 애초에 발생하지 않도록 설계**했다 — `apiWebTitleDetail_`이 서버 쪽에서 COPIES·
+  LOANS를 한 번씩만 훑어(readTable_은 요청 스코프 캐시, PATCH_SPEC P2) 모든 소장본의 실시간
+  상태를 한 응답에 담아 내려주므로, 프론트는 소장본 개수와 무관하게 항상 API 호출 1회
+  (`fetchTitleDetail`)만 한다. `apiCopyStatus_`를 소장본마다 반복 호출하는 안은 채택하지
+  않았다(N배 왕복·N배 GAS 실행시간 소모, 인기 서명일수록 더 나빠지는 설계는 피해야 한다는
+  ADR-014 "GAS 일일 실행시간 예산"과도 상충).
+
+- **조작 버튼(예약·연장·분실 처리·변상)은 명확히 `disabled` 상태의 자리만 마련**했다
+  (`views/book-detail/index.tsx` 「처리」 절) — 눌러도 아무 일도 안 일어나는데 활성화된 것처럼
+  보이는 "죽은 버튼"을 만들지 않기 위해서다. 캡션(`actionsHint`)으로 "다음 항목(todo/12·13)에서
+  연결됩니다"를 명시해, 왜 비활성인지 사서가 헷갈리지 않게 했다.
+
+- **"운영 기록" 서브섹션의 action_code→라벨 매핑은 `views/recent-ops/index.tsx`의
+  `ACTION_LABEL_KEYS`를 그대로 import하지 않고, book-detail에서 실제로 나올 법한 항목만 다시
+  선언**했다 — 이 프로젝트의 기존 관례(`views/reports/index.tsx`가 catalog·homeroom의 i18n
+  **키**는 재사용하되 라벨 매핑 **함수/객체**는 각 화면이 따로 갖는 패턴)를 그대로 따른 것이다.
+  i18n 키 자체(`views.recentOps.action.*`)는 재사용해 같은 개념에 같은 문구가 나오게 했다.
+
+- **`views.bookDetail.comingSoon` 키를 제거**했다(ko/en 양쪽) — 스텁이 완전 구현으로 교체돼
+  더 이상 쓰이지 않는다. 새로 추가한 키는 전부 `views.bookDetail.*` 네임스페이스 안에 두되,
+  이미 같은 개념을 가리키는 기존 키(`views.catalog.col.barcode/status/shelf/acquiredAt`,
+  `views.recentOps.col.*`, `common.none`, `components.dataTable.errorPrefix`)는 새로 만들지
+  않고 그대로 재사용했다(DESIGN.md "같은 행동 같은 이름 관통").

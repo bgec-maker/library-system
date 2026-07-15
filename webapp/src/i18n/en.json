@@ -239,7 +239,49 @@
       "syncing": "Syncing… {count}/{total}"
     },
     "bookDetail": {
-      "comingSoon": "Book detail is coming soon."
+      "invalidQuery": "No book to show — pick one from the catalog or open a registration number link.",
+      "sectionCopies": "Copies",
+      "sectionReservations": "Reservations",
+      "sectionHistory": "Recent history",
+      "sectionOps": "Operation log",
+      "sectionActions": "Actions",
+      "coverAlt": "{title} cover",
+      "noCover": "No cover",
+      "fieldClassification": "Classification",
+      "fieldPublisher": "Publisher",
+      "fieldPublishedYear": "Published year",
+      "fieldPageCount": "Page count",
+      "fieldIsbn": "ISBN",
+      "descriptionEmpty": "No description on file.",
+      "col": {
+        "borrower": "Borrower",
+        "dueDate": "Due",
+        "checkedOutAt": "Checked out",
+        "dueAt": "Due date",
+        "returnedAt": "Returned",
+        "applicant": "Requester",
+        "queueSeq": "Queue #",
+        "requestedAt": "Requested"
+      },
+      "loanStatus": {
+        "open": "On loan",
+        "returned": "Returned",
+        "lost": "Lost"
+      },
+      "reservationStatus": {
+        "waiting": "Waiting",
+        "ready": "Ready for pickup"
+      },
+      "copiesEmpty": "No copies.",
+      "historyEmpty": "No loan history.",
+      "opsEmpty": "No operation log entries.",
+      "reservationsEmpty": "No reservations.",
+      "reservationSummary": "{waiting} waiting · {ready} ready for pickup",
+      "actionsHint": "Reserve/renew/lost/compensate actions will be wired up in later items (todo/12, 13).",
+      "actionReserve": "Reserve",
+      "actionRenew": "Renew",
+      "actionMarkLost": "Mark lost",
+      "actionCompensate": "Compensate"
     },
     "recentOps": {
       "refresh": "Refresh",

@@ -13,7 +13,7 @@
 
 ## 큐
 - [x] 10 i18n-debt — 린트 JSX밖 확장 + 창 제목 로케일 구독
-- [ ] 11 book-detail — 스텁(28줄) → 완성
+- [x] 11 book-detail — 스텁(28줄) → 완성
 - [ ] 12 reservations-front — 예약 걸기 + 관리 뷰
 - [ ] 13 renew-lost-compensate — 연장·분실·변상 웹앱 처리
 - [ ] 14 inventory-mode — 장서점검 + ZXing Worker

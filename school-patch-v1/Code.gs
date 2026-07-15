@@ -2504,6 +2504,7 @@ function doPost(e) {
       if (action === 'viz') return apiWebViz_(payload);
       if (action === 'catalogSync') return apiWebCatalogSync_(payload);
       if (action === 'recentOps') return apiWebRecentOps_(payload);
+      if (action === 'titleDetail') return apiWebTitleDetail_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -3016,7 +3017,7 @@ function apiWebCatalogSync_(payload) {
   };
 }
 
-// --------------------------- 웹앱 최근 처리(recent-ops, todo/08) ---------------------------
+// --------------------------- 웹앱 최근 처리(recent-ops, todo/08 · entityId 필터 todo/11) ---------------------------
 //
 // 15_AUDIT_LOG는 executeWrite_ 성공 트랜잭션마다 writeAudit_()가 이미 채워온 이력 시트다(모든
 // 쓰기 액션 공통 경로) — 이 액션은 그 시트를 읽기 전용으로 조회해 최신순으로 잘라 돌려줄 뿐,
@@ -3024,6 +3025,18 @@ function apiWebCatalogSync_(payload) {
 var RECENT_OPS_DEFAULT_LIMIT_ = 100;
 var RECENT_OPS_MAX_LIMIT_ = 500;
 
+// todo/11(book-detail) "최근 이력" — payload.entityId가 있으면 그 대상으로 좁힌다(없으면 기존
+// 동작과 완전히 동일 — 하위호환 추가 파라미터, 절대 규칙 "추가만" 준수).
+//
+// 🔴 알려진 한계(writeAudit_ 호출부 전수 확인, checkout_/return_/renew_/markLoanLost_) —
+// LOAN 이벤트의 entity_id는 barcode/copy_id가 아니라 loan_id다. 그중 CHECKOUT만
+// after_json에 copy_id를 함께 남기고(대출 처리 시점엔 아직 소장본을 안다는 문맥이 있어서),
+// RETURN/RENEW/MARK_LOST의 before/after JSON에는 copy_id 자체가 없다 — 이 셋은 entity_id
+// 필터로도, JSON 안을 뒤져도 특정 소장본에 못 붙는다. checkout_/return_ 등은 이 항목에서
+// 수정 금지 대상이라(절대 규칙) audit 기록 형태 자체를 못 바꾼다. 그러니 이 필터는 등록·상태
+// 변경·CHECKOUT까지만 잡는 "부분" 이력이고, book-detail은 반납·연장까지 포함한 정확한 대출
+// 이력은 이 액션이 아니라 apiWebTitleDetail_의 loanHistory(10_LOANS 직접 조회 — copy_id
+// 컬럼을 항상 갖고 있어 훨씬 정확)로 보완한다(docs/ASSUMPTIONS.md todo/11 참고).
 function apiWebRecentOps_(payload) {
   payload = payload || {};
   var limit = RECENT_OPS_DEFAULT_LIMIT_;
@@ -3033,7 +3046,21 @@ function apiWebRecentOps_(payload) {
   }
   if (limit > RECENT_OPS_MAX_LIMIT_) limit = RECENT_OPS_MAX_LIMIT_;
 
-  var rows = readTable_(LIBRARY_MVP.SHEETS.AUDIT).rows
+  var entityId = payload.entityId !== undefined && payload.entityId !== null ? cleanCode_(payload.entityId) : '';
+
+  var candidateRows = readTable_(LIBRARY_MVP.SHEETS.AUDIT).rows;
+  if (entityId) {
+    candidateRows = candidateRows.filter(function(row) {
+      if (cleanCode_(row.entity_id) === entityId) return true;
+      if (row.entity_type === 'LOAN' && row.after_json) {
+        var after = safeParseAuditJson_(row.after_json);
+        if (after && after.copy_id && cleanCode_(after.copy_id) === entityId) return true;
+      }
+      return false;
+    });
+  }
+
+  var rows = candidateRows
     .slice()
     .sort(function(a, b) {
       var at = asDate_(a.occurred_at);
@@ -3054,6 +3081,165 @@ function apiWebRecentOps_(payload) {
     });
 
   return { rows: rows };
+}
+
+// before_json/after_json은 항상 writeAudit_(safeJson_)이 만든 값이라 정상 상황에선 파싱이
+// 실패할 이유가 없지만, 읽기 전용 조회 경로에서 방어적으로 감싼다(빈 문자열·손상값 방어).
+function safeParseAuditJson_(text) {
+  try {
+    return JSON.parse(text);
+  } catch (parseError) {
+    return null;
+  }
+}
+
+// --------------------------- 웹앱 도서 상세(book-detail, todo/11 신규 읽기 전용 액션) ---------------------------
+//
+// 선택 (a) vs (b) — catalog IndexedDB 미러(services/catalog.ts) 행 모양을 넓혀 cover_url·
+// description·published_year 등 TITLES 전용 서지 필드까지 싣는 안도 가능했지만(사양이 명시적으로
+// 허용), 그러면 그 서명의 소장본이 10권이면 같은 서지 데이터가 10번 중복 저장되고(미러는 COPY
+// 단위 1행 = 소장본 1건, todo/08) catalog 목록 렌더엔 필요 없는 필드로 미러 크기만 불어난다.
+// ADR-024 "미러는 목록 전용, 서버 페이지네이션 금지"가 풀려는 문제는 "5,000행 목록의 정렬·필터"
+// 이지 "한 건 상세 조회"가 아니다 — book-detail은 한 번에 서명 1개만 보므로 왕복 1회의 실시간
+// 조회가 목록용 미러를 부풀리는 것보다 훨씬 낫다고 판단했다(선택 (b), docs/ASSUMPTIONS.md 참고).
+// 같은 이유로 각 소장본의 현재 대출자·반납예정일도 (loan-return처럼) 그때그때 살아있는
+// 10_LOANS를 조인해서 내려준다 — 미러의 statusCode는 마지막 배경동기화 시점 스냅샷일 뿐이라
+// "누가 지금 빌려갔는지"처럼 신선도가 중요한 값엔 애초에 안 맞는다.
+//
+// payload: { copyKey?: 바코드/copy_id, titleId?: title_id } 중 하나 이상. copyKey가 있으면
+// 그 소장본이 속한 title로 좁힌다(딥링크 #/w/book-detail?copy=등록번호, catalog 행 클릭 둘 다
+// barcode를 이 이름으로 보낸다) — titleId만 있으면 그 서명 전체를 보여준다(포커스 소장본 없음).
+var TITLE_DETAIL_LOAN_HISTORY_LIMIT_ = 20;
+var TITLE_DETAIL_RESERVATION_LIMIT_ = 50;
+
+function apiWebTitleDetail_(payload) {
+  payload = payload || {};
+  var copyKeyInput = cleanText_(payload.copyKey || payload.barcode || '');
+  var titleIdInput = cleanText_(payload.titleId || '');
+  if (!copyKeyInput && !titleIdInput) fail_('VALIDATION_ERROR', 'copyKey 또는 titleId가 필요합니다.');
+
+  var focusCopy = copyKeyInput ? findCopyByKey_(copyKeyInput) : null;
+  var titleId = focusCopy ? focusCopy.title_id : titleIdInput;
+  var title = findByIdRequired_(LIBRARY_MVP.SHEETS.TITLES, 'title_id', titleId, '도서');
+
+  var authorById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.AUTHORS).rows, 'author_id');
+  var authorNames = readTable_(LIBRARY_MVP.SHEETS.TITLE_AUTHORS).rows
+    .filter(function(ta) { return ta.title_id === titleId; })
+    .sort(function(a, b) { return Number(a.sort_order || 0) - Number(b.sort_order || 0); })
+    .map(function(ta) { return (authorById[ta.author_id] || {}).display_name || ''; })
+    .filter(function(name) { return Boolean(name); });
+
+  var categoryById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.CATEGORIES).rows, 'category_id');
+  var titleCategoryRows = readTable_(LIBRARY_MVP.SHEETS.TITLE_CATEGORIES).rows.filter(function(tc) { return tc.title_id === titleId; });
+  var primaryCategoryRow = titleCategoryRows.filter(function(tc) { return truthy_(tc.is_primary); })[0] || titleCategoryRows[0];
+  var primaryCategory = primaryCategoryRow ? categoryById[primaryCategoryRow.category_id] : null;
+
+  // 03_TITLES에는 페이지수 컬럼이 없다(HEADERS 확인 — registerByIsbn_도 같은 이유로 description에
+  // 문자열로만 보강 기록한다, 위 주석 참고). 대신 21_BOOK_CACHE(ISBN 조회 부가 캐시, 진위 데이터
+  // 아님)에 이 서지의 isbn13으로 찾히는 행이 있으면 page_count를 "최선노력"으로만 곁들인다 —
+  // 캐시가 없으면(폰 등록이 아니거나 캐시 갱신 전) 빈 값 그대로 두고 화면이 "정보 없음"으로 정직하게 표시한다.
+  var pageCount = '';
+  if (title.isbn13) {
+    var cacheRow = findBookCacheRow_(normalizeIsbnLoose_(title.isbn13));
+    if (cacheRow && cacheRow.page_count !== '' && cacheRow.page_count !== null && cacheRow.page_count !== undefined) {
+      pageCount = cacheRow.page_count;
+    }
+  }
+
+  var allCopies = readTable_(LIBRARY_MVP.SHEETS.COPIES).rows.filter(function(c) { return c.title_id === titleId; });
+  var copyIdSet = toSet_(allCopies, 'copy_id');
+  var memberById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows, 'member_id');
+  var allLoans = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows;
+
+  var openLoanByCopy = {};
+  allLoans.forEach(function(loan) {
+    if (loan.status_code === 'OPEN' && !loan.returned_at) openLoanByCopy[loan.copy_id] = loan;
+  });
+
+  var copies = allCopies.map(function(copy) {
+    var openLoan = openLoanByCopy[copy.copy_id];
+    var member = openLoan ? memberById[openLoan.member_id] : null;
+    return {
+      copyId: copy.copy_id,
+      barcode: copy.barcode,
+      statusCode: copy.status_code || '',
+      shelfCode: copy.shelf_code || '',
+      conditionCode: copy.condition_code || '',
+      acquiredAt: copy.acquired_at ? formatDate_(copy.acquired_at) : '',
+      onLoan: Boolean(openLoan),
+      dueAt: openLoan ? formatDateTime_(openLoan.due_at) : '',
+      memberNo: member ? member.member_no : '',
+      memberName: member ? member.name : ''
+    };
+  }).sort(function(a, b) { return String(a.barcode).localeCompare(String(b.barcode)); });
+
+  // "최근 이력" 1차 소스 — 15_AUDIT_LOG가 아니라 10_LOANS를 직접 훑는다(위 함수 헤더 주석 +
+  // apiWebRecentOps_ 주석 참고: LOAN 감사 로그는 RETURN/RENEW/MARK_LOST에 copy_id를 안 남겨
+  // entityId로 재구성이 안 된다). LOANS는 copy_id 컬럼을 항상 갖고 있어 정확하다.
+  var loanHistory = allLoans
+    .filter(function(loan) { return copyIdSet[loan.copy_id]; })
+    .sort(function(a, b) {
+      var at = asDate_(a.checked_out_at);
+      var bt = asDate_(b.checked_out_at);
+      return (bt ? bt.getTime() : 0) - (at ? at.getTime() : 0);
+    })
+    .slice(0, TITLE_DETAIL_LOAN_HISTORY_LIMIT_)
+    .map(function(loan) {
+      var copy = allCopies.filter(function(c) { return c.copy_id === loan.copy_id; })[0];
+      var member = memberById[loan.member_id];
+      return {
+        loanId: loan.loan_id,
+        barcode: copy ? copy.barcode : loan.copy_id,
+        memberNo: member ? member.member_no : '',
+        memberName: member ? member.name : '',
+        checkedOutAt: formatDateTime_(loan.checked_out_at),
+        dueAt: formatDateTime_(loan.due_at),
+        returnedAt: loan.returned_at ? formatDateTime_(loan.returned_at) : '',
+        statusCode: loan.status_code || ''
+      };
+    });
+
+  var activeReservationRows = readTable_(LIBRARY_MVP.SHEETS.RESERVATIONS).rows
+    .filter(function(r) { return r.title_id === titleId && (r.status_code === 'WAITING' || r.status_code === 'READY'); })
+    .sort(reservationSort_);
+  var reservationItems = activeReservationRows.slice(0, TITLE_DETAIL_RESERVATION_LIMIT_).map(function(r) {
+    var member = memberById[r.member_id];
+    return {
+      reservationId: r.reservation_id,
+      memberNo: member ? member.member_no : '',
+      memberName: member ? member.name : '',
+      statusCode: r.status_code,
+      queueSeq: Number(r.queue_seq || 0),
+      requestedAt: formatDateTime_(r.requested_at),
+      readyAt: r.ready_at ? formatDateTime_(r.ready_at) : '',
+      pickupExpiresAt: r.pickup_expires_at ? formatDateTime_(r.pickup_expires_at) : ''
+    };
+  });
+
+  return {
+    titleId: titleId,
+    isbn13: title.isbn13 || '',
+    title: title.title || '',
+    subtitle: title.subtitle || '',
+    authors: authorNames.join(' · '),
+    publisher: title.publisher || '',
+    publishedYear: title.published_year || '',
+    languageCode: title.language_code || '',
+    materialTypeCode: title.material_type_code || '',
+    classification: primaryCategory ? (primaryCategory.name_ko || primaryCategory.category_code || '') : '',
+    description: title.description || '',
+    coverUrl: title.cover_url || '',
+    pageCount: pageCount,
+    titleStatusCode: title.status_code || '',
+    focusCopyId: focusCopy ? focusCopy.copy_id : '',
+    copies: copies,
+    loanHistory: loanHistory,
+    reservations: {
+      waitingCount: activeReservationRows.filter(function(r) { return r.status_code === 'WAITING'; }).length,
+      readyCount: activeReservationRows.filter(function(r) { return r.status_code === 'READY'; }).length,
+      items: reservationItems
+    }
+  };
 }
 
 function normalizeIsbn13Strict_(value) {

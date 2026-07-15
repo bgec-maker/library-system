@@ -239,7 +239,49 @@
       "syncing": "동기화 중… {count}/{total}건"
     },
     "bookDetail": {
-      "comingSoon": "도서 상세는 곧 제공됩니다."
+      "invalidQuery": "조회할 도서 정보가 없습니다 — 카탈로그에서 선택하거나 등록번호로 접속하세요.",
+      "sectionCopies": "소장본 목록",
+      "sectionReservations": "예약 현황",
+      "sectionHistory": "최근 이력",
+      "sectionOps": "운영 기록",
+      "sectionActions": "처리",
+      "coverAlt": "{title} 표지",
+      "noCover": "표지 없음",
+      "fieldClassification": "분류",
+      "fieldPublisher": "출판사",
+      "fieldPublishedYear": "출판년도",
+      "fieldPageCount": "페이지수",
+      "fieldIsbn": "ISBN",
+      "descriptionEmpty": "설명이 등록되지 않았습니다.",
+      "col": {
+        "borrower": "대출자",
+        "dueDate": "반납예정",
+        "checkedOutAt": "대출일",
+        "dueAt": "반납예정일",
+        "returnedAt": "반납일",
+        "applicant": "신청자",
+        "queueSeq": "대기순번",
+        "requestedAt": "신청일"
+      },
+      "loanStatus": {
+        "open": "대출중",
+        "returned": "반납됨",
+        "lost": "분실"
+      },
+      "reservationStatus": {
+        "waiting": "대기",
+        "ready": "수령 대기"
+      },
+      "copiesEmpty": "소장본이 없습니다.",
+      "historyEmpty": "대출 이력이 없습니다.",
+      "opsEmpty": "운영 기록이 없습니다.",
+      "reservationsEmpty": "예약이 없습니다.",
+      "reservationSummary": "대기 {waiting}명 · 수령대기 {ready}건",
+      "actionsHint": "예약·연장·분실·변상 처리는 다음 항목(todo/12·13)에서 연결됩니다.",
+      "actionReserve": "예약",
+      "actionRenew": "연장",
+      "actionMarkLost": "분실 처리",
+      "actionCompensate": "변상"
     },
     "recentOps": {
       "refresh": "새로고침",

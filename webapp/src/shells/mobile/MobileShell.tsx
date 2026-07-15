@@ -7,6 +7,7 @@ import { useSession } from '../../services/session';
 import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
 import { setScanRoute, subscribeScan } from '../../services/scanBus';
 import { pushToast } from '../../services/toastBus';
+import { currentWindowDeepLink, subscribeWindowDeepLink } from '../../deepLink';
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
 import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
@@ -216,6 +217,15 @@ export default function MobileShell() {
   const handleTabSelect = useCallback((id: TabSelection) => selectTab(id), [selectTab]);
   const handleMoreOpen = useCallback((viewId: ViewId) => openFn(viewId), [openFn]);
   const handleStackDepthChange = useCallback((_depth: number, topViewId: ViewId | null) => setStackTop(topViewId), []);
+
+  // todo/11 딥링크 — "#/w/book-detail?copy=…"로 앱에 직접 들어오면 그 화면을 자동으로 연다.
+  // 파싱은 셸 공용 모듈(src/deepLink.ts, DesktopShell.tsx와 동일)이 담당하고, 여기서는 이 셸의
+  // 오픈 메커니즘(openFn — tab 매핑 있으면 탭 전환, 없으면 StackNav.push)에 연결만 한다.
+  useEffect(() => {
+    const initial = currentWindowDeepLink();
+    if (initial) openFn(initial.viewId, initial.params);
+    return subscribeWindowDeepLink((target) => openFn(target.viewId, target.params));
+  }, [openFn]);
 
   // ── 스캔 라우팅 + 카메라 on/off ──────────────────────────────────────
   // "관심 창"은 데스크톱=포커스 창, 모바일=지금 화면에 보이는 화면(스택이 열려 있으면 그 최상단,

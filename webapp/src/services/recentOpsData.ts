@@ -23,12 +23,20 @@ export interface RecentOpRow {
 
 export type RecentOpsFetchOutcome = { ok: true; rows: RecentOpRow[]; sample: boolean } | { ok: false; message: string };
 
-export async function fetchRecentOps(limit = 100): Promise<RecentOpsFetchOutcome> {
-  const res = await apiCall<{ rows: RecentOpRow[] }>('recentOps', { limit });
+// todo/11 — 두 번째 인자 entityId는 apiWebRecentOps_에 추가된 선택 파라미터(하위호환 추가,
+// entityId 생략 시 기존 동작과 완전히 동일)를 그대로 실어 보낸다. book-detail이 "이 소장본의
+// 최근 이력"을 좁혀 볼 때 쓴다(entity_id 직접 일치 + CHECKOUT의 copy_id JSON 매칭까지만 —
+// RETURN/RENEW/MARK_LOST는 못 잡는 알려진 한계, services/titleDetail.ts의 loanHistory가
+// 정확한 대출 이력을 보완한다. Code.gs apiWebRecentOps_ 주석·docs/ASSUMPTIONS.md todo/11 참고).
+export async function fetchRecentOps(limit = 100, entityId?: string): Promise<RecentOpsFetchOutcome> {
+  const res = await apiCall<{ rows: RecentOpRow[] }>('recentOps', entityId ? { limit, entityId } : { limit });
   if (res.ok) return { ok: true, rows: res.data.rows, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 recentOps 액션이 없는 배포(재배포 전) — dashboardData.ts와 같은 정상 상태, 샘플로 폴백.
-    return { ok: true, rows: mockRecentOps, sample: true };
+    // entityId가 주어졌으면 목데이터도 같은 방식(entity_id 일치)으로 좁혀서 보여준다 — 실제
+    // 배포 후 필터 결과가 "전체 목록"으로 보이는 오해를 방지한다.
+    const rows = entityId ? mockRecentOps.filter((row) => row.entityId === entityId) : mockRecentOps;
+    return { ok: true, rows, sample: true };
   }
   return { ok: false, message: res.error.message || res.error.code };
 }

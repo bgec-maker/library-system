@@ -4,6 +4,7 @@ import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { getViewMeta } from '../../registry';
 import { subscribeScan } from '../../services/scanBus';
 import { cameraSession } from '../../services/cameraSession';
+import { currentWindowDeepLink, subscribeWindowDeepLink } from '../../deepLink';
 import { useLocale } from '../../i18n';
 import DashboardBaseLayer from './DashboardBaseLayer';
 import { Dock } from './Dock';
@@ -30,6 +31,16 @@ export default function DesktopShell() {
       }),
     [openWindow]
   );
+
+  // todo/11 딥링크 — "#/w/book-detail?copy=…"로 앱에 직접 들어오면 그 창을 자동으로 연다.
+  // 파싱은 셸 공용 모듈(src/deepLink.ts)이 담당하고, 여기서는 이 셸의 오픈 메커니즘
+  // (useWindowStore.openWindow)에 연결만 한다 — MobileShell.tsx도 같은 모듈을 각자의
+  // 오픈 메커니즘(StackNav.push/탭 전환)에 연결한다(파싱 로직 중복 없음).
+  useEffect(() => {
+    const initial = currentWindowDeepLink();
+    if (initial) openWindow(initial.viewId, initial.params);
+    return subscribeWindowDeepLink((target) => openWindow(target.viewId, target.params));
+  }, [openWindow]);
 
   // ADR-020 "단축키 S" 시작 트리거 — 셸 계층에서만(뷰가 아니라) 전역으로 건다. 입력 요소에
   // 포커스가 있을 때는 타이핑 중 'S'를 가로채면 안 되므로 무시한다. 이미 켜져 있으면 끄고,
