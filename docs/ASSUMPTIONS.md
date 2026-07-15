@@ -1647,3 +1647,179 @@
   02_사용법 탭에 붙여 넣을 영문 절차)과 `01_Console_EN` 탭을 만드는 수기 절차(라벨 복제 시
   건드리면 안 되는 값 셀 좌표 명시)를 함께 담았다. `PATCH_NOTES.md`의 Phase B 체크리스트
   5번(한/영 전환)·6번(사용법 갱신)도 갱신했다.
+
+## todo/23 · 연간 리셋 마법사 + 학생 CSV + LOANS 아카이브 (2026-07-15)
+
+이 항목은 이 프로젝트에서 가장 파급력이 큰 변경(대량 진급·졸업·대출 원장 행 삭제)이라 판단 근거를
+평소보다 자세히 남긴다. `registerMember_`(722행)·`updateMember_`(782행)·
+`assertMemberCanDeactivate_`(834행)·`executeWrite_`(2500행대)·`appendRecord_`/
+`transactionAppendRecord_`(2363·2380행)는 전부 무수정으로 재사용했고, 새로 만든 코드는 파일 맨
+끝(`checkUnreturnedAll_` ~ `runAnnualArchiveLoans`, 4707행 이후)과 `integrityCheck_`/
+`buildLibraryMenu_`/`LIBRARY_MVP.SHEETS`의 순수 추가 지점 세 곳뿐이다.
+
+- **`GRADUATION_GRADE` 설정값은 `getConfig_('GRADUATION_GRADE', 6)`로 조회하며, 기본값 6은
+  임의 지정이 아니라 이 저장소가 이미 스스로 "OO초등학교 도서관"(`docs/ASSUMPTIONS.md` todo/05
+  참고, `getConfig_('LIBRARY_NAME', ...)` 예시 문구)이라고 밝힌 것에 근거한다** — 한국
+  초등학교는 6학년제이므로 6이 합리적 기본값이다. 이 환경은 라이브 바이너리 xlsx 템플릿에 새
+  행을 추가할 수 없으므로(todo/17·21·22와 같은 반복된 제약), 실제 학교가 6학년제가 아니거나
+  졸업 학년을 다르게 쓰고 싶다면 **사서가 `17_CONFIG` 시트에 `setting_key=GRADUATION_GRADE`,
+  `setting_value=<원하는 학년 숫자>` 행을 직접 추가**해야 한다(`value_type`은 다른 숫자형 설정과
+  같은 관례로 채우면 된다). 이 행이 없으면 계속 6으로 동작한다. `graduateStudents_`(②)와
+  `promoteAllStudents_`(③)가 같은 키를 공유한다 — 졸업 학년과 "승급에서 제외할 학년"은 항상
+  같은 값이어야 하므로 설정을 하나로 통일했다.
+
+- **④ 신입생 일괄 등록은 PATCH_SPEC.md P1-e 원문의 `bulkRegisterStudents_(csv)` 시그니처
+  대신, `22_MANUAL_ENTRY`(todo/21)가 이미 쓰는 "시트에 적어두고 흡수" 패턴으로 구현**했다
+  (`ensureNewStudentImportSheet_`/`absorbNewStudentImports_`/`runAbsorbNewStudentImports`,
+  4929~5031행). GAS `ui.prompt`는 한 줄짜리 텍스트박스만 지원해 200행짜리 CSV 텍스트를 통째로
+  받을 좋은 입력 수단이 없다 — 반면 시트+흡수 패턴은 이미 이 저장소에서 검증된 방식이고, 사서가
+  엑셀/스프레드시트에서 명렬표를 그대로 복사해 붙여넣을 수 있어 실제로 더 쓰기 쉽다. 새 시트
+  `23_NEW_STUDENT_IMPORT`는 `MANUAL_ENTRY`와 완전히 같은 이유로 `LIBRARY_MVP.SHEETS`에만
+  등록하고 `HEADERS`에는 넣지 않았다(`ensureSchema_`/`protectDatabaseSheets_`가 순회하지
+  않으므로 두 함수 모두 무수정으로 유지되고, 이 시트는 영구히 비보호 상태로 남는다 — 사서가
+  GAS 없이도 명렬표를 미리 적어 둘 수 있어야 한다는 22번 항목의 논리를 그대로 이어받았다).
+  **정확한 열 헤더 순서는 `['학번', '이름', '학년', '반', '번호', '처리상태', '처리결과']`**
+  — PATCH_SPEC P1-e가 명시한 "학번·이름·학년·반·번호" 순서를 그대로 따르고, `MANUAL_ENTRY_
+  HEADERS_`와 같은 관례로 마지막 두 칸(처리상태·처리결과)을 붙였다. "학번"은
+  `resolveManualEntryMember_`(4520행대) 주석이 이미 확인한 대로 `09_MEMBERS.school_no`에
+  대응하는 라벨이라(student_no가 아니다) 앞자리 0 손실을 막기 위해 텍스트(@) 서식을 걸었다
+  (`ensureManualEntrySheet_`와 같은 기법). 배치 상한은 `NEW_STUDENT_IMPORT_BATCH_LIMIT_ = 200`
+  (PATCH_SPEC이 명시한 "200건 배치"), `ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_`와 이름 관례를
+  맞췄다. 등록되는 회원은 항상 `memberType` 기본값(`registerMember_`의 `'STUDENT'`)을 그대로
+  쓴다 — 이 시트의 존재 목적 자체가 "신입생(학생) 일괄 등록"이므로 다른 회원유형을 받을 이유가
+  없다고 판단했다.
+
+- **③ 전원 진급은 `class_no`/`student_no`(반·번호)를 절대 건드리지 않는다** — `updateMember_`
+  호출 payload에 `grade`만 담아 넘긴다. 반 배정(누가 몇 반이 되는지)은 매년 담임 배정과 함께
+  결정되는, 이 도서관 시스템이 갖고 있지 않은 학사 정보(학급 편성표)에 의존하는 별도의 수작업
+  영역이라고 판단했다 — 시스템이 임의로 반을 유지한 채 학년만 올리면 실제 반 배정이 나온 뒤
+  사서가 다시 한 번씩 수정해야 하므로, 아예 손대지 않고 "학년만 올랐고 반·번호는 그대로"라는
+  중간 상태를 명확히 하는 편이 더 정직하다고 봤다. `runPromoteAllStudents`의 확인 대화상자에도
+  이 사실을 그대로 문구로 남겼다.
+
+- **③ 전원 진급의 승급 대상 필터는 "ACTIVE STUDENT 전체"가 아니라 "ACTIVE STUDENT 중
+  졸업 학년(GRADUATION_GRADE)이 아닌 회원"으로 명시적으로 좁혔다.** 단순히 "ACTIVE
+  STUDENT 전체"로 했다면, ②에서 미반납 등으로 "차단"되어 아직 졸업하지 못하고 ACTIVE·졸업
+  학년 그대로 남아 있는 학생까지 승급 로직에 걸려 존재하지 않는 학년(예: 6학년제에서 7학년)으로
+  밀려나는 사고가 난다. 정상 졸업한 학생은 `status_code`가 이미 `GRADUATED`(ACTIVE 아님)라
+  자연히 빠지지만, 차단된 학생은 여전히 ACTIVE이므로 별도 배제가 반드시 필요했다.
+
+- **② 졸업 처리는 "차단(blocked)"과 "오류(failed)"를 의도적으로 분리했고, 이 구분이 이
+  항목에서 가장 중요한 설계 결정이다.** `graduateStudents_`는 각 후보 회원마다 먼저
+  `assertMemberCanDeactivate_`를 **executeWrite_ 밖에서 직접 호출**해 미반납/수령대기예약/
+  미납금 여부를 사전 확인한다. 여기서 막히면 그 회원은 `executeWrite_`까지 전혀 보내지 않고
+  "차단" 명단에만 올린다. 만약 이 사전 확인 없이 곧바로 `executeWrite_('GRADUATE_MEMBER', ...)`
+  를 호출했다면, `assertMemberCanDeactivate_`가 `updateMember_` 내부에서 던지는 예외가
+  `18_SYS_OPERATIONS`에 그 회원의 requestId(`GRAD-연도-member_id`)를 **FAILED로 영구
+  고정**시켜 버린다 — `executeWrite_`(2513~2522행, 무수정)의 기존 정책상 FAILED 상태의
+  requestId는 같은 값으로 재실행하면 무조건 `FAILED_REQUEST_REQUIRES_REVIEW`로 거부되기
+  때문이다. 그런데 "미반납 학생이 책을 반납한 뒤 사서가 같은 메뉴를 다시 눌러 그 학생만 마저
+  졸업시키는 것"은 이 마법사의 정상적인 실사용 흐름이다 — 사전 확인으로 분리해 두면 차단된
+  학생은 애초에 requestId 자체가 생기지 않으므로 언제든 자유롭게 재시도된다. 반대로 사전
+  확인을 통과했는데도 실제 쓰기 단계에서 발생하는 오류(예: 데이터 정합성 문제로 인한 예외적
+  실패)는 지금까지와 같은 FAILED 정책을 그대로 적용해 사람이 검토하게 뒀다 — 이건 "정상적으로
+  반복될 것으로 예상되는 업무 규칙 차단"이 아니라 "뭔가 잘못됐으니 조사가 필요한 상황"이기
+  때문이다.
+
+- **"순서 강제(이전 단계 미완료 시 다음 단계 차단)"는 지속되는 상태 플래그(state machine)로
+  구현하지 않았다.** PATCH_SPEC.md P1-e 원문이 이 문구를 쓰고 있지만, 실제로 검토해 보니 하드
+  블로킹은 오히려 위험하다고 판단했다 — 예를 들어 "②가 완료되어야 ③을 허용"을 "졸업 학년에
+  ACTIVE 회원이 하나도 없어야 함"으로 구현하면, 미반납 등으로 정당하게 차단된 학생이 단 한
+  명만 남아 있어도 다른 학년 전체의 진급까지 영구히 막혀 버리는 부작용이 생긴다. 대신: (1) ①은
+  순수 읽기 전용 검토 게이트로 남겨 사람이 판단해 다음 단계로 넘어가게 했고, (2) 실제로 명시된
+  단 하나의 수용 기준("미반납 학생 졸업 시도 → 차단 + 명단")은 `assertMemberCanDeactivate_`
+  재사용으로 그대로 충족시켰으며, (3) ②→③ 순서는 코드 레벨 차단 대신 `runPromoteAllStudents`의
+  확인 대화상자 문구("② 졸업 처리를 먼저 완료한 뒤 실행하는 것을 권장합니다")로 안내하고, 위
+  항목에서 설명한 필터(졸업 학년 제외)로 순서가 뒤바뀌어도 최소한 존재하지 않는 학년으로
+  밀려나는 사고는 구조적으로 막았다. 사용자가 이 판단을 뒤집고 싶다면 `promoteAllStudents_`
+  시작 부분에 "졸업 학년에 아직 ACTIVE 회원이 남아 있으면 전체를 막는다" 같은 하드 게이트를
+  추가하면 된다.
+
+- **`archiveLoans_`의 아카이브 시트 이름 `10_LOANS_YYYY`에서 YYYY는 "그 안에 담긴 대출
+  데이터의 연도"가 아니라 "이 아카이브를 실행한 기준 연도(= 함수 인자 `year`)"다.**
+  `docs/PATCH_SPEC.md` P2-b 원문("`checked_out_at < 해당연도 시작`인 행 → `10_LOANS_YYYY`
+  시트로 이동")을 문자 그대로 구현했다 — `year=2026`으로 실행하면 2026-01-01 이전에 대출된
+  반납/분실/취소 건이 `10_LOANS_2026` 시트로 이동한다(그 안에는 2025년 이전 여러 해의 데이터가
+  섞여 들어갈 수 있다). 다소 직관에 어긋날 수 있어(시트 이름이 "그 안의 최신 연도"처럼 보일
+  위험) `runAnnualArchiveLoans`의 확인 대화상자에 정확한 기준 날짜와 대상 시트 이름을 문장으로
+  풀어써 뒀다.
+
+- **`archiveLoans_`는 append-then-delete 순서를 반드시 지킨다 — 이 순서가 뒤바뀌면 데이터
+  유실이 가능해진다.** 먼저 후보 전부를 아카이브 시트로 `transactionAppendRecord_`(append 실패
+  시 이미 append된 행만 롤백하면 되고, 원본 `10_LOANS`는 아직 전혀 손대지 않은 상태라 안전)
+  하고, **전부 성공한 뒤에만** 원본 삭제를 시작한다. 삭제는 반드시 "행번호 내림차순"으로
+  한다 — 오름차순으로 지우면 매 삭제마다 그 아래(더 큰 행번호) 후보들의 실제 위치가 하나씩
+  당겨져 버려, `_row`로 기억해 둔 좌표가 어긋나 엉뚱한 행을 지우게 된다. 각 삭제 직전에
+  `getRange().getValues()/getFormulas()`로 원래 값을 캡처해 `transaction.record(...)`에
+  "insertRowBefore + 원래 값 복원" undo를 쌓아 둔다 — `createCompensationContext_`(2570행,
+  무수정)의 rollback은 이 undo들을 **LIFO**(마지막에 쌓은 것부터)로 실행하므로, 삭제를
+  내림차순으로 하고 그 undo를 순서대로 쌓아 두면 rollback은 자동으로 **오름차순**(낮은 행부터)
+  `insertRowBefore`로 복원돼 모든 행이 원래 번호 그대로 되살아난다(작게 손으로 예제를 그려
+  검증했다 — 행 5·8·12를 지운 뒤 LIFO로 5→8→12 순서로 되돌리면 각 삽입이 그 아래를 한 칸씩
+  밀어내면서 정확히 원래 좌표로 복원된다). 이 삭제는 CLAUDE.md 절대 규칙 6번("행 삭제
+  금지")의 유일한 예외로 명시적으로 허용된 경우이며(과제 지시·`docs/PATCH_SPEC.md` P2-b가
+  "이 삭제는 행번호 무관 스키마라 안전, ADR-002 폐기 참조"라고 명문화), `10_LOANS`의
+  기본키(`loan_id`)가 행번호가 아니라 UUID 기반이라 참조 무결성이 행 위치와 무관하다는 점도
+  다시 확인했다.
+
+- **`runAnnualArchiveLoans`의 `executeWrite_` 호출은 연도 기반 고정 `requestId`를 쓰지
+  않는다** — payload를 `{ year: year }`로만 넘겨 `executeWrite_`가 매번 새 `requestId`를
+  자동 발급하게 뒀다(`reconcileCopyStatuses()`, 1633행이 이미 쓰는 패턴과 동일). 만약
+  `'ARCHIVE-LOANS-' + year`처럼 고정 ID를 썼다면, 아카이브가 어떤 이유로 실패해 롤백된 뒤
+  "같은 연도로 다시 실행"하는 정상적인 재시도가 `FAILED_REQUEST_REQUIRES_REVIEW`에 영구히
+  막혀 버린다. 이게 안전한 이유는 후보 필터 자체가 자연적인 재실행 안전장치이기 때문이다 —
+  이미 아카이브된 행은 `10_LOANS`에서 이미 사라졌으므로 다시 실행해도 후보 집합이 비어 있어
+  아무 일도 하지 않는 무해한 재실행이 된다(그리고 `withWriteLock_`이 동시 실행 자체를
+  막는다). 반면 ②·③의 회원별 requestId(`GRAD-연도-member_id`, `PROMOTE-연도-member_id`)는
+  고정으로 유지했다 — 그 이유는 각각 별도로 문서화했다(졸업은 사전 확인으로 FAILED 오염을
+  피했고, 승급은 같은 해에 실수로 두 번 실행되면 같은 학생이 두 번 승급되는 진짜 사고를 막아야
+  하므로 고정 ID의 idempotent-skip이 반드시 필요하다).
+
+- **`integrityCheck_`에 추가한 아카이브 시트 FK 검사는 `copy_id`/`member_id` 두 개만 본다** —
+  `10_LOANS` 자체 검사가 하는 `policy_id`/`checkout_staff_id`/`return_staff_id`/`request_id`
+  FK나 `checked_out_at`/`due_at`/`returned_at` 날짜 순서 검사까지 아카이브 시트에 그대로
+  복제하지는 않았다. 과제가 명시한 수용 기준("아카이브 후 무결성 점검 0건")과 재사용 지시
+  ("copy_id/member_id 검사 재사용")를 문자 그대로 만족시키는 최소 범위로 판단했다 — 필요하면
+  나머지 검사도 같은 패턴(정규식으로 찾은 각 아카이브 시트에 대해 `readTable_` 후 검사 반복)으로
+  쉽게 넓힐 수 있다. 시트 탐색은 `getSpreadsheet_().getSheets()`를 정규식 `/^10_LOANS_\d{4}$/`
+  으로 걸러 동적으로 찾으므로, 매년 새 아카이브 시트가 생겨도 이 함수를 또 고칠 필요가 없다.
+
+- **대량 append 루프의 성능 한계를 인지하고 있다.** `archiveLoans_`가 후보마다
+  `transactionAppendRecord_`를 호출하는데, 이 헬퍼(`appendRecord_`, 무수정)는 매 호출마다
+  대상 시트를 캐시 무효화 후 다시 전체 스캔한다(`invalidateTableCache_` → 다음 `readTable_`가
+  풀스캔). 이는 `absorbManualEntries_`가 `10_LOANS`에 반복 append하는 기존 패턴과 동일한,
+  이 코드베이스 전반에 이미 존재하는 특성이라 이번 항목에서 새로 만든 문제는 아니지만, 이
+  기능을 처음 실행할 때(그동안 쌓인 모든 과거 연도를 한 번에 아카이브) 후보가 수천 건이면
+  6분 실행 제한에 가까워질 수 있다. 첫 실행은 오래된 연도부터 나눠서(예: `year`를 점진적으로
+  올려가며 여러 번) 실행하는 것을 권장한다 — `runAnnualArchiveLoans`의 확인 대화상자에는 이
+  안내를 넣지 않았지만(이미 대화상자가 길어 가독성을 우선했다) 이 문서에 남긴다. ②·③(진급·
+  졸업)은 배치 상한을 두지 않았다 — PATCH_SPEC의 "600명 진급이 6분 제한 내" 수용 기준이 그
+  규모에서 배치 없이 완료될 것을 전제하고, 순수 시트 쓰기라 외부 API 호출이 있는
+  `enrichBibliographicBatch_`(200건 상한)만큼 느리지 않을 것으로 판단했다.
+
+- **데모 데이터로 5단계를 리허설하는 절차** (이 환경엔 실행 중인 GAS 런타임이 없어 직접 실행할
+  수 없다 — 아래는 실제 라이브 스프레드시트에서 사서/관리자가 확인할 절차):
+  1. 스프레드시트를 열고 메뉴 `📚 도서관 관리 → 관리 → 연간 리셋`을 확인한다(5개 하위 항목이
+     보이면 배선 성공).
+  2. `09_MEMBERS`에 STUDENT/ACTIVE 학생을 학년별로 몇 명 준비하고, 그중 한 명에게는 일부러
+     `checkout_`으로 OPEN 대출을 하나 만들어 둔다(② 차단 시나리오 검증용).
+  3. `① 미반납 전수 조사` 실행 → 방금 만든 OPEN 대출이 목록에 학년-반 순으로 나오는지 확인.
+  4. `② 졸업 처리` 실행(대상 학년 = `17_CONFIG`에 넣은 `GRADUATION_GRADE` 또는 기본값 6) →
+     OPEN 대출이 있는 학생은 "차단 명단"에 뜨고 `status_code`가 바뀌지 않았는지, 나머지는
+     `GRADUATED`로 바뀌고 `graduated_at`이 채워졌는지 `09_MEMBERS`에서 확인.
+  5. 차단됐던 학생을 `return_`으로 반납 처리한 뒤 `② 졸업 처리`를 같은 학년으로 재실행 →
+     이번엔 그 학생도 졸업 처리되는지 확인(사전 확인 분리 설계가 제대로 동작하는지의 핵심
+     검증 지점).
+  6. `③ 전원 진급` 실행 → 졸업 학년을 제외한 나머지 학생들의 `grade`가 1씩 올랐는지,
+     `class_no`/`student_no`는 그대로인지, 방금 졸업한 학생은 대상에서 빠졌는지 확인.
+  7. `23_NEW_STUDENT_IMPORT` 시트를 열어(처음 실행 전까지 시트가 안 보이면 `④`를 한 번
+     실행해 시트를 먼저 만든 뒤) 학번·이름·학년·반·번호를 몇 줄 채우고 `④ 신입생 일괄 등록`
+     실행 → `09_MEMBERS`에 새 ACTIVE 학생이 생기고 해당 행의 처리상태가 "완료"로 바뀌는지
+     확인. 일부러 학년/반을 비운 행을 하나 섞어 "오류"로 표시되고 배치가 멈추지 않는지도
+     확인.
+  8. `⑤ 대출 연간 아카이브`를 과거 연도로 실행(예: 현재 연도) → `10_LOANS`에 있던 RETURNED/
+     LOST/VOID 중 그 연도 시작 이전 대출이 사라지고 `10_LOANS_<연도>` 시트에 나타나는지,
+     OPEN 대출은 그대로 `10_LOANS`에 남아 있는지 확인.
+  9. `무결성 점검` 실행 → `issueCount: 0` 확인(수용 기준 "아카이브 후 무결성 0건"). 일부러
+     아카이브 시트의 `copy_id`를 존재하지 않는 값으로 바꿔 보면 `ORPHAN_FOREIGN_KEY` 이슈가
+     새로 잡히는지도 확인해 추가된 FK 검사가 실제로 동작하는지 검증할 수 있다.

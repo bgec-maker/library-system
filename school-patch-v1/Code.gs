@@ -44,7 +44,12 @@ var LIBRARY_MVP = Object.freeze({
     // (docs/ASSUMPTIONS.md todo/21 참고). 의도적으로 LIBRARY_MVP.HEADERS에는 넣지 않는다 —
     // 이 시트 하나만 protectDatabaseSheets_의 자동 보호 대상에서 빠져야 하기 때문이다. 아래
     // ensureManualEntrySheet_()/MANUAL_ENTRY_HEADERS_ 주석 참고.
-    MANUAL_ENTRY: '22_MANUAL_ENTRY'
+    MANUAL_ENTRY: '22_MANUAL_ENTRY',
+    // todo/23(연간 리셋 마법사) — 신입생 일괄 등록 흡수 시트. 22_MANUAL_ENTRY와 완전히 같은
+    // 이유로 LIBRARY_MVP.HEADERS에는 넣지 않는다(ensureSchema_/protectDatabaseSheets_는
+    // Object.keys(LIBRARY_MVP.HEADERS)만 순회하므로 이 키는 두 함수 어디에도 보이지 않는다).
+    // 생성은 이 파일 뒤쪽의 ensureNewStudentImportSheet_()가 멱등하게 담당한다.
+    NEW_STUDENT_IMPORT: '23_NEW_STUDENT_IMPORT'
   }),
   HEADERS: Object.freeze({
     '03_TITLES': ['title_id', 'isbn13', 'title', 'subtitle', 'edition', 'publisher', 'published_year', 'language_code', 'material_type_code', 'classification_no', 'keywords', 'description', 'cover_url', 'status_code', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
@@ -84,6 +89,15 @@ function buildLibraryMenu_() {
     .addItem('회원 등록', 'openMemberForm')
     .addItem('도서·소장본 등록', 'openBookForm')
     .addItem('통합 검색', 'openSearchForm');
+  // todo/23 — 연간 리셋 마법사 5단계. 각 단계가 독립된 확인 대화상자를 갖는 개별 메뉴 항목이라
+  // "관리" 체인 하나에 addItem 5개를 늘어놓는 대신 서브메뉴로 묶었다(관리 체인 자체에는 여전히
+  // addSubMenu 한 줄만 추가). docs/ASSUMPTIONS.md todo/23 참고.
+  var annualResetMenu = ui.createMenu('연간 리셋')
+    .addItem('① 미반납 전수 조사', 'runCheckUnreturnedAll')
+    .addItem('② 졸업 처리', 'runGraduateStudents')
+    .addItem('③ 전원 진급', 'runPromoteAllStudents')
+    .addItem('④ 신입생 일괄 등록(흡수)', 'runAbsorbNewStudentImports')
+    .addItem('⑤ 대출 연간 아카이브', 'runAnnualArchiveLoans');
   var adminMenu = ui.createMenu('관리')
     .addItem('최초 설정/스키마 확인', 'setupLibraryMvp')
     .addItem('DB 시트 보호(ADMIN 전용)', 'protectDatabaseSheets')
@@ -91,7 +105,8 @@ function buildLibraryMenu_() {
     .addItem('소장본 상태 복구', 'reconcileCopyStatuses')
     .addItem('일일 관리 트리거 설치', 'installLibraryTriggers')
     .addItem('서지 일괄 보강', 'runBibliographicEnrichment')
-    .addItem('수기입력 흡수', 'runAbsorbManualEntries');
+    .addItem('수기입력 흡수', 'runAbsorbManualEntries')
+    .addSubMenu(annualResetMenu);
 
   ui.createMenu('📚 도서관 관리')
     .addItem('사이드바 열기', 'showLibrarySidebar')
@@ -1625,6 +1640,21 @@ function integrityCheck_() {
     if (!hasOpen && copy.status_code === 'ON_LOAN') issues.push(issue_('COPY_STATUS_MISMATCH', LIBRARY_MVP.SHEETS.COPIES, copy._row, '활성 대출 없이 상태가 ON_LOAN입니다.'));
     if (hasReady && copy.status_code !== 'HOLD_READY') issues.push(issue_('READY_STATUS_MISMATCH', LIBRARY_MVP.SHEETS.COPIES, copy._row, 'READY 예약이 있지만 상태가 HOLD_READY가 아닙니다.'));
     if (!hasReady && copy.status_code === 'HOLD_READY') issues.push(issue_('READY_STATUS_MISMATCH', LIBRARY_MVP.SHEETS.COPIES, copy._row, 'READY 예약 없이 상태가 HOLD_READY입니다.'));
+  });
+
+  // todo/23 — archiveLoans_가 만드는 10_LOANS_YYYY도 FK 검사 대상에 넣는다(추가만, 위 라인은
+  // 전부 그대로). 시트 이름을 정규식으로 찾으므로 해가 바뀌어 새 아카이브 시트가 생겨도 이 함수를
+  // 또 고칠 필요가 없다. 위에서 이미 만든 copyIds/memberIds/requireForeignKey_를 그대로 재사용—
+  // 10_LOANS 자체 검사와 같은 두 개(copy_id·member_id)만 본다(수용 기준 "아카이브 후 무결성
+  // 점검 0건"을 만족시키는 데 필요한 최소 범위 — policy_id/staff/request_id/날짜순서 같은 나머지
+  // 10_LOANS 검사까지 그대로 복제하지는 않았다, docs/ASSUMPTIONS.md todo/23 참고).
+  getSpreadsheet_().getSheets().forEach(function(sheet) {
+    var sheetName = sheet.getName();
+    if (!/^10_LOANS_\d{4}$/.test(sheetName)) return;
+    readTable_(sheetName).rows.forEach(function(row) {
+      requireForeignKey_(row, 'copy_id', copyIds, sheetName, issues);
+      requireForeignKey_(row, 'member_id', memberIds, sheetName, issues);
+    });
   });
 
   return { checkedAt: formatDateTime_(new Date()), issueCount: issues.length, issues: issues.slice(0, 200), truncated: issues.length > 200 };
@@ -4671,4 +4701,454 @@ function apiWebManualEntryPendingCount_(payload) {
   if (table.index['처리상태'] === undefined) return { pendingCount: 0 };
   var pendingCount = table.rows.filter(function(row) { return !cleanText_(row['처리상태']); }).length;
   return { pendingCount: pendingCount };
+}
+
+// --------------------------- 연간 리셋 마법사 (todo/23, 구 PATCH_SPEC P1-e·P2-b) ---------------------------
+//
+// 학년말 5단계: ①미반납 전수 조사(읽기 전용) ②졸업 처리(미반납/미변상 차단) ③전원 진급
+// ④신입생 일괄 등록(22_MANUAL_ENTRY와 같은 "시트에 적어두고 흡수" 패턴) ⑤10_LOANS 연간 아카이브.
+// 전부 메뉴에서만 실행하고(자동 트리거 없음), 실제 상태 변경(②③⑤)은 반드시 executeWrite_(2500행
+// 대, 무수정)를 거친다. registerMember_(722행)·updateMember_(782행)·assertMemberCanDeactivate_
+// (834행) 전부 무수정 재사용 — 이 항목에서 새로 만든 것은 "누가 대상인지 고르고 결과를 모으는"
+// 배치 루프뿐이다. 판단 근거는 docs/ASSUMPTIONS.md todo/23 참고.
+
+// ---- ① 미반납 전수 조사 (읽기 전용 — executeWrite_ 불필요, 상태를 바꾸지 않는다) ----
+
+function checkUnreturnedAll_() {
+  var loans = readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.filter(function(row) {
+    return row.status_code === 'OPEN' && !row.returned_at;
+  });
+  var membersById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows, 'member_id');
+  var copiesById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.COPIES).rows, 'copy_id');
+  var titlesById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+  var now = Date.now();
+  var items = loans.map(function(loan) {
+    var member = membersById[loan.member_id];
+    var copy = copiesById[loan.copy_id];
+    var title = copy ? titlesById[copy.title_id] : null;
+    var due = asDate_(loan.due_at);
+    return {
+      loanId: loan.loan_id,
+      memberNo: member ? member.member_no : '',
+      name: member ? member.name : '(회원 정보 없음)',
+      grade: member ? member.grade : '',
+      classNo: member ? member.class_no : '',
+      studentNo: member ? member.student_no : '',
+      titleName: title ? title.title : '',
+      barcode: copy ? copy.barcode : '',
+      dueAt: formatDate_(loan.due_at),
+      overdue: Boolean(due && due.getTime() < now)
+    };
+  }).sort(function(a, b) {
+    return (Number(a.grade) || 0) - (Number(b.grade) || 0) ||
+      (Number(a.classNo) || 0) - (Number(b.classNo) || 0) ||
+      (Number(a.studentNo) || 0) - (Number(b.studentNo) || 0);
+  });
+  return { checkedAt: formatDateTime_(new Date()), unreturnedCount: items.length, items: items.slice(0, 200), truncated: items.length > 200 };
+}
+
+// 사이드바 관리 메뉴("① 미반납 전수 조사")의 진입점 — runIntegrityCheck(1515행대, 무수정)와 같은
+// 패턴: 읽기 전용이라 getActor_()로 등록된 직원인지만 확인하고 실행한다. 이 단계는 상태를 바꾸지
+// 않으므로 다음 단계를 코드로 잠그는 "순서 강제"는 구현하지 않았다 — 사서가 결과를 보고 판단해
+// 다음 단계로 넘어가는 사람 중심 검토 게이트다(docs/ASSUMPTIONS.md todo/23 "순서 강제" 판단 참고).
+function runCheckUnreturnedAll() {
+  getActor_();
+  var result = checkUnreturnedAll_();
+  var ui = SpreadsheetApp.getUi();
+  var preview = result.items.slice(0, 30).map(function(item) {
+    return (item.grade || '?') + '학년 ' + (item.classNo || '?') + '반 ' + (item.studentNo || '?') + '번 ' + item.name +
+      ' · ' + item.titleName + ' · 반납예정 ' + item.dueAt + (item.overdue ? ' (연체)' : '');
+  });
+  var message = '미반납(OPEN) 대출 총 ' + result.unreturnedCount + '건';
+  if (preview.length) message += '\n\n' + preview.join('\n');
+  if (result.unreturnedCount > preview.length) {
+    message += '\n... 외 ' + (result.unreturnedCount - preview.length) + '건 — 전체 목록은 ' + LIBRARY_MVP.SHEETS.LOANS + ' 시트에서 상태=OPEN으로 필터링해 확인하세요.';
+  }
+  ui.alert('① 미반납 전수 조사', message, ui.ButtonSet.OK);
+  return result;
+}
+
+// ---- ② 졸업 처리 ----
+
+function graduateStudents_(grade) {
+  var actor = getActor_();
+  requireRole_(actor, ['ADMIN', 'LIBRARIAN']);
+  var targetGrade = (grade !== undefined && grade !== null && grade !== '') ? Number(grade) : Number(getConfig_('GRADUATION_GRADE', 6));
+  var year = new Date().getFullYear();
+  var candidates = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE' && Number(row.grade) === targetGrade;
+  });
+  var succeeded = [];
+  var blocked = [];
+  var failed = [];
+  candidates.forEach(function(member) {
+    // assertMemberCanDeactivate_(834행, 무수정)로 먼저 "사전 확인"만 한다 — 여기서 막히는 건
+    // 미반납/수령대기예약/미납금 같은 정상적인 업무 규칙 위반이라 executeWrite_까지 보낼 필요가
+    // 없다(보내면 18_SYS_OPERATIONS에 이 회원의 requestId가 FAILED로 영구히 남아, "책 받고 나서
+    // 재실행"이 FAILED_REQUEST_REQUIRES_REVIEW(2432행대, 무수정)에 막혀 버린다). 사전 확인을
+    // 통과한 건만 실제 executeWrite_(진짜 쓰기)로 넘긴다 — docs/ASSUMPTIONS.md todo/23 참고.
+    try {
+      assertMemberCanDeactivate_(member);
+    } catch (blockError) {
+      blocked.push({
+        memberNo: member.member_no, name: member.name, classNo: member.class_no, studentNo: member.student_no,
+        code: blockError.code || 'BLOCKED', message: String(blockError.message || blockError)
+      });
+      return;
+    }
+    var writePayload = { requestId: 'GRAD-' + year + '-' + member.member_id, memberKey: member.member_no, status: 'GRADUATED' };
+    try {
+      executeWrite_('GRADUATE_MEMBER', writePayload, function(writeActor, requestId, transaction) {
+        return updateMember_(writePayload, writeActor, requestId, transaction);
+      });
+      succeeded.push({ memberNo: member.member_no, name: member.name, classNo: member.class_no, studentNo: member.student_no });
+    } catch (error) {
+      failed.push({
+        memberNo: member.member_no, name: member.name, code: error.code || 'UNEXPECTED_ERROR',
+        message: String(error.message || error).slice(0, 200)
+      });
+    }
+  });
+  return {
+    targetType: 'MEMBER_BATCH', targetId: 'GRADUATE-' + targetGrade,
+    targetGrade: targetGrade, year: year, candidateCount: candidates.length,
+    succeededCount: succeeded.length, blockedCount: blocked.length, failedCount: failed.length,
+    succeeded: succeeded, blocked: blocked, failed: failed
+  };
+}
+
+// 사이드바 관리 메뉴("② 졸업 처리")의 진입점. 학년을 물어보고(기본값 = 17_CONFIG의
+// GRADUATION_GRADE, 없으면 6 — 초등학교 6학년 가정, docs/ASSUMPTIONS.md todo/23 참고),
+// 확인 대화상자를 거친 뒤 실행한다. 차단 명단은 runAbsorbManualEntries(위)와 같은 스타일로
+// alert에 요약해서 보여준다.
+function runGraduateStudents() {
+  var ui = SpreadsheetApp.getUi();
+  var defaultGrade = getConfig_('GRADUATION_GRADE', 6);
+  var promptResult = ui.prompt('② 졸업 처리', '졸업 대상 학년을 입력하세요 (비워두면 기본값 ' + defaultGrade + '):', ui.ButtonSet.OK_CANCEL);
+  if (promptResult.getSelectedButton() !== ui.Button.OK) return null;
+  var gradeInput = cleanText_(promptResult.getResponseText());
+  var grade = gradeInput ? Number(gradeInput) : Number(defaultGrade);
+  if (!grade || isNaN(grade) || grade <= 0) { ui.alert('학년 입력이 올바르지 않습니다.'); return null; }
+  var confirm = ui.alert('졸업 처리 확인',
+    grade + '학년 재학생을 전원 졸업(GRADUATED) 처리합니다. 미반납 대출·수령대기 예약·미납 연체료가 있는 학생은 자동으로 건너뛰고 명단으로 보여줍니다. 계속하시겠습니까?',
+    ui.ButtonSet.YES_NO);
+  if (confirm !== ui.Button.YES) return null;
+  try {
+    var result = graduateStudents_(grade);
+    var message = grade + '학년 대상 ' + result.candidateCount + '명 · 졸업 처리 ' + result.succeededCount + '명 · ' +
+      '차단(미반납 등) ' + result.blockedCount + '명 · 오류 ' + result.failedCount + '명';
+    if (result.blockedCount) {
+      var blockedLines = result.blocked.slice(0, 20).map(function(item) {
+        return '- ' + (item.classNo || '?') + '반 ' + (item.studentNo || '?') + '번 ' + item.name + '(' + item.memberNo + '): ' + item.message;
+      });
+      message += '\n\n[차단 명단 — 반납/납부 후 이 메뉴를 다시 실행하면 자동으로 재시도됩니다]\n' + blockedLines.join('\n');
+      if (result.blockedCount > blockedLines.length) message += '\n... 외 ' + (result.blockedCount - blockedLines.length) + '명';
+    }
+    if (result.failedCount) {
+      message += '\n\n오류 ' + result.failedCount + '건은 ' + LIBRARY_MVP.SHEETS.AUDIT + '/' + LIBRARY_MVP.SHEETS.OPERATIONS + '에서 상세를 확인한 뒤 문제를 해결하고 새로 실행하세요.';
+    }
+    ui.alert('② 졸업 처리 완료', message, ui.ButtonSet.OK);
+    return result;
+  } catch (error) {
+    ui.alert('② 졸업 처리 실패', error.message || String(error), ui.ButtonSet.OK);
+    throw error;
+  }
+}
+
+// ---- ③ 전원 진급 ----
+
+function promoteAllStudents_() {
+  var actor = getActor_();
+  requireRole_(actor, ['ADMIN', 'LIBRARIAN']);
+  var graduationGrade = Number(getConfig_('GRADUATION_GRADE', 6));
+  var year = new Date().getFullYear();
+  // 졸업 학년(graduationGrade)은 승급 대상에서 항상 제외한다 — 정상 졸업한 학생은 이미
+  // status_code=GRADUATED(ACTIVE 아님)라 자연히 빠지지만, ②에서 미반납 등으로 "차단"되어 아직
+  // ACTIVE·졸업학년 그대로인 학생까지 승급시키면 존재하지 않는 학년(예: 7학년)으로 밀려나는
+  // 사고가 난다 — docs/ASSUMPTIONS.md todo/23 참고.
+  var candidates = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
+    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE' &&
+      row.grade !== '' && row.grade !== null && row.grade !== undefined &&
+      Number(row.grade) !== graduationGrade;
+  });
+  var succeeded = [];
+  var failed = [];
+  candidates.forEach(function(member) {
+    var nextGrade = Number(member.grade) + 1;
+    var writePayload = { requestId: 'PROMOTE-' + year + '-' + member.member_id, memberKey: member.member_no, grade: nextGrade };
+    try {
+      executeWrite_('PROMOTE_MEMBER', writePayload, function(writeActor, requestId, transaction) {
+        return updateMember_(writePayload, writeActor, requestId, transaction);
+      });
+      succeeded.push({ memberNo: member.member_no, name: member.name, fromGrade: member.grade, toGrade: nextGrade });
+    } catch (error) {
+      failed.push({ memberNo: member.member_no, name: member.name, code: error.code || 'UNEXPECTED_ERROR', message: String(error.message || error).slice(0, 200) });
+    }
+  });
+  return {
+    targetType: 'MEMBER_BATCH', targetId: 'PROMOTE-' + year,
+    graduationGrade: graduationGrade, year: year, candidateCount: candidates.length,
+    succeededCount: succeeded.length, failedCount: failed.length, succeeded: succeeded, failed: failed
+  };
+}
+
+// 사이드바 관리 메뉴("③ 전원 진급")의 진입점. class_no/student_no는 건드리지 않는다 — 반 배정은
+// 이 시스템이 관리하지 않는 별도 수작업 영역이다(docs/ASSUMPTIONS.md todo/23 참고).
+function runPromoteAllStudents() {
+  var ui = SpreadsheetApp.getUi();
+  var confirm = ui.alert('③ 전원 진급 처리 확인',
+    '졸업 학년을 제외한 전체 재학생의 학년을 1씩 올립니다(반·번호는 변경하지 않습니다 — 반 배정은 별도 수작업입니다).\n' +
+    '② 졸업 처리를 먼저 완료한 뒤 실행하는 것을 권장합니다. 계속하시겠습니까?', ui.ButtonSet.YES_NO);
+  if (confirm !== ui.Button.YES) return null;
+  try {
+    var result = promoteAllStudents_();
+    var message = '대상 ' + result.candidateCount + '명 · 진급 처리 ' + result.succeededCount + '명 · 오류 ' + result.failedCount + '명';
+    if (result.failedCount) {
+      var failLines = result.failed.slice(0, 20).map(function(item) { return '- ' + item.name + '(' + item.memberNo + '): ' + item.message; });
+      message += '\n\n[오류 명단]\n' + failLines.join('\n');
+      if (result.failedCount > failLines.length) message += '\n... 외 ' + (result.failedCount - failLines.length) + '명';
+    }
+    ui.alert('③ 전원 진급 처리 완료', message, ui.ButtonSet.OK);
+    return result;
+  } catch (error) {
+    ui.alert('③ 전원 진급 처리 실패', error.message || String(error), ui.ButtonSet.OK);
+    throw error;
+  }
+}
+
+// ---- ④ 신입생 일괄 등록 ----
+//
+// PATCH_SPEC.md P1-e 원문은 `bulkRegisterStudents_(csv)`라고 적었지만, GAS UI에는 200행짜리 CSV
+// 텍스트를 통째로 받을 좋은 입력 수단이 없다(ui.prompt는 한 줄짜리 텍스트박스뿐). 대신
+// 22_MANUAL_ENTRY(todo/21, 위)가 이미 쓰는 "시트에 적어두고 흡수" 패턴을 그대로 재사용한다 —
+// 사서가 23_NEW_STUDENT_IMPORT 시트에 명렬표를 붙여넣고(또는 한 줄씩 입력) 이 메뉴로 흡수한다.
+// docs/ASSUMPTIONS.md todo/23에 이 판단 근거를 남겼다.
+var NEW_STUDENT_IMPORT_HEADERS_ = ['학번', '이름', '학년', '반', '번호', '처리상태', '처리결과'];
+var NEW_STUDENT_IMPORT_BATCH_LIMIT_ = 200;
+
+function ensureNewStudentImportSheet_() {
+  var ss = getSpreadsheet_();
+  var sheet = ss.getSheetByName(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT);
+  if (sheet) return sheet;
+  sheet = ss.insertSheet(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT);
+  sheet.getRange(1, 1, 1, NEW_STUDENT_IMPORT_HEADERS_.length).setValues([NEW_STUDENT_IMPORT_HEADERS_]);
+  formatNewDbSheet_(sheet, NEW_STUDENT_IMPORT_HEADERS_.length);
+  // 학번은 앞자리 0이 있을 수 있어 ensureManualEntrySheet_(위)와 같은 이유로 텍스트(@) 서식.
+  ['학번'].forEach(function(header) {
+    var colIndex = NEW_STUDENT_IMPORT_HEADERS_.indexOf(header);
+    sheet.getRange(2, colIndex + 1, Math.max(1, sheet.getMaxRows() - 1), 1).setNumberFormat('@');
+  });
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT);
+  return sheet;
+}
+
+function writeNewStudentImportResult_(table, rowNumber, status, resultText) {
+  table.sheet.getRange(rowNumber, table.index['처리상태'] + 1).setValue(status);
+  table.sheet.getRange(rowNumber, table.index['처리결과'] + 1).setValue(safeText_(String(resultText || '').slice(0, 500)));
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT);
+}
+
+function summarizeNewStudentImportResult_(result) {
+  if (result && result.idempotent) return '완료(이미 처리된 요청 — 이전 실행에서 처리됨, 중복 실행 아님)';
+  return '등록 완료 · ' + (result.name || '') + '(' + result.memberNo + ') · ' + result.grade + '학년 ' + result.classNo + '반';
+}
+
+// 미처리 행을 위→아래로 최대 NEW_STUDENT_IMPORT_BATCH_LIMIT_(200)건까지 흡수한다. requestId =
+// 'NEWSTU-' + 행번호라서 absorbManualEntries_(위)와 똑같이 기존 멱등 체계가 중복 흡수를 막는다.
+// registerMember_(722행, 무수정)를 그대로 호출 — 중복 검사·회원번호 채번·ACTIVE 상태 부여가
+// 전부 이미 구현되어 있다.
+function absorbNewStudentImports_() {
+  var actor = getActor_();
+  requireRole_(actor, ['ADMIN', 'LIBRARIAN']);
+  ensureNewStudentImportSheet_();
+  var table = readTable_(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT);
+  NEW_STUDENT_IMPORT_HEADERS_.forEach(function(header) {
+    if (table.index[header] === undefined) fail_('SCHEMA_MISMATCH', LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT + '에 필요한 헤더가 없습니다: ' + header);
+  });
+
+  var allPending = table.rows.filter(function(row) { return !cleanText_(row['처리상태']); });
+  var totalPendingBefore = allPending.length;
+  var pending = allPending.slice(0, NEW_STUDENT_IMPORT_BATCH_LIMIT_);
+  var processedCount = 0;
+  var succeededCount = 0;
+  var failedCount = 0;
+
+  pending.forEach(function(row) {
+    processedCount++;
+    var rowNumber = row._row;
+    try {
+      var writePayload = {
+        requestId: 'NEWSTU-' + rowNumber,
+        name: row['이름'],
+        schoolNo: row['학번'],
+        grade: row['학년'],
+        classNo: row['반'],
+        studentNo: row['번호']
+      };
+      var result = executeWrite_('REGISTER_MEMBER', writePayload, function(writeActor, requestId, transaction) {
+        return registerMember_(writePayload, writeActor, requestId, transaction);
+      });
+      writeNewStudentImportResult_(table, rowNumber, '완료', summarizeNewStudentImportResult_(result));
+      succeededCount++;
+    } catch (error) {
+      failedCount++;
+      writeNewStudentImportResult_(table, rowNumber, '오류', error.message || String(error));
+    }
+  });
+
+  var remainingPendingCount = readTable_(LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT).rows.filter(function(row) { return !cleanText_(row['처리상태']); }).length;
+
+  return {
+    totalPendingBefore: totalPendingBefore, batchLimit: NEW_STUDENT_IMPORT_BATCH_LIMIT_,
+    processedCount: processedCount, succeededCount: succeededCount, failedCount: failedCount,
+    remainingPendingCount: remainingPendingCount
+  };
+}
+
+// 사이드바 관리 메뉴("④ 신입생 일괄 등록(흡수)")의 진입점 — runAbsorbManualEntries(위)와 정확히
+// 같은 패턴.
+function runAbsorbNewStudentImports() {
+  try {
+    var result = absorbNewStudentImports_();
+    var message = '대상 ' + result.processedCount + '건 · 성공 ' + result.succeededCount + '건 · 오류 ' + result.failedCount + '건';
+    if (result.remainingPendingCount) {
+      message += '\n남은 대기 ' + result.remainingPendingCount + '건 — 1회 최대 ' + result.batchLimit + '건까지 처리되므로, 메뉴를 다시 실행해 이어서 처리하세요.';
+    }
+    if (result.failedCount) {
+      message += '\n오류 행은 ' + LIBRARY_MVP.SHEETS.NEW_STUDENT_IMPORT + ' 시트의 처리결과 열을 확인하세요. ' +
+        '입력 오류(학년/반/번호 누락 등)는 고쳐서 처리상태 칸을 지우면 재시도되고, ' +
+        '실제 처리 거부(중복 회원 등)는 그 행은 그대로 두고 새 행에 다시 입력하세요.';
+    }
+    SpreadsheetApp.getUi().alert('④ 신입생 일괄 등록 완료', message, SpreadsheetApp.getUi().ButtonSet.OK);
+    return result;
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('④ 신입생 일괄 등록 실패', error.message || String(error), SpreadsheetApp.getUi().ButtonSet.OK);
+    throw error;
+  }
+}
+
+// ---- ⑤ 대출 연간 아카이브 (archiveLoans_, PATCH_SPEC P2-b) ----
+
+function loansArchiveSheetName_(year) {
+  return '10_LOANS_' + year;
+}
+
+// 10_LOANS_YYYY는 연도마다 새로 생기므로 LIBRARY_MVP.SHEETS에 고정 상수로 등록할 수 없다
+// (MANUAL_ENTRY·NEW_STUDENT_IMPORT처럼 이름이 고정이 아니다). ensureManualEntrySheet_(위)와
+// 같은 기법으로 getSpreadsheet_()에 직접 만들고, 헤더는 10_LOANS 헤더를 그대로 복사한다 —
+// readTable_이 LIBRARY_MVP.HEADERS에 없는 시트는 헤더 검증을 건너뛰므로(2341행대 확인됨) 이
+// 시트에도 appendRecord_/readTable_을 무수정으로 재사용할 수 있다.
+function ensureLoansArchiveSheet_(year) {
+  var ss = getSpreadsheet_();
+  var sheetName = loansArchiveSheetName_(year);
+  var sheet = ss.getSheetByName(sheetName);
+  if (sheet) return sheet;
+  sheet = ss.insertSheet(sheetName);
+  var headers = LIBRARY_MVP.HEADERS[LIBRARY_MVP.SHEETS.LOANS];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  formatNewDbSheet_(sheet, headers.length);
+  invalidateTableCache_(sheetName);
+  return sheet;
+}
+
+// PATCH_SPEC.md P2-b 원문 그대로: status_code∈{RETURNED,LOST,VOID}이고 checked_out_at이
+// `year`년 시작보다 이른 행만 대상이다(OPEN 대출은 이 필터에 구조적으로 걸리지 않는다 — 절대
+// 이동하지 않음). "해당연도"는 함수 인자 year와 같은 값이라 아카이브 시트 이름도 10_LOANS_year다
+// (예: year=2026이면 2026-01-01 이전 대출을 10_LOANS_2026으로 이동 — 시트 이름이 "그 안에 담긴
+// 데이터의 연도"가 아니라 "그 아카이브를 실행한 기준 연도"라는 뜻이다. docs/ASSUMPTIONS.md
+// todo/23에 이 해석 근거를 남겼다).
+//
+// 순서(요구사항 그대로) — 1) 후보 전부를 아카이브 시트로 append 2) 전부 성공한 뒤에만 원본을
+// "행번호 내림차순"으로 delete 3) 각 delete 직전에 원래 값을 캡처해 undo를 transaction에 기록.
+// executeWrite_ 전체가 하나의 트랜잭션이라, append 도중 실패하면 delete는 아직 시작도 안 했으므로
+// 10_LOANS는 원본 그대로 남고 rollback은 이미 append된 몇 건만 지우면 된다. delete 도중 실패하면
+// rollback이 LIFO(마지막에 기록한 undo부터)로 실행되는데, delete를 내림차순(높은 행부터)으로 하고
+// 그 undo를 순서대로 쌓으면 rollback은 자동으로 오름차순(낮은 행부터) insertRowBefore로 복원되어
+// 원래 행 번호가 정확히 재현된다(transactionUpdateRecord_의 "값 캡처 후 되돌리기" 기법을 delete용
+// 으로 확장한 것 — 이번에 새로 만든 부분).
+function archiveLoans_(year, actor, requestId, transaction) {
+  var yearNum = Number(year);
+  if (!yearNum || isNaN(yearNum) || yearNum < 2000 || yearNum > 3000) fail_('VALIDATION_ERROR', '아카이브 대상 연도가 올바르지 않습니다: ' + year);
+  var yearStart = new Date(yearNum, 0, 1, 0, 0, 0, 0);
+  var archivableStatus = { RETURNED: true, LOST: true, VOID: true };
+
+  var loanTable = readTable_(LIBRARY_MVP.SHEETS.LOANS);
+  var candidates = loanTable.rows.filter(function(row) {
+    if (!archivableStatus[row.status_code]) return false;
+    var checkedOut = asDate_(row.checked_out_at);
+    return Boolean(checkedOut) && checkedOut.getTime() < yearStart.getTime();
+  });
+
+  var archiveSheetName = loansArchiveSheetName_(yearNum);
+  ensureLoansArchiveSheet_(yearNum);
+
+  // 1) append 먼저 — 전부 성공해야 다음 단계로 넘어간다.
+  candidates.forEach(function(row) {
+    var record = {};
+    loanTable.headers.forEach(function(header) { if (header) record[header] = row[header]; });
+    transactionAppendRecord_(transaction, archiveSheetName, record);
+  });
+
+  // 2) delete는 내림차순(행번호 큰 것부터) — 아직 지우지 않은 후보의 행번호가 앞선 delete 때문에
+  // 밀리지 않도록 보장한다.
+  var sheet = loanTable.sheet;
+  var columnCount = loanTable.headers.length;
+  var descending = candidates.slice().sort(function(a, b) { return b._row - a._row; });
+  descending.forEach(function(row) {
+    var rowNumber = row._row;
+    var range = sheet.getRange(rowNumber, 1, 1, columnCount);
+    var values = range.getValues()[0];
+    var formulas = range.getFormulas()[0];
+    transaction.record(function() {
+      var restored = values.map(function(value, index) { return formulas[index] || value; });
+      sheet.insertRowBefore(rowNumber);
+      sheet.getRange(rowNumber, 1, 1, columnCount).setValues([restored]);
+      invalidateTableCache_(LIBRARY_MVP.SHEETS.LOANS);
+    });
+    sheet.deleteRow(rowNumber);
+  });
+  invalidateTableCache_(LIBRARY_MVP.SHEETS.LOANS);
+  invalidateTableCache_(archiveSheetName);
+
+  writeAudit_(actor, requestId, 'ARCHIVE', 'LOAN', 'BATCH',
+    { year: yearNum, candidateCount: candidates.length },
+    { archivedCount: candidates.length, archiveSheet: archiveSheetName },
+    '연간 대출 아카이브 · ' + yearNum + '년 시작 이전 반납/분실/취소 대출 ' + candidates.length + '건 → ' + archiveSheetName,
+    transaction);
+
+  return { targetType: 'LOAN_ARCHIVE', targetId: archiveSheetName, year: yearNum, archivedCount: candidates.length, archiveSheet: archiveSheetName };
+}
+
+// 사이드바 관리 메뉴("⑤ 대출 연간 아카이브")의 진입점 — 연도를 물어보고 확인 대화상자를 거친 뒤
+// 단 한 번의 executeWrite_로 실행한다. requestId를 연도로 고정하지 않고 매번 새로 발급한다(payload
+// 에 requestId를 넣지 않음 — executeWrite_ 기본 동작, newId_ 자동 생성). reconcileCopyStatuses
+// (위)와 같은 이유다: 후보 필터 자체가 "이미 옮겨진 행은 10_LOANS에 더 이상 없다"는 사실로 자연히
+// 재실행 안전성을 보장하므로, 실패 시 같은 연도로 재시도할 때 고정 requestId가
+// FAILED_REQUEST_REQUIRES_REVIEW(위)로 영구히 막히는 문제를 피할 수 있다. docs/ASSUMPTIONS.md
+// todo/23 참고.
+function runAnnualArchiveLoans() {
+  var ui = SpreadsheetApp.getUi();
+  var currentYear = new Date().getFullYear();
+  var promptResult = ui.prompt('⑤ 대출 연간 아카이브',
+    '아카이브 기준 연도를 입력하세요(비워두면 ' + currentYear + '). 해당 연도 1월 1일 이전에 대출된 반납/분실/취소 건이 10_LOANS_해당연도 시트로 이동합니다(진행 중 대출은 이동하지 않습니다).',
+    ui.ButtonSet.OK_CANCEL);
+  if (promptResult.getSelectedButton() !== ui.Button.OK) return null;
+  var yearInput = cleanText_(promptResult.getResponseText());
+  var year = yearInput ? Number(yearInput) : currentYear;
+  if (!year || isNaN(year)) { ui.alert('연도 입력이 올바르지 않습니다.'); return null; }
+  var archiveSheetName = loansArchiveSheetName_(year);
+  var confirm = ui.alert('아카이브 확인',
+    year + '년 1월 1일 이전에 대출된 반납/분실/취소 건을 ' + archiveSheetName + ' 시트로 이동합니다(원본은 10_LOANS에서 삭제되고 아카이브 시트로 보존됩니다. 진행 중(OPEN) 대출은 이동하지 않습니다). 계속하시겠습니까?',
+    ui.ButtonSet.YES_NO);
+  if (confirm !== ui.Button.YES) return null;
+  try {
+    var result = executeWrite_('ARCHIVE_LOANS', { year: year }, function(writeActor, requestId, transaction) {
+      return archiveLoans_(year, writeActor, requestId, transaction);
+    });
+    ui.alert('⑤ 아카이브 완료', year + '년 기준 ' + result.archivedCount + '건을 ' + result.archiveSheet + ' 시트로 이동했습니다.', ui.ButtonSet.OK);
+    return result;
+  } catch (error) {
+    ui.alert('⑤ 아카이브 실패', error.message || String(error), ui.ButtonSet.OK);
+    throw error;
+  }
 }

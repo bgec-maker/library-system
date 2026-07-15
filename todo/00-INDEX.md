@@ -27,7 +27,7 @@
 - [x] 20 book-page-public — /b/ 읽기 전용 (빌리기=로그인 배너)
 - [x] 21 manual-entry — 수기입력 시트+흡수 (P3)
 - [x] 22 sidebar-i18n — 사이드바 한/영 (P7)
-- [ ] 23 annual-reset — 리셋 마법사 + 학생 CSV + LOANS 아카이브
+- [x] 23 annual-reset — 리셋 마법사 + 학생 CSV + LOANS 아카이브
 - [ ] 24 annual-report — R3 연간 운영 보고서
 - [ ] 25 hygiene — operator 서버 주입 + 에러 바운더리 + 오프라인 큐 검증
 - [ ] 26 settings-view — 정책·설정 읽기 + 무결성 점검 버튼
