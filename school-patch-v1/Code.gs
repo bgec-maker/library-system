@@ -2986,14 +2986,66 @@ function doPost(e) {
 // 등 내부 ID, isbn13, description, 08_COPIES.status_code 원문(publicAvailability_로 3단 이상
 // 뭉갬). 누구나 아무 barcode로나 호출할 수 있다는 전제 자체가 이 설계다(실제 도서관 OPAC과 같은
 // 위협 모델) — 그 바코드가 존재하는지·표지가 뭔지 정도는 공개돼도 안전하다고 판단했다.
+//
+// H3(2026-07-15, 긴급 인터럽트) 추가 — iOS 설치형 PWA에서 doPost 응답 수신 실패(서버 실행기록은
+// doPost 4~5초 내 정상 완료인데 폰 fetch가 ~500ms에 TypeError "Load failed") 대응: WKWebView가
+// POST + 내부 리다이렉트(Apps Script Web App 응답은 실제로 googleusercontent.com 콘텐츠 URL로
+// 302 리다이렉트되는 구조) 조합을 못 받는 사례가 있어, 읽기 전용 action에 한해 GET 쿼리 경로도
+// 연다(쓰기는 여전히 POST 전용). 아래 GET_ALLOWED_ACTIONS_는 doPost가 이미 호출하는 바로 그
+// apiWeb*_/apiLookupIsbn_/apiCopyStatus_/apiWebUnpaidFines_ 함수를 참조 동일하게 재호출할 뿐이라
+// (새 로직 없음) GET·POST 두 경로가 항상 같은 동작을 보장한다. assertMobileToken_도 doPost와
+// 동일하게 거친다(barcode 전용 공개 경로와는 완전히 별개 분기 — 그쪽의 무인증 범위를 절대
+// 넓히지 않는다). doPost·assertMobileToken_·apiPublicBookPage_·각 read 핸들러는 단 한 줄도
+// 바꾸지 않았다 — 이 함수(doGet) 자체의 순수 추가일 뿐이다.
+var GET_ALLOWED_ACTIONS_ = [
+  'lookupIsbn', 'copyStatus', 'reservations', 'dashboard', 'manualEntryPendingCount',
+  'report', 'viz', 'catalogSync', 'recentOps', 'titleDetail', 'unpaidFines'
+];
+
 function doGet(e) {
   var response;
   try {
-    var barcode = cleanText_((e && e.parameter && e.parameter.barcode) || '');
-    if (!barcode) fail_('VALIDATION_ERROR', 'barcode 쿼리 파라미터가 필요합니다.');
-    response = runApi_(function() {
-      return apiPublicBookPage_(barcode);
-    });
+    var params = (e && e.parameter) || {};
+    var action = cleanText_(params.action || '');
+    if (action) {
+      // 인증된 읽기 액션 경로(H3) — payload 대신 e.parameter(문자열 맵)를 그대로 넘긴다. GET 값은
+      // 전부 문자열이지만 각 핸들러가 이미 cleanText_/cleanCode_/Number(...)/nonNegativeInteger_로
+      // 방어적으로 coercion하므로(POST의 JSON 바디도 결국 그 헬퍼들을 거친다) 문제 없다.
+      response = runApi_(function() {
+        assertMobileToken_(params.token);
+        if (GET_ALLOWED_ACTIONS_.indexOf(action) === -1) {
+          // 방어적 이중 거부 — 이 배열에 없는 이상 애초에 아래 분기에도 안 걸리지만, 쓰기 action
+          // 이름이 GET으로 들어왔을 때 "왜 안 되는지"가 UNKNOWN_ACTION보다 명확하도록 별도 코드로 거른다.
+          fail_('METHOD_NOT_ALLOWED', 'GET으로 호출할 수 없는 action입니다(쓰기 액션은 POST 전용): ' + action);
+        }
+        if (action === 'lookupIsbn') return apiLookupIsbn_(params);
+        if (action === 'copyStatus') return apiCopyStatus_(params);
+        if (action === 'reservations') return apiWebReservations_(params);
+        if (action === 'dashboard') return apiWebDashboard_(params);
+        if (action === 'manualEntryPendingCount') return apiWebManualEntryPendingCount_(params);
+        if (action === 'report') return apiWebReport_(params);
+        if (action === 'viz') return apiWebViz_(params);
+        if (action === 'catalogSync') return apiWebCatalogSync_(params);
+        if (action === 'recentOps') return apiWebRecentOps_(params);
+        if (action === 'titleDetail') return apiWebTitleDetail_(params);
+        if (action === 'unpaidFines') return apiWebUnpaidFines_(params);
+        fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
+      });
+    } else {
+      var barcode = cleanText_(params.barcode || '');
+      if (barcode) {
+        // 기존 동작(todo/20) — 완전히 그대로. 무인증 공개 책 페이지.
+        response = runApi_(function() {
+          return apiPublicBookPage_(barcode);
+        });
+      } else {
+        // action도 barcode도 없는 맨 URL 호출 — 헬스체크(H3). iOS PWA 진단 패널이 "서버에 아예
+        // 안 닿는지"와 "닿긴 하는데 POST만 실패하는지"를 구분하는 데 쓴다.
+        response = runApi_(function() {
+          return { version: LIBRARY_MVP.VERSION };
+        });
+      }
+    }
   } catch (error) {
     response = {
       ok: false, data: null,

@@ -240,7 +240,17 @@ function DiagnosticsPanel({ log, onCopy }: { log: ApiCallLogEntry[]; onCopy: () 
               </div>
               <div className="reg-diagLine2">
                 requestId: {entry.requestId ?? '—'} · http {entry.httpStatus ?? '—'} · {entry.resultCode ?? '—'}
+                {entry.transport && ` · ${entry.transport}`}
               </div>
+              {(entry.errName || entry.responseType || entry.redirected !== undefined) && (
+                <div className="reg-diagLine2">
+                  {entry.errName && `err: ${entry.errName}`}
+                  {entry.errName && (entry.responseType || entry.redirected !== undefined) && ' · '}
+                  {entry.responseType && `res.type: ${entry.responseType}`}
+                  {entry.responseType && entry.redirected !== undefined && ' · '}
+                  {entry.redirected !== undefined && `redirected: ${entry.redirected}`}
+                </div>
+              )}
               {entry.resultMessage && <div className="reg-diagLine3">{entry.resultMessage}</div>}
             </li>
           ))}
