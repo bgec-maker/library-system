@@ -14,8 +14,12 @@ import {
 } from '../../services/titleDetail';
 import { fetchRecentOps, type RecentOpRow } from '../../services/recentOpsData';
 import { createReservation } from '../../services/reservationData';
+import { renewLoan, markLoanLost, payFine, fetchUnpaidFines, type UnpaidFineRow } from '../../services/loanActionsData';
+import { operatorNoteFor } from '../../services/operatorNote';
+import { useSession } from '../../services/session';
 import { getEffectiveScanRoute, subscribeScan } from '../../services/scanBus';
-import { t } from '../../i18n';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { intlLocaleTag, t } from '../../i18n';
 import './book-detail.css';
 
 // 도서 상세 뷰 — todo/11. 28줄 스텁("params를 그대로 보여주기만")을 완전 구현으로 교체한다.
@@ -31,8 +35,13 @@ import './book-detail.css';
 //   소장본으로 못 좁혀진다는 걸 Code.gs writeAudit_ 호출부에서 확인했다 — 그래서 정확한 "대출
 //   이력"은 titleDetail의 loanHistory(10_LOANS)가 1차 소스이고, 이 운영 기록은 보조 표시다.
 //
-// 조작 버튼(예약·연장·분실·변상) 중 「예약」은 이 항목(todo/12)이 실제로 연결한다 — 나머지
-// (연장·분실·변상)는 todo/13 몫이라 여전히 비활성 상태로만 자리를 마련한다(아래 「처리」 절).
+// 조작 버튼 — 「예약」은 todo/12가 서지 단위 버튼(아래 「처리」 절)으로 연결했다. 「연장」「분실
+// 처리」는 todo/13이 소장본 목록(copyColumns의 rowActions 열)의 행 단위 액션으로 연결한다(어느
+// 소장본인지가 필요해 서지 전체에 걸린 단일 버튼으로는 표현할 수 없다). 「변상 완료」도 마찬가지로
+// LOST 소장본 행에 걸린 미변상(REPLACEMENT) 건이 있을 때만 그 행에 나타난다(services/
+// loanActionsData.ts의 fetchUnpaidFines를 titleId로 좁혀 판단). 셋 다 되돌릴 수 없는 작업이라
+// components/ConfirmDialog.tsx 확인을 거친 뒤에만 실행된다(loan-return의 체크아웃/반납
+// 즉시실행+실행취소 정책의 예외 — docs/ASSUMPTIONS.md `## todo/13` 참고).
 //
 // 예약 흐름(FRONTEND.md loan-return의 "누가 빌리나요?" 대기 패턴을 그대로 빌림): 「예약」 클릭 →
 // 학생증 스캔 대기 → apiWebReserve_(reserve_ 그대로) 호출 → 결과(대기 순번 또는 즉시 대출가능)를
@@ -101,13 +110,39 @@ const OPS_ACTION_LABEL_KEYS: Record<string, string> = {
   REGISTER_TITLE: 'views.recentOps.action.registerTitle',
   REGISTER_BY_ISBN: 'views.recentOps.action.registerByIsbn',
   UPDATE_COPY_STATUS: 'views.recentOps.action.updateCopyStatus',
-  MARK_LOAN_LOST: 'views.recentOps.action.markLoanLost',
+  // markLoanLost_/payFine_(Code.gs)이 실제로 남기는 action_code는 'MARK_LOST'/'PAY'다(같은 수정을
+  // views/recent-ops/index.tsx에도 함께 적용했다 — todo/13 참고, 이전 키 'MARK_LOAN_LOST'는
+  // 절대 매칭되지 않는 죽은 키였다).
+  MARK_LOST: 'views.recentOps.action.markLoanLost',
+  PAY: 'views.recentOps.action.payFine',
   RECONCILE_COPY_STATUS: 'views.recentOps.action.reconcileCopyStatus'
 };
 function opsActionLabel(code: string): string {
   const key = OPS_ACTION_LABEL_KEYS[code];
   return key ? t(key) : code;
 }
+
+// views/reports/index.tsx의 DonorThanksPanel과 같은 관례(ADR-023 "금액은 사전에 넣지 않고
+// Intl.NumberFormat(locale)") — 각 화면이 이 한 줄짜리 헬퍼를 각자 갖는다(공유 유틸로 뽑을 만큼
+// 무겁지 않다).
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
+}
+
+// 분실 처리 확인 다이얼로그의 대체비 입력값 검증 — markLoanLost_(Code.gs)가 nonNegativeInteger_로
+// 요구하는 것과 같은 조건(0 이상의 유한수, 공란 불가)을 프론트에서 먼저 걸러 확인 버튼을 막는다.
+function isValidFineAmountInput(value: string): boolean {
+  if (value.trim() === '') return false;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0;
+}
+
+// 소장본 행 액션(연장·분실 처리) + 미변상 행(변상 완료) 중 지금 확인 대기 중인 것 — 셋 다
+// ConfirmDialog 하나를 공유한다(todo/13 "전부 실행취소 불가 명시 — 확인 다이얼로그").
+type PendingRowAction =
+  | { kind: 'renew'; copy: TitleDetailCopy }
+  | { kind: 'markLost'; copy: TitleDetailCopy }
+  | { kind: 'compensate'; fine: UnpaidFineRow };
 
 export default function BookDetailView({ shell, params }: ViewProps) {
   const [query, setQuery] = useState<BookQuery>(() => computeInitialQuery(params));
@@ -126,6 +161,18 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   // 기다린다). reserveBusy는 apiWebReserve_ 왕복 중 버튼 연타/중복 스캔을 막는다.
   const [reserving, setReserving] = useState(false);
   const [reserveBusy, setReserveBusy] = useState(false);
+
+  // 연장·분실 처리·변상(todo/13) — operator는 loan-return의 operatorNote() 관례와 같은 note
+  // 접두사("웹앱 · {operator}")를 만드는 데 쓴다(services/operatorNote.ts).
+  const operator = useSession((s) => s.operator);
+  // 이 서지(titleId)에 걸린 미변상(REPLACEMENT) 건 — LOST 소장본 행에 「변상 완료」 버튼을 보여줄지
+  // 판단한다. apiWebUnpaidFines_는 전교 목록을 내려주므로 titleId로 클라이언트에서 좁힌다(전교
+  // 미변상 건수가 O(n²)을 걱정할 규모가 아니다 — reports 허브의 전체 목록과 같은 읽기 하나 공유).
+  const [unpaidFines, setUnpaidFines] = useState<UnpaidFineRow[]>([]);
+  // 소장본 행 액션(연장·분실 처리)·미변상 행(변상 완료) 공통 확인 다이얼로그 상태.
+  const [pendingAction, setPendingAction] = useState<PendingRowAction | null>(null);
+  const [lostFineInput, setLostFineInput] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
 
   const mountedRef = useRef(true);
   useEffect(
@@ -166,6 +213,99 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   useEffect(() => {
     setReserving(false);
   }, [query.copyKey, query.titleId]);
+
+  // 미변상 목록 재조회 — titleId가 바뀔 때(새 책) + 분실 처리/변상 완료 성공 직후(아래
+  // handlePendingConfirm)에 명시적으로 호출한다. detail 객체 전체가 아니라 titleId 문자열에만
+  // 의존해 예약 현황 갱신 같은 무관한 refreshDetail 재호출에 덩달아 다시 불리지 않게 했다.
+  const refreshUnpaidFines = useCallback(async (titleId: string) => {
+    const outcome = await fetchUnpaidFines();
+    if (!mountedRef.current) return;
+    if (outcome.ok) setUnpaidFines(outcome.data.filter((f) => f.titleId === titleId));
+  }, []);
+
+  useEffect(() => {
+    if (!detail?.titleId) {
+      setUnpaidFines([]);
+      return;
+    }
+    void refreshUnpaidFines(detail.titleId);
+  }, [detail?.titleId, refreshUnpaidFines]);
+
+  // 연장·분실 처리·변상 확인 실행 — 셋 다 "즉시실행+실행취소" 예외(loan-return의 checkout/return과
+  // 다르게, 확인 다이얼로그를 반드시 거친다) — ConfirmDialog의 onConfirm이 이 함수를 부른다.
+  const handlePendingConfirm = useCallback(async () => {
+    if (!pendingAction || !detail) return;
+    const note = operatorNoteFor(operator);
+    setActionBusy(true);
+
+    if (pendingAction.kind === 'renew') {
+      const copy = pendingAction.copy;
+      const res = await renewLoan(copy.barcode, note);
+      setActionBusy(false);
+      setPendingAction(null);
+      if (res.ok) {
+        shell.toast(t('views.bookDetail.renewDone', { barcode: copy.barcode, dueAt: res.data.newDueAt }), 'success');
+        void refreshDetail();
+      } else {
+        console.error('[book-detail] renew 실패', { code: res.code, message: res.message, barcode: copy.barcode });
+        shell.toast(t('views.bookDetail.renewFailed', { message: res.message }), 'error');
+      }
+      return;
+    }
+
+    if (pendingAction.kind === 'markLost') {
+      const copy = pendingAction.copy;
+      if (!isValidFineAmountInput(lostFineInput)) {
+        setActionBusy(false);
+        return;
+      }
+      const fineAmount = Number(lostFineInput);
+      const res = await markLoanLost(copy.barcode, fineAmount, note);
+      setActionBusy(false);
+      setPendingAction(null);
+      if (res.ok) {
+        // "분실→학생 정지 연동"은 새 정지 로직이 아니라 checkout_의 기존 unpaidReplacement
+        // 체크(936~941행)다 — 이 회원의 다음 신규 대출이 완납 전까지 막힌다는 사실을 여기서
+        // 토스트로 설명해 그 기존 결과를 화면에 드러낸다(docs/ASSUMPTIONS.md `## todo/13`).
+        shell.toast(
+          res.data.replacementFineAmount > 0
+            ? t('views.bookDetail.markLostDoneWithFine', {
+                barcode: copy.barcode,
+                member: res.data.memberName || res.data.memberNo,
+                amount: formatCurrency(res.data.replacementFineAmount)
+              })
+            : t('views.bookDetail.markLostDone', { barcode: copy.barcode }),
+          'success'
+        );
+        void refreshDetail();
+        void refreshUnpaidFines(detail.titleId);
+      } else {
+        console.error('[book-detail] markLost 실패', { code: res.code, message: res.message, barcode: copy.barcode });
+        shell.toast(t('views.bookDetail.markLostFailed', { message: res.message }), 'error');
+      }
+      return;
+    }
+
+    // kind === 'compensate' — "변상 완료"는 잔액 전액을 한 번에 납부한다(docs/ASSUMPTIONS.md
+    // `## todo/13`).
+    const fine = pendingAction.fine;
+    const res = await payFine(fine.fineId, fine.remainingAmount);
+    setActionBusy(false);
+    setPendingAction(null);
+    if (res.ok) {
+      shell.toast(t('views.bookDetail.compensateDone', { member: fine.memberName || fine.memberNo }), 'success');
+      void refreshDetail();
+      void refreshUnpaidFines(detail.titleId);
+    } else {
+      console.error('[book-detail] payFine 실패', { code: res.code, message: res.message, fineId: fine.fineId });
+      shell.toast(t('views.bookDetail.compensateFailed', { message: res.message }), 'error');
+    }
+  }, [pendingAction, detail, operator, lostFineInput, shell, refreshDetail, refreshUnpaidFines]);
+
+  const closePendingAction = useCallback(() => {
+    if (actionBusy) return;
+    setPendingAction(null);
+  }, [actionBusy]);
 
   // 예약 제출 — apiWebReserve_(reserve_ 그대로) 호출. 성공하면 대기 순번(WAITING) 또는 즉시
   // 대출가능(READY, 배정 등록번호 포함)을 토스트로 안내하고 서지를 재조회한다.
@@ -273,9 +413,51 @@ export default function BookDetailView({ shell, params }: ViewProps) {
         render: (row) => (row.onLoan ? row.dueAt : t('common.none'))
       },
       { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true },
-      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true }
+      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true },
+      // todo/13 — 「연장」「분실 처리」는 대출 중인 소장본 행에서만, 「변상 완료」는 분실 상태이면서
+      // 미변상(REPLACEMENT) 건이 남아 있는 행에서만 보여준다(죽은 버튼을 만들지 않는다 —
+      // docs/ASSUMPTIONS.md todo/11 「조작 버튼」 절과 같은 원칙). 셋 다 확인 다이얼로그를 거친다 —
+      // book-detail은 loan-return의 즉시실행+실행취소(checkout/return) 정책의 예외다.
+      {
+        key: 'rowActions',
+        header: t('views.bookDetail.col.actions'),
+        filterValue: false,
+        csvValue: () => '',
+        render: (row) => {
+          if (row.onLoan) {
+            return (
+              <div className="bd-row-actions">
+                <button type="button" className="ghost" onClick={() => setPendingAction({ kind: 'renew', copy: row })}>
+                  <RefreshCw size={14} aria-hidden /> {t('views.bookDetail.actionRenew')}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setLostFineInput('');
+                    setPendingAction({ kind: 'markLost', copy: row });
+                  }}
+                >
+                  <AlertTriangle size={14} aria-hidden /> {t('views.bookDetail.actionMarkLost')}
+                </button>
+              </div>
+            );
+          }
+          if (row.statusCode === 'LOST') {
+            const fine = unpaidFines.find((f) => f.copyId === row.copyId);
+            if (fine) {
+              return (
+                <button type="button" className="warn" onClick={() => setPendingAction({ kind: 'compensate', fine })}>
+                  <Banknote size={14} aria-hidden /> {t('views.bookDetail.actionCompensate')}
+                </button>
+              );
+            }
+          }
+          return null;
+        }
+      }
     ],
-    []
+    [unpaidFines]
   );
 
   const loanHistoryColumns = useMemo<DataTableColumn<TitleDetailLoanHistoryRow>[]>(
@@ -454,24 +636,17 @@ export default function BookDetailView({ shell, params }: ViewProps) {
             />
           </section>
 
-          {/* 조작 버튼 자리 — 「예약」은 이 항목(todo/12)이 실제로 연결했다. 연장·분실·변상은
-              여전히 todo/13 몫이라(가짜/죽은 버튼을 만들지 않기 위해) 명확히 비활성 상태로만
-              자리를 잡아둔다. */}
+          {/* 조작 버튼 자리 — 「예약」은 서지 단위라 여기 남아 있다(todo/12). 「연장」「분실 처리」
+              「변상 완료」는 todo/13부터는 서지 단위 버튼이 아니라 위 소장본 목록의 행 단위 액션이다
+              (연장·분실은 어느 소장본인지, 변상은 어느 미변상 건인지가 반드시 필요해서 서지 전체에
+              걸린 단일 버튼으로는 애초에 표현할 수 없다) — 그래서 죽은 비활성 버튼 3개를 없애고
+              실제 행 액션(copyColumns의 rowActions 열)으로 옮겼다. */}
           <section className="bd-section bd-actions">
             <h2>{t('views.bookDetail.sectionActions')}</h2>
             <p className="bd-actions-hint">{t('views.bookDetail.actionsHint')}</p>
             <div className="bd-actions-row">
               <button type="button" onClick={handleReserveClick} disabled={reserving || reserveBusy}>
                 <BookMarked size={16} aria-hidden /> {t('views.bookDetail.actionReserve')}
-              </button>
-              <button type="button" disabled>
-                <RefreshCw size={16} aria-hidden /> {t('views.bookDetail.actionRenew')}
-              </button>
-              <button type="button" disabled>
-                <AlertTriangle size={16} aria-hidden /> {t('views.bookDetail.actionMarkLost')}
-              </button>
-              <button type="button" disabled>
-                <Banknote size={16} aria-hidden /> {t('views.bookDetail.actionCompensate')}
               </button>
             </div>
             {reserving && (
@@ -487,6 +662,54 @@ export default function BookDetailView({ shell, params }: ViewProps) {
           </section>
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingAction)}
+        title={
+          pendingAction?.kind === 'renew'
+            ? t('views.bookDetail.confirmRenewTitle')
+            : pendingAction?.kind === 'markLost'
+              ? t('views.bookDetail.confirmMarkLostTitle')
+              : t('views.bookDetail.confirmCompensateTitle')
+        }
+        message={
+          pendingAction?.kind === 'renew' ? (
+            t('views.bookDetail.confirmRenewBody', { barcode: pendingAction.copy.barcode })
+          ) : pendingAction?.kind === 'markLost' ? (
+            <div className="bd-confirm-form">
+              <p>{t('views.bookDetail.confirmMarkLostBody', { barcode: pendingAction.copy.barcode })}</p>
+              <label htmlFor="bd-lost-fine">{t('views.bookDetail.markLostFineLabel')}</label>
+              <input
+                id="bd-lost-fine"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={lostFineInput}
+                onChange={(e) => setLostFineInput(e.target.value)}
+              />
+            </div>
+          ) : pendingAction?.kind === 'compensate' ? (
+            t('views.bookDetail.confirmCompensateBody', {
+              member: pendingAction.fine.memberName || pendingAction.fine.memberNo,
+              title: pendingAction.fine.title,
+              amount: formatCurrency(pendingAction.fine.remainingAmount)
+            })
+          ) : (
+            ''
+          )
+        }
+        confirmLabel={
+          pendingAction?.kind === 'renew'
+            ? t('views.bookDetail.actionRenew')
+            : pendingAction?.kind === 'markLost'
+              ? t('views.bookDetail.actionMarkLost')
+              : t('views.bookDetail.actionCompensate')
+        }
+        busy={actionBusy}
+        confirmDisabled={pendingAction?.kind === 'markLost' && !isValidFineAmountInput(lostFineInput)}
+        onConfirm={() => void handlePendingConfirm()}
+        onCancel={closePendingAction}
+      />
     </div>
   );
 }

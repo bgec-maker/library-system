@@ -2508,6 +2508,10 @@ function doPost(e) {
       if (action === 'catalogSync') return apiWebCatalogSync_(payload);
       if (action === 'recentOps') return apiWebRecentOps_(payload);
       if (action === 'titleDetail') return apiWebTitleDetail_(payload);
+      if (action === 'renew') return apiWebRenew_(payload);
+      if (action === 'markLost') return apiWebMarkLost_(payload);
+      if (action === 'payFine') return apiWebPayFine_(payload);
+      if (action === 'unpaidFines') return apiWebUnpaidFines_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -2575,6 +2579,82 @@ function apiWebCancelReservation_(payload) {
   return executeWrite_('CANCEL_RESERVATION', payload || {}, function(actor, requestId, transaction) {
     return cancelReservation_(payload || {}, actor, requestId, transaction);
   });
+}
+
+// 웹앱용 연장/분실 처리/변상(todo/13) — 위 apiWebCheckout_/apiWebReserve_와 정확히 같은 패턴(사이드바
+// apiRenew/apiMarkLoanLost/apiPayFine과 동일하게 executeWrite_·renew_/markLoanLost_/payFine_을
+// 그대로 재사용, doPost가 이미 바깥 runApi_ 1겹을 제공하므로 이중 래핑하지 않음). renew_/
+// markLoanLost_/payFine_ 본문은 이 항목에서 전혀 수정하지 않는다(절대 규칙) — payload 키
+// (loanOrCopyKey·fineAmount·note / fineId·amount)도 그 함수들이 이미 기대하는 이름을 그대로 쓴다.
+//
+// "분실→학생 정지 연동"은 markLoanLost_ 안에 별도 정지 로직으로 추가하지 않았다 — checkout_
+// (위쪽 936~941행)의 기존 unpaidReplacement 체크가 이미 그 역할을 한다(미변상 REPLACEMENT
+// 벌금이 남아 있는 회원은 신규 대출 자체가 막힌다). 이 항목은 새 정지 로직이 아니라 그 기존
+// 결과를 웹앱 화면에 드러내는 일이다(프론트가 markLost 응답의 replacementFineAmount로 안내
+// 토스트를 띄운다 — services/loanActionsData.ts·views/book-detail/index.tsx 참고).
+function apiWebRenew_(payload) {
+  return executeWrite_('RENEW', payload || {}, function(actor, requestId, transaction) {
+    return renew_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebMarkLost_(payload) {
+  return executeWrite_('MARK_LOAN_LOST', payload || {}, function(actor, requestId, transaction) {
+    return markLoanLost_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebPayFine_(payload) {
+  return executeWrite_('PAY_FINE', payload || {}, function(actor, requestId, transaction) {
+    return payFine_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+// 읽기 전용 — 미변상(REPLACEMENT) 목록. reports 허브(웹앱 「미변상 목록」)와 book-detail(어느
+// LOST 소장본에 「변상 완료」 버튼을 보여줄지 판단)이 함께 쓴다. FINES를 MEMBERS/LOANS/COPIES/
+// TITLES와 조인해 화면에 바로 뿌릴 수 있는 모양으로 내려준다 — apiWebReservations_ 등과 같은
+// indexBy_ 조인 패턴(새 로직 없음), 쓰기 없음(payFine_ 등 보호 로직을 호출하지 않는다).
+function apiWebUnpaidFines_(payload) {
+  var memberById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows, 'member_id');
+  var loanById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.LOANS).rows, 'loan_id');
+  var copyById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.COPIES).rows, 'copy_id');
+  var titleById = indexBy_(readTable_(LIBRARY_MVP.SHEETS.TITLES).rows, 'title_id');
+
+  var rows = readTable_(LIBRARY_MVP.SHEETS.FINES).rows
+    .filter(function(row) {
+      return row.fine_type_code === 'REPLACEMENT' && (row.status_code === 'UNPAID' || row.status_code === 'PARTIAL');
+    })
+    .sort(function(a, b) {
+      var at = asDate_(a.assessed_at);
+      var bt = asDate_(b.assessed_at);
+      return (bt ? bt.getTime() : 0) - (at ? at.getTime() : 0);
+    })
+    .map(function(row) {
+      var member = memberById[row.member_id] || {};
+      var loan = loanById[row.loan_id] || {};
+      var copy = copyById[loan.copy_id] || {};
+      var title = titleById[copy.title_id] || {};
+      var amount = Number(row.amount || 0);
+      var paid = Number(row.paid_amount || 0);
+      return {
+        fineId: row.fine_id,
+        memberId: row.member_id,
+        memberNo: member.member_no || '',
+        memberName: member.name || '',
+        loanId: row.loan_id,
+        copyId: copy.copy_id || '',
+        barcode: copy.barcode || '',
+        titleId: title.title_id || '',
+        title: title.title || '',
+        amount: amount,
+        paidAmount: paid,
+        remainingAmount: amount - paid,
+        statusCode: row.status_code,
+        assessedAt: formatDateTime_(row.assessed_at)
+      };
+    });
+
+  return { rows: rows };
 }
 
 // 웹앱 데스크톱 대시보드 기저층(ADR-021)용 읽기 액션 — ROADMAP.md "백엔드 접점" dashboard.

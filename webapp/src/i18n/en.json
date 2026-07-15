@@ -2,6 +2,7 @@
   "common": {
     "loading": "Loading…",
     "cancel": "Cancel",
+    "confirm": "Confirm",
     "save": "Save",
     "retry": "Retry",
     "close": "Close",
@@ -173,7 +174,19 @@
       "opDone": "Done",
       "opFailed": "Failed",
       "undoBarText": "{mode} — {copyKey}",
-      "undoButton": "Undo ({seconds}s)"
+      "undoButton": "Undo ({seconds}s)",
+      "redirectRenewButton": "Renew instead",
+      "redirectMarkLostButton": "Mark lost instead",
+      "redirectRenewConfirmTitle": "Renew instead of return",
+      "redirectRenewConfirmBody": "Undo the return of {title} and renew it instead? The return will be undone (checked out again) and renewed together — this can't be undone.",
+      "redirectMarkLostConfirmTitle": "Mark lost instead of return",
+      "redirectMarkLostConfirmBody": "Undo the return of {title} and mark it lost instead? The return will be undone (checked out again) and marked lost together — this can't be undone. Enter the replacement fine.",
+      "redirectUndoFailed": "Couldn't undo the return — {message} (renew/mark-lost can't proceed)",
+      "redirectRenewDone": "Renewed {title} — new due date {dueAt}",
+      "redirectRenewFailed": "Renewal failed — {message} (the return was already undone — rescan the copy and use Book Detail)",
+      "redirectMarkLostDone": "Marked {title} as lost",
+      "redirectMarkLostDoneWithFine": "Marked {title} as lost — new checkouts are blocked until the {amount} replacement fine is paid.",
+      "redirectMarkLostFailed": "Marking as lost failed — {message} (the return was already undone — rescan the copy and use Book Detail)"
     },
     "register": {
       "todayPrefix": "Today:",
@@ -274,7 +287,8 @@
         "returnedAt": "Returned",
         "applicant": "Requester",
         "queueSeq": "Queue #",
-        "requestedAt": "Requested"
+        "requestedAt": "Requested",
+        "actions": "Actions"
       },
       "loanStatus": {
         "open": "On loan",
@@ -290,15 +304,29 @@
       "opsEmpty": "No operation log entries.",
       "reservationsEmpty": "No reservations.",
       "reservationSummary": "{waiting} waiting · {ready} ready for pickup",
-      "actionsHint": "Reserve is wired up below — renew/lost/compensate actions will be wired up in a later item (todo/13).",
+      "actionsHint": "Reserve is handled below — renew/mark-lost are row actions in the copies list, and mark-paid is a row action on a lost copy.",
       "actionReserve": "Reserve",
       "actionRenew": "Renew",
       "actionMarkLost": "Mark lost",
-      "actionCompensate": "Compensate",
+      "actionCompensate": "Mark paid",
       "reserveWaitingScan": "Scan a student ID",
       "reserveDoneWaiting": "{title} reserved — position {queue} in line",
       "reserveDoneReady": "{title} ready to check out now — {barcode}",
-      "reserveFailed": "Reservation failed — {message}"
+      "reserveFailed": "Reservation failed — {message}",
+      "confirmRenewTitle": "Renew loan",
+      "confirmRenewBody": "Renew the loan for {barcode}? This action can't be undone.",
+      "confirmMarkLostTitle": "Mark as lost",
+      "confirmMarkLostBody": "Mark {barcode} as lost? A replacement fine will be assessed, and this member's new checkouts will be blocked until it's paid in full. This action can't be undone.",
+      "markLostFineLabel": "Replacement fine (amount)",
+      "confirmCompensateTitle": "Mark compensation paid",
+      "confirmCompensateBody": "Mark the remaining replacement balance of {amount} for {member}'s {title} as fully paid? This action can't be undone.",
+      "renewDone": "Renewed {barcode} — new due date {dueAt}",
+      "renewFailed": "Renewal failed — {message}",
+      "markLostDone": "Marked {barcode} as lost",
+      "markLostDoneWithFine": "Marked {barcode} as lost — {member} is blocked from new checkouts until the {amount} replacement fine is paid in full.",
+      "markLostFailed": "Marking as lost failed — {message}",
+      "compensateDone": "{member}'s compensation is complete — the checkout block is lifted.",
+      "compensateFailed": "Compensation failed — {message}"
     },
     "recentOps": {
       "refresh": "Refresh",
@@ -402,6 +430,16 @@
         "groupHeading": "{source} · {count} copies · {total}",
         "donorEmpty": "No copies could be grouped (acquisition source is required).",
         "printTitle": "Donor thank-you letters"
+      },
+      "unpaidFines": {
+        "cardLabel": "Unpaid replacements",
+        "title": "Unpaid replacements",
+        "subtitle": "Members with an unpaid replacement fine — new checkouts are blocked until paid in full.",
+        "colMember": "Member",
+        "colRemaining": "Remaining balance",
+        "colAmount": "Assessed amount",
+        "colAssessedAt": "Assessed",
+        "empty": "No unpaid replacement fines."
       }
     },
     "vizInsights": {

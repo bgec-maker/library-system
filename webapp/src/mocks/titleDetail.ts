@@ -17,7 +17,10 @@ const MOCK_TITLE_ID = 'T000231';
 const MOCK_COPIES = [
   { copyId: 'C000451', barcode: '0004511', statusCode: 'AVAILABLE', shelfCode: '813-KO-451', conditionCode: 'GOOD' },
   { copyId: 'C000452', barcode: '0004512', statusCode: 'ON_LOAN', shelfCode: '813-KO-452', conditionCode: 'GOOD' },
-  { copyId: 'C000453', barcode: '0004513', statusCode: 'REPAIR', shelfCode: '813-KO-453', conditionCode: 'WORN' }
+  { copyId: 'C000453', barcode: '0004513', statusCode: 'REPAIR', shelfCode: '813-KO-453', conditionCode: 'WORN' },
+  // todo/13 — 「변상」 행 액션을 샘플 폴백에서도 시연할 수 있도록 LOST 소장본 1건을 추가했다.
+  // mocks/fines.ts의 미변상(REPLACEMENT) 목데이터가 이 copyId(C000454)를 그대로 가리킨다.
+  { copyId: 'C000454', barcode: '0004514', statusCode: 'LOST', shelfCode: '813-KO-454', conditionCode: 'GOOD' }
 ];
 
 export function mockTitleDetail(query: TitleDetailQuery): TitleDetail {

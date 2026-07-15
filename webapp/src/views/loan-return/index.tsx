@@ -6,7 +6,9 @@ import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/
 import { apiCall, newRequestId } from '../../services/api';
 import { publishDataChange } from '../../services/dataChangeBus';
 import { useSession } from '../../services/session';
+import { renewLoan, markLoanLost } from '../../services/loanActionsData';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { intlLocaleTag, t } from '../../i18n';
 import './loan-return.css';
 
@@ -17,6 +19,18 @@ import './loan-return.css';
 //   대출 가능           → "누가 빌리나요?" 대기 → 학생 스캔 → 대출
 // 를 자동 분기한다 (doPost의 copyStatus/checkout/return 액션 — 이 뷰와 같은 커밋에서 추가됨.
 // 시트 쪽 GAS가 아직 이전 배포라면 UNKNOWN_ACTION이 뜬다 → 재배포 필요 안내를 그대로 보여준다).
+//
+// todo/13 "반납 대기 화면" — 자동 반납을 없애지 않고, 반납 직후 5초 실행취소 창을 "3지선다"로
+// 넓혔다: 실행취소(기존, 반대 트랜잭션) · 대신 연장 · 대신 분실 처리. 후자 둘은 반납이 이미
+// 일어난 뒤라 대상 대출이 이미 RETURNED 상태다(renew_/markLoanLost_는 OPEN 대출만 다룬다) — 그래서
+// "대신 연장/분실 처리"는 먼저 반납을 취소(재대출, undo와 같은 checkout 호출)한 뒤 그 자리에서
+// renew_/markLoanLost_를 이어서 호출하는 합성 동작이다. 즉시실행 대상이 아니라 book-detail의
+// 연장·분실 처리와 똑같이 ConfirmDialog를 거친다("전부 실행취소 불가 명시" 완료 조건 — 이 둘은
+// checkout/return과 달리 예외가 아니다). 확인 버튼을 누르는 순간 기존 5초 실행취소 타이머는
+// 취소되고(clearUndo) 그 시점부터는 앞으로 나아갈 뿐 되돌리지 않는다 — 확인 다이얼로그를 취소해도
+// 반납 자체는 이미 완료된 채로 남는다(정상 반납으로 취급, docs/ASSUMPTIONS.md `## todo/13`).
+// 대출(checkout) 직후 실행취소 창에는 이 두 버튼이 뜨지 않는다 — "방금 빌려준 책을 대신
+// 연장/분실 처리"는 의미가 없다(대상이 반납이 아니라 이제 막 시작된 대출이라서).
 
 type TxMode = 'checkout' | 'return';
 type ActionKind = TxMode | 'status';
@@ -62,7 +76,20 @@ interface UndoState {
   copyKey: string;
   /** return 실행취소(=재대출)에 필요 — copyStatus 응답의 memberNo를 기억해 둔다. */
   memberKey?: string;
+  /** todo/13 "대신 연장/분실 처리" 확인 다이얼로그 문구용(도서명) — mode==='return'일 때만 그
+   *  버튼들을 보여주므로 checkout 쪽은 이 값을 몰라도 무방하다. */
+  title: string;
   deadline: number;
+}
+
+/** todo/13 — 반납 대기 창(undo 5초)에서 「대신 연장」「대신 분실 처리」를 눌렀을 때의 목표 동작.
+ *  실행 자체는 handleRedirectConfirm이 "반납 취소(재대출) → renew_/markLoanLost_" 순으로 합성한다. */
+type RedirectKind = 'renew' | 'markLost';
+interface RedirectState {
+  copyKey: string;
+  memberKey?: string;
+  title: string;
+  kind: RedirectKind;
 }
 
 const OPS_LIMIT = 12;
@@ -98,6 +125,12 @@ function fmtTime(at: number): string {
   return new Date(at).toLocaleTimeString(intlLocaleTag(), { hour12: false });
 }
 
+// views/reports/index.tsx·views/book-detail/index.tsx의 formatCurrency와 같은 한 줄짜리 헬퍼
+// (todo/13 「대신 분실 처리」 완료 토스트의 대체비 표시용).
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
+}
+
 function actionKindLabel(kind: ActionKind): string {
   switch (kind) {
     case 'checkout':
@@ -117,6 +150,15 @@ function actionErrorMessage(kind: ActionKind, code: string, message: string): st
   return t('views.loanReturn.errorGeneric', { kind: kindLabel, message });
 }
 
+// book-detail/index.tsx의 isValidFineAmountInput과 같은 검증(markLoanLost_의 nonNegativeInteger_
+// 요구조건) — 공유 유틸로 뽑을 만큼 무겁지 않아 각 화면이 한 줄을 각자 갖는다(이 파일의
+// formatCurrency 없음·book-detail의 formatCurrency 중복과 같은 결).
+function isValidFineAmountInput(value: string): boolean {
+  if (value.trim() === '') return false;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0;
+}
+
 export default function LoanReturnView({ shell }: ViewProps) {
   const operator = useSession((s) => s.operator);
   const [book, setBook] = useState<BookInfo | null>(null);
@@ -130,6 +172,11 @@ export default function LoanReturnView({ shell }: ViewProps) {
   const [manualError, setManualError] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [undoSecondsLeft, setUndoSecondsLeft] = useState(0);
+  // todo/13 「대신 연장」「대신 분실 처리」 확인 다이얼로그 상태 — undo와 별개(undo 타이머는
+  // 이 다이얼로그를 여는 순간 clearUndo로 취소된다, 아래 openRedirect 참고).
+  const [redirect, setRedirect] = useState<RedirectState | null>(null);
+  const [redirectFineInput, setRedirectFineInput] = useState('');
+  const [redirectBusy, setRedirectBusy] = useState(false);
 
   // 같은 (모드+바코드[+학생]) 조합은 자동으로 1회만 실행 — 실패해도 자동 재시도하지 않고
   // "다시 시도" 버튼(사람의 입력)을 눌러야만 재실행된다.
@@ -161,10 +208,10 @@ export default function LoanReturnView({ shell }: ViewProps) {
   useEffect(() => clearUndo, [clearUndo]);
 
   const startUndo = useCallback(
-    (opId: string, txMode: TxMode, copyKey: string, memberKey?: string) => {
+    (opId: string, txMode: TxMode, copyKey: string, title: string, memberKey?: string) => {
       if (undoIntervalRef.current !== null) clearInterval(undoIntervalRef.current);
       const deadline = Date.now() + UNDO_MS;
-      setUndo({ opId, mode: txMode, copyKey, memberKey, deadline });
+      setUndo({ opId, mode: txMode, copyKey, memberKey, title, deadline });
       setUndoSecondsLeft(Math.ceil(UNDO_MS / 1000));
       undoIntervalRef.current = setInterval(() => {
         const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
@@ -213,7 +260,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
           ? t('views.loanReturn.checkoutDoneWithMember', { title: info.title, member: res.data.memberName })
           : t('views.loanReturn.checkoutDone', { title: info.title });
         shell.toast(message, 'success');
-        startUndo(requestId, 'checkout', info.barcode, memberKey);
+        startUndo(requestId, 'checkout', info.barcode, info.title, memberKey);
         resetSlots();
         // FRONTEND.md 대시보드 갱신 트리거 "트랜잭션 후" — dashboardData가 구독해 재조회한다.
         publishDataChange();
@@ -247,7 +294,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
           : t('views.loanReturn.returnDone', { title: info.title });
         shell.toast(message, 'success');
         // 반납 실행취소(=재대출)에 memberNo가 필요 — copyStatus에서 받아둔 값을 넘긴다.
-        startUndo(requestId, 'return', info.barcode, info.memberNo || undefined);
+        startUndo(requestId, 'return', info.barcode, info.title, info.memberNo || undefined);
         resetSlots();
         publishDataChange();
       } else {
@@ -407,6 +454,79 @@ export default function LoanReturnView({ shell }: ViewProps) {
     }
   }
 
+  // todo/13 「대신 연장」「대신 분실 처리」 — undo 타이머는 즉시 취소한다(그 시점부터 "실행취소"
+  // 자체는 더 이상 선택지가 아니다, 확인 다이얼로그를 취소해도 반납은 이미 완료된 채로 남는다).
+  function openRedirect(kind: RedirectKind) {
+    if (!undo || undo.mode !== 'return') return;
+    setRedirectFineInput('');
+    setRedirect({ copyKey: undo.copyKey, memberKey: undo.memberKey, title: undo.title, kind });
+    clearUndo();
+  }
+
+  function closeRedirect() {
+    if (redirectBusy) return;
+    setRedirect(null);
+  }
+
+  // 반납 대신 연장/분실 처리 — renew_/markLoanLost_는 OPEN 대출만 다루는데 반납이 이미 일어난
+  // 뒤라 대상 대출은 RETURNED 상태다. 그래서 먼저 반납을 취소(재대출 — 기존 undo와 같은 checkout
+  // 호출)한 뒤 그 자리에서 renew_/markLoanLost_를 이어서 호출한다(위 헤더 주석 참고). 앞 단계가
+  // 실패하면(예: 그 사이 다른 회원 예약이 소장본을 선점) 뒷단계는 시도하지 않는다 — 이미 존재하던
+  // "실행취소 자체가 실패할 수 있다" 위험과 같은 종류이지 이 항목이 새로 만든 위험이 아니다.
+  async function handleRedirectConfirm() {
+    if (!redirect) return;
+    if (redirect.kind === 'markLost' && !isValidFineAmountInput(redirectFineInput)) return;
+    setRedirectBusy(true);
+    const note = operatorNote();
+    const undoNote = `${note} · ${t('views.loanReturn.undoPrefix')}`;
+    const undoRes = await apiCall<Record<string, unknown>>('checkout', {
+      memberKey: redirect.memberKey,
+      copyKey: redirect.copyKey,
+      note: undoNote,
+      requestId: newRequestId()
+    });
+    if (!undoRes.ok) {
+      setRedirectBusy(false);
+      setRedirect(null);
+      shell.toast(t('views.loanReturn.redirectUndoFailed', { message: undoRes.error.message || undoRes.error.code }), 'error');
+      return;
+    }
+
+    if (redirect.kind === 'renew') {
+      const res = await renewLoan(redirect.copyKey, note);
+      setRedirectBusy(false);
+      setRedirect(null);
+      if (res.ok) {
+        shell.toast(t('views.loanReturn.redirectRenewDone', { title: redirect.title, dueAt: res.data.newDueAt }), 'success');
+        publishDataChange();
+      } else {
+        console.error('[loan-return] redirect renew 실패', { code: res.code, message: res.message, copyKey: redirect.copyKey });
+        shell.toast(t('views.loanReturn.redirectRenewFailed', { message: res.message }), 'error');
+      }
+      return;
+    }
+
+    const fineAmount = Number(redirectFineInput);
+    const res = await markLoanLost(redirect.copyKey, fineAmount, note);
+    setRedirectBusy(false);
+    setRedirect(null);
+    if (res.ok) {
+      shell.toast(
+        res.data.replacementFineAmount > 0
+          ? t('views.loanReturn.redirectMarkLostDoneWithFine', {
+              title: redirect.title,
+              amount: formatCurrency(res.data.replacementFineAmount)
+            })
+          : t('views.loanReturn.redirectMarkLostDone', { title: redirect.title }),
+        'success'
+      );
+      publishDataChange();
+    } else {
+      console.error('[loan-return] redirect markLost 실패', { code: res.code, message: res.message, copyKey: redirect.copyKey });
+      shell.toast(t('views.loanReturn.redirectMarkLostFailed', { message: res.message }), 'error');
+    }
+  }
+
   const awaitingStudent = Boolean(book && !book.onLoan && !busy && !checking);
   const canRetry = Boolean(lastFailedKey) && !busy && !checking;
 
@@ -501,11 +621,59 @@ export default function LoanReturnView({ shell }: ViewProps) {
       {undo && (
         <div className="lr-undo-bar">
           <span>{t('views.loanReturn.undoBarText', { mode: actionKindLabel(undo.mode), copyKey: undo.copyKey })}</span>
-          <button type="button" onClick={() => void handleUndoClick()}>
-            {t('views.loanReturn.undoButton', { seconds: undoSecondsLeft })}
-          </button>
+          <div className="lr-undo-actions">
+            <button type="button" onClick={() => void handleUndoClick()}>
+              {t('views.loanReturn.undoButton', { seconds: undoSecondsLeft })}
+            </button>
+            {/* todo/13 "반납 대기 화면" — 반납(undo.mode==='return') 직후에만 대안을 보여준다.
+                방금 빌려준 책(checkout)을 "대신 연장/분실 처리"하는 건 의미가 없다. */}
+            {undo.mode === 'return' && (
+              <>
+                <button type="button" className="ghost" onClick={() => openRedirect('renew')}>
+                  {t('views.loanReturn.redirectRenewButton')}
+                </button>
+                <button type="button" className="ghost" onClick={() => openRedirect('markLost')}>
+                  {t('views.loanReturn.redirectMarkLostButton')}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(redirect)}
+        title={
+          redirect?.kind === 'renew'
+            ? t('views.loanReturn.redirectRenewConfirmTitle')
+            : t('views.loanReturn.redirectMarkLostConfirmTitle')
+        }
+        message={
+          redirect?.kind === 'renew' ? (
+            t('views.loanReturn.redirectRenewConfirmBody', { title: redirect.title })
+          ) : redirect ? (
+            <div className="lr-redirect-form">
+              <p>{t('views.loanReturn.redirectMarkLostConfirmBody', { title: redirect.title })}</p>
+              <label htmlFor="lr-redirect-fine">{t('views.bookDetail.markLostFineLabel')}</label>
+              <input
+                id="lr-redirect-fine"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={redirectFineInput}
+                onChange={(e) => setRedirectFineInput(e.target.value)}
+              />
+            </div>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel={redirect?.kind === 'renew' ? t('views.bookDetail.actionRenew') : t('views.bookDetail.actionMarkLost')}
+        busy={redirectBusy}
+        confirmDisabled={redirect?.kind === 'markLost' && !isValidFineAmountInput(redirectFineInput)}
+        onConfirm={() => void handleRedirectConfirm()}
+        onCancel={closeRedirect}
+      />
     </div>
   );
 }

@@ -1,11 +1,12 @@
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, BookX, ChartColumn, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
+import { ArrowLeft, Banknote, BookX, ChartColumn, FileText, Gift, Megaphone, Printer, UserSearch } from 'lucide-react';
 import type { ShellContext, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { PrintDocument } from '../../components/PrintDocument';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   fetchDonorThanksReport,
   fetchHomeroomReport,
@@ -25,6 +26,8 @@ import {
   type WeedingCandidateRow,
   type WeedingRecommendReport
 } from '../../services/reportData';
+import { fetchUnpaidFines, payFine, type UnpaidFineRow } from '../../services/loanActionsData';
+import { subscribeDataChange } from '../../services/dataChangeBus';
 import { CategoryTreemap, TurnoverQuadrant, VizLazyMount } from '../../viz';
 import { intlLocaleTag, t } from '../../i18n';
 import './reports.css';
@@ -46,7 +49,12 @@ type ReportTypeId = 'no-loan-finder' | 'homeroom-report' | 'weeding-recommend' |
 // 착륙"). report 액션의 type 파라미터(ReportTypeId)와는 무관한 별개 화면(viz 액션으로 조회)이라
 // apiWebReport_ 쪽 타입을 넓히지 않고 프론트 전용 식별자로만 둔다.
 type VizInsightsId = 'viz-insights';
-type SelectedPanelId = ReportTypeId | VizInsightsId;
+// todo/13 「미변상 목록」 — 이것도 report 액션이 아니라 별도 unpaidFines 액션(services/
+// loanActionsData.ts)을 쓰는 화면이라 viz-insights와 같은 이유로 ReportTypeId에 섞지 않았다(읽기
+// 전용 목록이면서도 "변상 완료" 쓰기 액션을 그 자리에서 실행한다는 점에서 나머지 5개 리포트와도
+// 성격이 달라 REPORT_TYPES 배열이 아니라 독립 카드로 분리했다).
+type UnpaidFinesId = 'unpaid-fines';
+type SelectedPanelId = ReportTypeId | VizInsightsId | UnpaidFinesId;
 
 interface ReportTypeMeta {
   id: ReportTypeId;
@@ -71,7 +79,7 @@ function isReportTypeId(value: string): value is ReportTypeId {
 }
 
 function isSelectedPanelId(value: string): value is SelectedPanelId {
-  return isReportTypeId(value) || value === 'viz-insights';
+  return isReportTypeId(value) || value === 'viz-insights' || value === 'unpaid-fines';
 }
 
 function currentMonthDefault(): string {
@@ -111,6 +119,12 @@ function TypeSelector({ onSelect }: TypeSelectorProps) {
           <ChartColumn size={20} aria-hidden />
           <span className="reports-type-card-label">{t('views.reports.vizInsights.cardLabel')}</span>
         </button>
+        {/* todo/13 — 7번째 카드 「미변상 목록」: unpaidFines 액션(services/loanActionsData.ts)을
+            쓰는 별개 화면이라 위 viz-insights와 같은 이유로 REPORT_TYPES에 섞지 않았다. */}
+        <button type="button" className="reports-type-card" onClick={() => onSelect('unpaid-fines')}>
+          <Banknote size={20} aria-hidden />
+          <span className="reports-type-card-label">{t('views.reports.unpaidFines.cardLabel')}</span>
+        </button>
       </div>
     </div>
   );
@@ -135,6 +149,147 @@ function VizInsightsPanel({ shell }: { shell: ShellContext }) {
           </VizLazyMount>
         </Suspense>
       </div>
+    </div>
+  );
+}
+
+// todo/13 「미변상 목록」 — services/loanActionsData.ts의 apiWebUnpaidFines_(읽기)를 views/
+// reservations/index.tsx와 같은 패턴(DataTable + 행 액션 버튼, 리포트 5종의 "미리보기 버튼
+// 누르면 그때 조회" 온디맨드 패턴이 아니라 진입 즉시 조회 + 수동 새로고침 + 트랜잭션 후 자동
+// 갱신)으로 보여준다 — 「할 일 목록」에 가까운 화면이라 리포트보다 예약 관리 쪽 관례가 더 맞다고
+// 판단했다. 「변상 완료」는 book-detail의 것과 같은 ConfirmDialog·payFine_(amount=잔액 전액) 흐름을
+// 공유한다(views.bookDetail.confirmCompensateTitle/Body·compensateDone/Failed 키를 그대로
+// 재사용 — DESIGN.md "같은 행동 같은 이름 관통").
+interface UnpaidFinesPanelProps {
+  shell: ShellContext;
+}
+
+function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
+  const [rows, setRows] = useState<UnpaidFineRow[]>([]);
+  const [sample, setSample] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmRow, setConfirmRow] = useState<UnpaidFineRow | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const outcome = await fetchUnpaidFines();
+    setLoading(false);
+    if (outcome.ok) {
+      setRows(outcome.data);
+      setSample(outcome.sample);
+    } else {
+      setError(outcome.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // 트랜잭션 후 갱신(views/reservations/index.tsx와 같은 신호) — book-detail에서 분실 처리·변상
+  // 완료가 일어나도 이 목록이 반영되게 한다.
+  useEffect(() => subscribeDataChange(() => void load()), [load]);
+
+  async function handleConfirmPay() {
+    if (!confirmRow) return;
+    setPayBusy(true);
+    const res = await payFine(confirmRow.fineId, confirmRow.remainingAmount);
+    setPayBusy(false);
+    setConfirmRow(null);
+    if (res.ok) {
+      shell.toast(t('views.bookDetail.compensateDone', { member: confirmRow.memberName || confirmRow.memberNo }), 'success');
+      void load();
+    } else {
+      console.error('[reports] payFine 실패', { code: res.code, message: res.message, fineId: confirmRow.fineId });
+      shell.toast(t('views.bookDetail.compensateFailed', { message: res.message }), 'error');
+    }
+  }
+
+  const columns = useMemo<DataTableColumn<UnpaidFineRow>[]>(
+    () => [
+      {
+        key: 'memberName',
+        header: t('views.reports.unpaidFines.colMember'),
+        sortable: true,
+        render: (row) => row.memberName || row.memberNo,
+        mobilePrimary: true
+      },
+      { key: 'title', header: t('views.reservations.col.title'), sortable: true, mobileSecondary: true },
+      { key: 'barcode', header: t('views.catalog.col.barcode'), sortable: true, mono: true },
+      {
+        key: 'remainingAmount',
+        header: t('views.reports.unpaidFines.colRemaining'),
+        sortable: true,
+        numeric: true,
+        render: (row) => formatCurrency(row.remainingAmount)
+      },
+      {
+        key: 'amount',
+        header: t('views.reports.unpaidFines.colAmount'),
+        sortable: true,
+        numeric: true,
+        render: (row) => formatCurrency(row.amount)
+      },
+      { key: 'assessedAt', header: t('views.reports.unpaidFines.colAssessedAt'), sortable: true, mono: true },
+      {
+        key: 'rowActions',
+        header: t('views.reservations.col.actions'),
+        filterValue: false,
+        csvValue: () => '',
+        render: (row) => (
+          <button type="button" className="warn" onClick={() => setConfirmRow(row)}>
+            <Banknote size={14} aria-hidden /> {t('views.bookDetail.actionCompensate')}
+          </button>
+        )
+      }
+    ],
+    []
+  );
+
+  return (
+    <div>
+      <div className="no-print">
+        <h2>{t('views.reports.unpaidFines.title')}</h2>
+        <p className="reports-summary-line">{t('views.reports.unpaidFines.subtitle')}</p>
+        {error && (
+          <div className="reports-error" role="alert">
+            {t('views.reports.fetchError', { message: error })}
+          </div>
+        )}
+      </div>
+
+      <DataTable<UnpaidFineRow>
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.fineId}
+        platform={shell.platform}
+        loading={loading && rows.length === 0}
+        emptyHint={t('views.reports.unpaidFines.empty')}
+        toolbarExtra={sample ? <SampleDataBadge /> : null}
+        csvFileName="unpaid-fines.csv"
+        defaultPageSize={25}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmRow)}
+        title={t('views.bookDetail.confirmCompensateTitle')}
+        message={
+          confirmRow
+            ? t('views.bookDetail.confirmCompensateBody', {
+                member: confirmRow.memberName || confirmRow.memberNo,
+                title: confirmRow.title,
+                amount: formatCurrency(confirmRow.remainingAmount)
+              })
+            : ''
+        }
+        confirmLabel={t('views.bookDetail.actionCompensate')}
+        busy={payBusy}
+        onConfirm={() => void handleConfirmPay()}
+        onCancel={() => setConfirmRow(null)}
+      />
     </div>
   );
 }
@@ -957,6 +1112,7 @@ export default function ReportsView({ shell, params }: ViewProps) {
       {selectedType === 'recall-notice' && <RecallNoticePanel shell={shell} />}
       {selectedType === 'donor-thanks' && <DonorThanksPanel shell={shell} />}
       {selectedType === 'viz-insights' && <VizInsightsPanel shell={shell} />}
+      {selectedType === 'unpaid-fines' && <UnpaidFinesPanel shell={shell} />}
     </div>
   );
 }

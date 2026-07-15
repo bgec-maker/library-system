@@ -785,3 +785,93 @@
   금지"). 완료 조건 "걸기→반납 시 자동배정→도착 목록 표시 흐름이 샘플 폴백으로도 시연됨"은
   쓰기를 가짜로 성공시켜서가 아니라, `mocks/reservations.ts`가 이미 그 흐름의 "결과"(대기 1건·
   도착알림 1건·만료임박 1건)를 미리 갖춘 표본 데이터로 보여줌으로써 만족시켰다.
+
+## todo/13 · 연장·분실·변상 (2026-07-15)
+
+- **확인 다이얼로그는 `ShellContext.confirm()` 확장이 아니라 새 공용 컴포넌트
+  `components/ConfirmDialog.tsx`로 구현**했다. todo/05의 `print()` 선례(ShellContext에 인자
+  없는 트리거 한 줄만 추가)를 다시 읽었지만, `print()`는 실제로 `window.print()`라는 **셸/플랫폼
+  전용 API**를 대신 호출해줘야 해서 뷰가 원천적으로 닿을 수 없는 기능이었다. 반면 확인 다이얼로그는
+  순수 시각적 오버레이(위에 뜨는 카드 + 확인/취소 버튼)일 뿐 셸의 도움이 전혀 필요 없다 —
+  `components/SessionGate.tsx`가 이미 `.session-gate-overlay`(`position:fixed; inset:0`)로
+  같은 패턴을 views/** 바깥(`src/components/`)에서 구현해 둔 선례를 그대로 따랐다. `components/**`는
+  `check-view-boundary.mjs`·`no-restricted-imports` 셸 차단 대상이 아니라서(파일 목록:
+  `files: ['src/views/**/*.{ts,tsx}']`) `window.confirm`을 원한다면 여기서는 쓸 수 있었겠지만,
+  `ConfirmDialog.tsx` 안에서도 `window.confirm`을 쓰지 않고 순수 React 렌더 트리 오버레이로
+  만들었다 — 브라우저 네이티브 confirm은 스타일링이 불가능하고(디자인 시스템 이탈) 비동기
+  다이얼로그(분실 처리의 대체비 입력 같은 폼 요소)를 담을 수 없다. `book-detail`(소장본 행의
+  연장·분실 처리·변상 완료)과 `loan-return`(반납 대기의 "대신 연장/분실 처리")이 이 컴포넌트
+  하나를 공유한다 — "확인 UI 중복 금지"(DataTable과 같은 결). ShellContext 인터페이스 자체는
+  이번 항목에서 전혀 넓히지 않았다(`types.ts`의 "함부로 넓히지 않는다" 원칙 유지).
+
+- **loan-return의 "반납 대기 화면"은 기존 5초 실행취소 바를 3지선다로 확장하는 방식으로
+  구현**했다(task 노트가 제안한 방향 그대로 채택) — 반납은 여전히 스캔 즉시 실행되고(FRONTEND.md
+  즉시실행 정책을 약화하지 않음), 그 직후 5초 창의 버튼이 "실행취소" 하나에서 "실행취소 | 대신
+  연장 | 대신 분실 처리" 셋으로 늘었다. 까다로운 지점은 `renew_`/`markLoanLost_`가 `OPEN` 대출만
+  다루는데 반납이 이미 일어난 뒤라 대상 대출이 `RETURNED` 상태라는 것 — 그래서 "대신 연장/분실
+  처리"는 **"반납 취소(재대출, 기존 undo와 같은 `checkout` 호출) → 그 자리에서 `renew_`/
+  `markLoanLost_` 이어서 호출"**하는 합성 동작으로 구현했다(`handleRedirectConfirm`,
+  `views/loan-return/index.tsx`). 둘 다 "실행취소 불가" 원칙에 따라 `ConfirmDialog`를 거치고,
+  다이얼로그를 여는 순간(`openRedirect`) 기존 5초 타이머는 즉시 `clearUndo()`로 취소된다 —
+  그 시점부터 "그냥 실행취소"는 더 이상 선택지가 아니다(대안을 골랐으니 그 대안으로 끝까지
+  간다). **다이얼로그를 취소하면 반납은 이미 완료된 채로 그대로 남는다**(재대출도, 연장도,
+  분실 처리도 일어나지 않은 상태 — "정상 반납"으로 취급) — 이건 데이터 손실이 아니라 애초에
+  "취소를 누르지 않았다면 어차피 반납으로 끝났을 상태"와 동일해서 안전하다고 판단했다. 앞 단계
+  (반납 취소=재대출)가 실패하면(예: 그 사이 다른 회원 예약이 그 소장본을 선점) 뒷단계는 시도하지
+  않고 실패를 그대로 토스트로 알린다 — 이건 기존 "실행취소 자체가 실패할 수 있다"는 위험과 같은
+  종류이지 이 항목이 새로 만든 위험이 아니다. 대출(checkout) 직후의 실행취소 바에는 이 두 버튼이
+  뜨지 않는다(`undo.mode === 'return'`일 때만 렌더) — 방금 빌려준 책을 "대신 연장/분실 처리"하는
+  것은 애초에 의미가 없다.
+
+- **미변상 목록은 리포트 5종 배열(`REPORT_TYPES`)에 섞지 않고, `viz-insights`와 같은 방식으로
+  분리된 7번째 카드(`unpaid-fines`)로 리포트 허브에 얹었다** — `report` 액션이 아니라 별도
+  `unpaidFines` 액션을 쓰고, 그 자리에서 "변상 완료"라는 **쓰기** 액션을 실행한다는 점에서
+  나머지 5개 리포트(전부 읽기 전용 미리보기+인쇄)와 성격이 다르다고 판단했다. 화면 구현도 리포트
+  5종의 "미리보기 버튼을 눌러야 조회"(온디맨드) 패턴이 아니라 `views/reservations/index.tsx`와
+  같은 "진입 즉시 조회 + 수동 새로고침 + `subscribeDataChange` 트랜잭션 후 자동 갱신" 패턴을
+  택했다 — 리포트라기보다 "지금 처리해야 할 목록"에 가까운 화면이라고 봤다. 「변상 완료」 확인
+  다이얼로그·완료/실패 토스트 i18n 키는 book-detail의 것(`views.bookDetail.confirmCompensate*`·
+  `compensateDone`·`compensateFailed`)을 그대로 재사용했다(DESIGN.md "같은 행동 같은 이름 관통")
+  — 새 키를 만들면 같은 개념("변상 완료 처리")의 문구가 두 벌로 갈라질 뻔했다.
+
+- **"분실→학생 정지 연동"은 `markLoanLost_`에 새 정지 로직을 추가하지 않고, `checkout_`의 기존
+  `unpaidReplacement` 체크(936~941행 — 미변상 REPLACEMENT 벌금이 있으면 신규 대출 자체를
+  막음)를 그대로 둔 채 그 결과를 프론트에 "설명"만 추가했다** — `markLoanLost_`가 돌려주는
+  `replacementFineAmount`가 0보다 크면(대체비가 부과됐다는 뜻) book-detail·loan-return 둘 다
+  분실 처리 완료 토스트에 "이 회원은 완납 전까지 신규 대출이 제한됩니다"를 덧붙인다
+  (`views.bookDetail.markLostDoneWithFine`/`views.loanReturn.redirectMarkLostDoneWithFine`).
+  실제 차단은 이미 `checkout_`이 하고 있었다 — 이 항목은 그 기존 동작을 사서가 눈치채도록 웹앱에
+  드러내는 일이었지, 새 "정지" 상태(예: `suspended_until` 필드 갱신 같은)를 만드는 일이 아니었다.
+
+- **`views/recent-ops/index.tsx`와 `views/book-detail/index.tsx`(각자 독립적인
+  action_code→i18n키 매핑 맵)에서 `MARK_LOAN_LOST`/`PAY_FINE` 키가 절대 매칭되지 않는 죽은
+  키였던 걸 발견해 함께 고쳤다** — `markLoanLost_`/`payFine_`(Code.gs)이 `writeAudit_`에 실제로
+  남기는 `action_code`는 각각 `'MARK_LOST'`/`'PAY'`다(executeWrite_에 넘기는 operationType
+  `'MARK_LOAN_LOST'`/`'PAY_FINE'`과는 별개 값). 이 항목 전까지는 두 액션이 웹앱에서 한 번도
+  실제로 호출된 적이 없어(사이드바 전용) 아무도 눈치채지 못한 잠재 버그였다 — todo/12가
+  `cancelReservation_`의 `'CANCEL_RESERVATION'`→`'CANCEL'` 키를 고친 것과 정확히 같은 종류의
+  발견이다. 두 함수 본문 자체(`markLoanLost_`/`payFine_`)는 건드리지 않았다(절대 규칙 대상) —
+  프론트의 순수 표시 매핑만 고쳤다.
+
+- **`payFine_`(Code.gs)은 `payload.note`를 전혀 소비하지 않는다**(`appendNote_` 호출이 없음 —
+  `renew_`/`markLoanLost_`와 달리 FINES.note 필드를 이 함수가 건드리지 않는다). 그래서
+  `services/loanActionsData.ts`의 `payFine()` 헬퍼는 `renewLoan()`/`markLoanLost()`와 달리
+  `note` 파라미터를 받지 않는다 — "operator note 관통"은 실제로 note를 소비하는 함수에만
+  적용했다(없는 파이프에 물을 흘려보낼 수는 없다). "변상 완료" 기본 동작은 `payFine_`가 지원하는
+  부분 납부(`amount < remaining` → `PARTIAL`)를 프론트에서 강제로 막지는 않지만(서버가 이미
+  그 값을 그대로 받아들인다), book-detail·reports 양쪽 다 UI상 `remainingAmount`(잔액 전액)만
+  넘기도록 고정했다 — "완료"라는 라벨이 부분 납부를 허용하는 것처럼 보이면 혼란스럽다고 판단했다.
+
+- **`apiWebUnpaidFines_`(신규 읽기 전용 액션)는 `payload`를 전혀 쓰지 않는다** — `apiWebDashboard_`
+  와 같은 관례(전교 미변상 목록은 필터 파라미터가 필요 없다, 좁히는 건 클라이언트 몫 —
+  book-detail이 `titleId`로, reports 허브는 전체를 그대로 보여준다). 전교 규모(수천 명)에서도
+  FINES 시트 자체가 대출/회원 시트보다 훨씬 작아(분실은 흔치 않은 사건) 전체를 매번 읽어도
+  성능 문제가 되지 않는다고 판단했다.
+
+- **`mocks/titleDetail.ts`에 4번째 소장본(LOST, `C000454`/`0004514`)을 추가**하고
+  `mocks/fines.ts`(신규)의 미변상 표본 하나가 그 `copyId`를 정확히 가리키게 만들었다 —
+  재배포 전(UNKNOWN_ACTION) 샘플 폴백 상태에서도 book-detail을 열면 「변상 완료」 행 액션이
+  실제로 보이는 시연 가능한 상태를 만들기 위해서다(CLAUDE.md 검증 원칙 "가짜 성공 금지"는
+  쓰기에 적용되는 것이지, 읽기 샘플 데이터가 그 자체로 완결된 데모를 보여주는 것까지 막지
+  않는다 — 기존 `mocks/reservations.ts`도 3버킷을 전부 채워 같은 방식으로 데모 완결성을
+  추구했다).

@@ -163,3 +163,24 @@
   font-size: var(--fs-sm);
   color: var(--ink-2);
 }
+
+/* 소장본 목록의 행 액션(연장·분실 처리·변상 완료) — views/reservations/reservations.css의
+   .rsv-row-actions와 같은 관례(작은 ghost 버튼을 나란히). */
+.bd-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bd-row-actions button {
+  padding: 6px 10px;
+  min-height: 32px;
+  font-size: var(--fs-sm);
+}
+
+/* ConfirmDialog의 「분실 처리」 본문 — 안내문 + 대체비 입력 필드를 세로로. */
+.bd-confirm-form label {
+  margin-top: 12px;
+}
+.bd-confirm-form input {
+  width: 100%;
+}

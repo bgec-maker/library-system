@@ -26,8 +26,13 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
   REGISTER_TITLE: 'views.recentOps.action.registerTitle',
   REGISTER_COPY: 'views.recentOps.action.registerCopy',
   REGISTER_BY_ISBN: 'views.recentOps.action.registerByIsbn',
-  MARK_LOAN_LOST: 'views.recentOps.action.markLoanLost',
-  PAY_FINE: 'views.recentOps.action.payFine',
+  // markLoanLost_/payFine_(Code.gs)이 writeAudit_에 실제로 남기는 action_code는 각각 'MARK_LOST'·
+  // 'PAY'다(todo/13 확인 — executeWrite_에 넘기는 operationType 'MARK_LOAN_LOST'/'PAY_FINE'과는
+  // 별개 값, 위 CANCEL과 같은 패턴). 이전엔 이 두 키가 'MARK_LOAN_LOST'/'PAY_FINE'이라 절대
+  // 매칭되지 않아 분실 처리·변상 납부 로그가 번역 없이 원문 코드로 표시되는 잠재 버그였다 —
+  // todo/13이 이 두 액션을 처음으로 실제 호출 가능하게 만들면서 발견해 함께 고쳤다.
+  MARK_LOST: 'views.recentOps.action.markLoanLost',
+  PAY: 'views.recentOps.action.payFine',
   UPDATE_COPY_STATUS: 'views.recentOps.action.updateCopyStatus',
   RECONCILE_COPY_STATUS: 'views.recentOps.action.reconcileCopyStatus',
   UPSERT_STAFF: 'views.recentOps.action.upsertStaff',
