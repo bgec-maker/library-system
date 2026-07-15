@@ -43,8 +43,23 @@
       background: linear-gradient(135deg, var(--navy), var(--navy-2));
       box-shadow: 0 3px 12px rgba(23, 50, 77, .22);
     }
+    .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     header h1 { margin: 0; font-size: 18px; letter-spacing: -.25px; }
     header p { margin: 3px 0 0; color: #dceaf5; font-size: 11px; }
+    .lang-toggle { display: flex; flex: 0 0 auto; gap: 4px; }
+    .lang-btn {
+      border: 1px solid rgba(255, 255, 255, .35);
+      border-radius: 999px;
+      padding: 4px 10px;
+      color: #dceaf5;
+      background: transparent;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      cursor: pointer;
+    }
+    .lang-btn.active { color: var(--navy); background: var(--white); border-color: var(--white); }
     nav {
       display: flex;
       gap: 5px;
@@ -166,359 +181,881 @@
 </head>
 <body>
   <header>
-    <h1>📚 도서관 관리</h1>
-    <p id="libraryMeta">MVP 운영 사이드바 · 불러오는 중…</p>
+    <div class="header-top">
+      <h1>📚 <span data-i18n="app.title">도서관 관리</span></h1>
+      <div class="lang-toggle" role="group" aria-label="Language / 언어">
+        <button type="button" id="langKoButton" class="lang-btn" data-locale="ko">KO</button>
+        <button type="button" id="langEnButton" class="lang-btn" data-locale="en">EN</button>
+      </div>
+    </div>
+    <p id="libraryMeta" data-i18n="app.subtitleLoading">MVP 운영 사이드바 · 불러오는 중…</p>
   </header>
 
   <nav id="tabs">
-    <button data-tab="dashboard">현황</button>
-    <button data-tab="search">검색</button>
-    <button data-tab="checkout">대출</button>
-    <button data-tab="return">반납·연장</button>
-    <button data-tab="reservation">예약</button>
-    <button data-tab="member">회원</button>
-    <button data-tab="catalog">도서</button>
-    <button data-tab="admin">관리</button>
+    <button data-tab="dashboard" data-i18n="nav.dashboard">현황</button>
+    <button data-tab="search" data-i18n="nav.search">검색</button>
+    <button data-tab="checkout" data-i18n="nav.checkout">대출</button>
+    <button data-tab="return" data-i18n="nav.return">반납·연장</button>
+    <button data-tab="reservation" data-i18n="nav.reservation">예약</button>
+    <button data-tab="member" data-i18n="nav.member">회원</button>
+    <button data-tab="catalog" data-i18n="nav.catalog">도서</button>
+    <button data-tab="admin" data-i18n="nav.admin">관리</button>
   </nav>
 
   <main>
     <section id="tab-dashboard">
-      <h2 class="section-title">운영 현황</h2>
-      <p class="section-subtitle" id="refreshedAt">원본 DB 기준 집계</p>
+      <h2 class="section-title" data-i18n="dashboard.title">운영 현황</h2>
+      <p class="section-subtitle" id="refreshedAt" data-i18n="dashboard.subtitleDefault">원본 DB 기준 집계</p>
       <div class="stats" id="stats"></div>
       <div class="card" style="margin-top:10px">
-        <h3>오늘 반납 예정 · 연체</h3>
+        <h3 data-i18n="dashboard.card.dueOverdue">오늘 반납 예정 · 연체</h3>
         <div id="dueItems" class="table-list"></div>
       </div>
       <div class="card">
-        <h3>예약 수령 대기</h3>
+        <h3 data-i18n="dashboard.card.readyPickup">예약 수령 대기</h3>
         <div id="readyItems" class="table-list"></div>
       </div>
-      <button class="primary" id="refreshDashboardButton">현황 새로고침</button>
+      <button class="primary" id="refreshDashboardButton" data-i18n="dashboard.refreshButton">현황 새로고침</button>
     </section>
 
     <section id="tab-search" hidden>
-      <h2 class="section-title">통합 검색</h2>
-      <p class="section-subtitle">정확한 바코드·회원번호·ID를 먼저 찾고, 제목·저자·연락처를 부분 검색합니다.</p>
+      <h2 class="section-title" data-i18n="search.title">통합 검색</h2>
+      <p class="section-subtitle" data-i18n="search.subtitle">정확한 바코드·회원번호·ID를 먼저 찾고, 제목·저자·연락처를 부분 검색합니다.</p>
       <form id="searchForm" class="card">
-        <label><span>검색어 *</span><input name="query" autocomplete="off" placeholder="제목, 저자, ISBN, 바코드, 회원번호" required></label>
-        <label><span>검색 범위</span>
+        <label><span data-i18n="search.form.query.label">검색어 *</span><input name="query" autocomplete="off" data-i18n-ph="search.form.query.placeholder" placeholder="제목, 저자, ISBN, 바코드, 회원번호" required></label>
+        <label><span data-i18n="search.form.scope.label">검색 범위</span>
           <select name="scope">
-            <option value="ALL">전체</option>
-            <option value="BOOKS">도서</option>
-            <option value="COPIES">소장본</option>
-            <option value="MEMBERS">회원</option>
-            <option value="LOANS">대출</option>
-            <option value="RESERVATIONS">예약</option>
-            <option value="FINES">연체료</option>
+            <option value="ALL" data-i18n="search.scope.all">전체</option>
+            <option value="BOOKS" data-i18n="search.scope.books">도서</option>
+            <option value="COPIES" data-i18n="search.scope.copies">소장본</option>
+            <option value="MEMBERS" data-i18n="search.scope.members">회원</option>
+            <option value="LOANS" data-i18n="search.scope.loans">대출</option>
+            <option value="RESERVATIONS" data-i18n="search.scope.reservations">예약</option>
+            <option value="FINES" data-i18n="search.scope.fines">연체료</option>
           </select>
         </label>
-        <button class="primary" type="submit">검색</button>
+        <button class="primary" type="submit" data-i18n="search.button">검색</button>
       </form>
       <div id="searchSummary" class="section-subtitle"></div>
       <div id="searchResults" class="result-list"></div>
     </section>
 
     <section id="tab-checkout" hidden>
-      <h2 class="section-title">대출 처리</h2>
-      <p class="section-subtitle">회원 상태·만료·한도·연체·예약 우선권·소장본 상태를 잠금 안에서 다시 확인합니다.</p>
+      <h2 class="section-title" data-i18n="checkout.title">대출 처리</h2>
+      <p class="section-subtitle" data-i18n="checkout.subtitle">회원 상태·만료·한도·연체·예약 우선권·소장본 상태를 잠금 안에서 다시 확인합니다.</p>
       <form id="checkoutForm" class="card">
-        <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" autocomplete="off" placeholder="0000018 (7자리)" required></label>
-        <label><span>소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" placeholder="C-000001" required></label>
-        <label><span>메모</span><textarea name="note" placeholder="선택 입력"></textarea></label>
-        <button class="primary" type="submit">대출 확정</button>
+        <label><span data-i18n="checkout.form.memberKey.label">회원번호 또는 회원 ID *</span><input name="memberKey" autocomplete="off" data-i18n-ph="checkout.form.memberKey.placeholder" placeholder="0000018 (7자리)" required></label>
+        <label><span data-i18n="checkout.form.copyKey.label">소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" placeholder="C-000001" required></label>
+        <label><span data-i18n="common.note">메모</span><textarea name="note" data-i18n-ph="common.note.optionalPlaceholder" placeholder="선택 입력"></textarea></label>
+        <button class="primary" type="submit" data-i18n="checkout.button">대출 확정</button>
       </form>
-      <div class="notice">바코드 스캐너는 보통 키보드처럼 동작합니다. 입력칸을 선택한 뒤 스캔하세요.</div>
+      <div class="notice" data-i18n="checkout.notice">바코드 스캐너는 보통 키보드처럼 동작합니다. 입력칸을 선택한 뒤 스캔하세요.</div>
     </section>
 
     <section id="tab-return" hidden>
-      <h2 class="section-title">반납 · 연장</h2>
+      <h2 class="section-title" data-i18n="return.title">반납 · 연장</h2>
       <details open>
-        <summary>반납 처리</summary>
+        <summary data-i18n="return.section.return">반납 처리</summary>
         <div class="inside">
           <form id="returnForm">
-            <label><span>소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" required></label>
-            <label><span>메모</span><textarea name="note"></textarea></label>
-            <button class="primary" type="submit">반납 확정</button>
+            <label><span data-i18n="return.form.copyKey.label">소장본 바코드 또는 Copy ID *</span><input name="copyKey" autocomplete="off" required></label>
+            <label><span data-i18n="common.note">메모</span><textarea name="note"></textarea></label>
+            <button class="primary" type="submit" data-i18n="return.button">반납 확정</button>
           </form>
         </div>
       </details>
       <details>
-        <summary>대출 연장</summary>
+        <summary data-i18n="return.section.renew">대출 연장</summary>
         <div class="inside">
           <form id="renewForm">
-            <label><span>대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
-            <label><span>메모</span><textarea name="note"></textarea></label>
-            <button class="secondary" type="submit">연장 적용</button>
+            <label><span data-i18n="renew.form.key.label">대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
+            <label><span data-i18n="common.note">메모</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit" data-i18n="renew.button">연장 적용</button>
           </form>
         </div>
       </details>
       <details>
-        <summary>대출 도서 분실 처리</summary>
+        <summary data-i18n="return.section.lost">대출 도서 분실 처리</summary>
         <div class="inside">
-          <p class="help">진행 중 대출을 분실로 종료하고 소장본도 분실 상태로 바꿉니다. 대체 비용은 0원을 포함해 반드시 직접 입력하세요.</p>
+          <p class="help" data-i18n="lost.help">진행 중 대출을 분실로 종료하고 소장본도 분실 상태로 바꿉니다. 대체 비용은 0원을 포함해 반드시 직접 입력하세요.</p>
           <form id="lostLoanForm" novalidate>
-            <label><span>대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
-            <label><span>대체 비용 *</span><input name="fineAmount" type="number" inputmode="numeric" min="0" step="1" required></label>
-            <label><span>분실 사유/메모</span><textarea name="note" placeholder="신고 경위, 확인 내용 등"></textarea></label>
-            <button class="danger" type="submit">분실 처리 확정</button>
+            <label><span data-i18n="lost.form.key.label">대출 ID 또는 소장본 바코드 *</span><input name="loanOrCopyKey" autocomplete="off" required></label>
+            <label><span data-i18n="lost.form.amount.label">대체 비용 *</span><input name="fineAmount" type="number" inputmode="numeric" min="0" step="1" required></label>
+            <label><span data-i18n="lost.form.note.label">분실 사유/메모</span><textarea name="note" data-i18n-ph="lost.form.note.placeholder" placeholder="신고 경위, 확인 내용 등"></textarea></label>
+            <button class="danger" type="submit" data-i18n="lost.button">분실 처리 확정</button>
           </form>
-          <div class="notice">분실 처리는 일반 반납으로 되돌리지 않습니다. 대출 ID·소장본과 대체 비용을 확인한 뒤 실행하세요.</div>
+          <div class="notice" data-i18n="lost.notice">분실 처리는 일반 반납으로 되돌리지 않습니다. 대출 ID·소장본과 대체 비용을 확인한 뒤 실행하세요.</div>
         </div>
       </details>
     </section>
 
     <section id="tab-reservation" hidden>
-      <h2 class="section-title">예약 관리</h2>
+      <h2 class="section-title" data-i18n="reservation.title">예약 관리</h2>
       <details open>
-        <summary>예약 등록</summary>
+        <summary data-i18n="reservation.section.reserve">예약 등록</summary>
         <div class="inside">
           <form id="reserveForm">
-            <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
-            <label><span>도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
-            <label><span>메모</span><textarea name="note"></textarea></label>
-            <button class="primary" type="submit">예약 등록</button>
+            <label><span data-i18n="reserve.form.memberKey.label">회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
+            <label><span data-i18n="reserve.form.titleKey.label">도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
+            <label><span data-i18n="common.note">메모</span><textarea name="note"></textarea></label>
+            <button class="primary" type="submit" data-i18n="reserve.button">예약 등록</button>
           </form>
         </div>
       </details>
       <details>
-        <summary>예약 취소</summary>
+        <summary data-i18n="reservation.section.cancel">예약 취소</summary>
         <div class="inside">
           <form id="cancelReservationForm">
-            <label><span>예약 ID *</span><input name="reservationId" required></label>
-            <label><span>취소 사유</span><textarea name="note"></textarea></label>
-            <button class="danger" type="submit">예약 취소</button>
+            <label><span data-i18n="cancelReservation.form.id.label">예약 ID *</span><input name="reservationId" required></label>
+            <label><span data-i18n="cancelReservation.form.note.label">취소 사유</span><textarea name="note"></textarea></label>
+            <button class="danger" type="submit" data-i18n="cancelReservation.button">예약 취소</button>
           </form>
         </div>
       </details>
     </section>
 
     <section id="tab-member" hidden>
-      <h2 class="section-title">회원 등록</h2>
+      <h2 class="section-title" data-i18n="member.title">회원 등록</h2>
       <form id="memberForm" class="card">
         <div class="grid two">
-          <label><span>이름 *</span><input name="name" required></label>
-          <label><span>회원 유형</span><select name="memberType" id="memberTypeSelect"></select></label>
+          <label><span data-i18n="member.form.name.label">이름 *</span><input name="name" required></label>
+          <label><span data-i18n="member.form.memberType.label">회원 유형</span><select name="memberType" id="memberTypeSelect"></select></label>
         </div>
         <div class="grid two">
-          <label><span>학년 *</span><input name="grade" inputmode="numeric" placeholder="1"></label>
-          <label><span>반 *</span><input name="classNo" inputmode="numeric" placeholder="2"></label>
+          <label><span data-i18n="member.form.grade.label">학년 *</span><input name="grade" inputmode="numeric" placeholder="1"></label>
+          <label><span data-i18n="member.form.classNo.label">반 *</span><input name="classNo" inputmode="numeric" placeholder="2"></label>
         </div>
         <div class="grid two">
-          <label><span>번호</span><input name="studentNo" inputmode="numeric" placeholder="21"></label>
-          <label><span>학번</span><input name="schoolNo" autocomplete="off" placeholder="예: 20260102"></label>
+          <label><span data-i18n="member.form.studentNo.label">번호</span><input name="studentNo" inputmode="numeric" placeholder="21"></label>
+          <label><span data-i18n="member.form.schoolNo.label">학번</span><input name="schoolNo" autocomplete="off" data-i18n-ph="member.form.schoolNo.placeholder" placeholder="예: 20260102"></label>
         </div>
         <details class="inline-detail">
-          <summary>보호자 연락처·기타 (선택)</summary>
+          <summary data-i18n="member.section.guardian">보호자 연락처·기타 (선택)</summary>
           <div class="grid two">
-            <label><span>전화번호</span><input name="phone" inputmode="tel"></label>
-            <label><span>이메일</span><input name="email" type="email"></label>
+            <label><span data-i18n="common.phone">전화번호</span><input name="phone" inputmode="tel"></label>
+            <label><span data-i18n="common.email">이메일</span><input name="email" type="email"></label>
           </div>
-          <label><span>유효기간 (교직원 외부인 등)</span><input name="expiresAt" type="date"></label>
+          <label><span data-i18n="member.form.expiresAt.label">유효기간 (교직원 외부인 등)</span><input name="expiresAt" type="date"></label>
         </details>
-        <label><span>대출 한도 덮어쓰기</span><input name="loanLimitOverride" type="number" min="1" step="1" placeholder="비우면 정책값 사용"></label>
-        <label class="check"><input name="privacyConsent" type="checkbox" value="true"> 개인정보 수집 동의 확인</label>
-        <label><span>메모</span><textarea name="note"></textarea></label>
-        <button class="primary" type="submit">회원 등록</button>
+        <label><span data-i18n="member.form.loanLimitOverride.label">대출 한도 덮어쓰기</span><input name="loanLimitOverride" type="number" min="1" step="1" data-i18n-ph="member.form.loanLimitOverride.placeholder" placeholder="비우면 정책값 사용"></label>
+        <label class="check"><input name="privacyConsent" type="checkbox" value="true"> <span data-i18n="member.form.privacyConsent.label">개인정보 수집 동의 확인</span></label>
+        <label><span data-i18n="common.note">메모</span><textarea name="note"></textarea></label>
+        <button class="primary" type="submit" data-i18n="member.button">회원 등록</button>
       </form>
       <details>
-        <summary>회원 정보·상태 변경</summary>
+        <summary data-i18n="member.section.update">회원 정보·상태 변경</summary>
         <div class="inside">
           <form id="memberUpdateForm">
-            <label><span>회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
-            <label><span>이름</span><input name="name" placeholder="변경할 때만 입력"></label>
+            <label><span data-i18n="memberUpdate.form.memberKey.label">회원번호 또는 회원 ID *</span><input name="memberKey" required></label>
+            <label><span data-i18n="memberUpdate.form.name.label">이름</span><input name="name" data-i18n-ph="memberUpdate.form.name.placeholder" placeholder="변경할 때만 입력"></label>
             <div class="grid two">
-              <label><span>전화번호</span><input name="phone" inputmode="tel"></label>
-              <label><span>이메일</span><input name="email" type="email"></label>
+              <label><span data-i18n="common.phone">전화번호</span><input name="phone" inputmode="tel"></label>
+              <label><span data-i18n="common.email">이메일</span><input name="email" type="email"></label>
             </div>
             <div class="grid two">
-              <label><span>회원 유형</span><select name="memberType" id="memberTypeUpdateSelect"></select></label>
-              <label><span>회원 상태</span><select name="status" id="memberStatusSelect"></select></label>
+              <label><span data-i18n="memberUpdate.form.memberType.label">회원 유형</span><select name="memberType" id="memberTypeUpdateSelect"></select></label>
+              <label><span data-i18n="memberUpdate.form.status.label">회원 상태</span><select name="status" id="memberStatusSelect"></select></label>
             </div>
             <div class="grid two">
-              <label><span>학년</span><input name="grade" inputmode="numeric" placeholder="변경할 때만"></label>
-              <label><span>반</span><input name="classNo" inputmode="numeric" placeholder="변경할 때만"></label>
+              <label><span data-i18n="memberUpdate.form.grade.label">학년</span><input name="grade" inputmode="numeric" data-i18n-ph="common.changeOnlyPlaceholder" placeholder="변경할 때만"></label>
+              <label><span data-i18n="memberUpdate.form.classNo.label">반</span><input name="classNo" inputmode="numeric" data-i18n-ph="common.changeOnlyPlaceholder" placeholder="변경할 때만"></label>
             </div>
             <div class="grid two">
-              <label><span>번호</span><input name="studentNo" inputmode="numeric" placeholder="변경할 때만"></label>
-              <label><span>학번</span><input name="schoolNo" placeholder="변경할 때만"></label>
+              <label><span data-i18n="memberUpdate.form.studentNo.label">번호</span><input name="studentNo" inputmode="numeric" data-i18n-ph="common.changeOnlyPlaceholder" placeholder="변경할 때만"></label>
+              <label><span data-i18n="memberUpdate.form.schoolNo.label">학번</span><input name="schoolNo" data-i18n-ph="common.changeOnlyPlaceholder" placeholder="변경할 때만"></label>
             </div>
             <div class="grid two">
-              <label><span>새 유효기간</span><input name="expiresAt" type="date"></label>
-              <label><span>대출 한도</span><input name="loanLimitOverride" type="number" min="1" step="1"></label>
+              <label><span data-i18n="memberUpdate.form.expiresAt.label">새 유효기간</span><input name="expiresAt" type="date"></label>
+              <label><span data-i18n="memberUpdate.form.loanLimitOverride.label">대출 한도</span><input name="loanLimitOverride" type="number" min="1" step="1"></label>
             </div>
-            <label class="check"><input name="clearSuspension" type="checkbox" value="true"> 대출 정지 해제 (사서 판단)</label>
-            <label class="check"><input name="clearLoanLimit" type="checkbox" value="true"> 개인 대출 한도를 지우고 정책값 사용</label>
-            <label><span>변경 사유/메모</span><textarea name="note"></textarea></label>
-            <button class="secondary" type="submit">회원 정보 변경</button>
+            <label class="check"><input name="clearSuspension" type="checkbox" value="true"> <span data-i18n="memberUpdate.form.clearSuspension.label">대출 정지 해제 (사서 판단)</span></label>
+            <label class="check"><input name="clearLoanLimit" type="checkbox" value="true"> <span data-i18n="memberUpdate.form.clearLoanLimit.label">개인 대출 한도를 지우고 정책값 사용</span></label>
+            <label><span data-i18n="memberUpdate.form.note.label">변경 사유/메모</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit" data-i18n="memberUpdate.button">회원 정보 변경</button>
           </form>
         </div>
       </details>
     </section>
 
     <section id="tab-catalog" hidden>
-      <h2 class="section-title">도서 · 소장본 등록</h2>
+      <h2 class="section-title" data-i18n="catalog.title">도서 · 소장본 등록</h2>
       <details open>
-        <summary>새 도서와 최초 소장본</summary>
+        <summary data-i18n="catalog.section.newTitle">새 도서와 최초 소장본</summary>
         <div class="inside">
           <form id="titleForm">
             <div class="grid two">
-              <label><span>ISBN</span><input name="isbn" inputmode="numeric"></label>
-              <label><span>발행연도</span><input name="publishedYear" type="number" min="0" max="2200"></label>
+              <label><span data-i18n="title.form.isbn.label">ISBN</span><input name="isbn" inputmode="numeric"></label>
+              <label><span data-i18n="title.form.publishedYear.label">발행연도</span><input name="publishedYear" type="number" min="0" max="2200"></label>
             </div>
-            <label><span>도서명 *</span><input name="title" required></label>
-            <label><span>부제</span><input name="subtitle"></label>
+            <label><span data-i18n="title.form.title.label">도서명 *</span><input name="title" required></label>
+            <label><span data-i18n="title.form.subtitle.label">부제</span><input name="subtitle"></label>
             <div class="grid two">
-              <label><span>판차</span><input name="edition"></label>
-              <label><span>출판사</span><input name="publisher"></label>
+              <label><span data-i18n="title.form.edition.label">판차</span><input name="edition"></label>
+              <label><span data-i18n="title.form.publisher.label">출판사</span><input name="publisher"></label>
             </div>
-            <label><span>저자</span><input name="authors" placeholder="여러 명이면 쉼표로 구분"></label>
+            <label><span data-i18n="title.form.authors.label">저자</span><input name="authors" data-i18n-ph="title.form.authors.placeholder" placeholder="여러 명이면 쉼표로 구분"></label>
             <div class="grid two">
-              <label><span>언어 코드</span><input name="languageCode" value="KOR"></label>
-              <label><span>분류기호</span><input name="classificationNo"></label>
+              <label><span data-i18n="title.form.languageCode.label">언어 코드</span><input name="languageCode" value="KOR"></label>
+              <label><span data-i18n="title.form.classificationNo.label">분류기호</span><input name="classificationNo"></label>
             </div>
-            <label><span>분류 코드</span><input name="categoryCodes" list="categoryOptions" placeholder="예: KDC800"></label>
+            <label><span data-i18n="title.form.categoryCodes.label">분류 코드</span><input name="categoryCodes" list="categoryOptions" data-i18n-ph="title.form.categoryCodes.placeholder" placeholder="예: KDC800"></label>
             <datalist id="categoryOptions"></datalist>
-            <label><span>키워드</span><input name="keywords" placeholder="쉼표로 구분"></label>
-            <label><span>설명</span><textarea name="description"></textarea></label>
-            <label class="check"><input id="createCopyCheckbox" name="createCopy" type="checkbox" value="true" checked> 최초 소장본도 함께 등록</label>
+            <label><span data-i18n="title.form.keywords.label">키워드</span><input name="keywords" data-i18n-ph="common.commaSeparatedPlaceholder" placeholder="쉼표로 구분"></label>
+            <label><span data-i18n="title.form.description.label">설명</span><textarea name="description"></textarea></label>
+            <label class="check"><input id="createCopyCheckbox" name="createCopy" type="checkbox" value="true" checked> <span data-i18n="title.form.createCopy.label">최초 소장본도 함께 등록</span></label>
             <div id="firstCopyFields">
               <div class="grid two">
-                <label><span>바코드</span><input name="barcode" placeholder="비우면 자동 생성"></label>
-                <label><span>상태</span><select name="condition" class="conditionSelect"></select></label>
+                <label><span data-i18n="copy.form.barcode.label">바코드</span><input name="barcode" data-i18n-ph="copy.form.barcode.placeholder" placeholder="비우면 자동 생성"></label>
+                <label><span data-i18n="copy.form.condition.label">상태</span><select name="condition" class="conditionSelect"></select></label>
               </div>
               <div class="grid two">
-                <label><span>위치</span><input name="locationCode" value="MAIN"></label>
-                <label><span>서가</span><input name="shelfCode"></label>
+                <label><span data-i18n="copy.form.locationCode.label">위치</span><input name="locationCode" value="MAIN"></label>
+                <label><span data-i18n="copy.form.shelfCode.label">서가</span><input name="shelfCode"></label>
               </div>
               <div class="grid two">
-                <label><span>입수일</span><input name="acquiredAt" type="date"></label>
-                <label><span>가격</span><input name="price" type="number" min="0" step="1"></label>
+                <label><span data-i18n="copy.form.acquiredAt.label">입수일</span><input name="acquiredAt" type="date"></label>
+                <label><span data-i18n="copy.form.price.label">가격</span><input name="price" type="number" min="0" step="1"></label>
               </div>
-              <label><span>입수처/기증자</span><input name="acquisitionSource"></label>
-              <label><span>소장본 메모</span><textarea name="copyNote"></textarea></label>
+              <label><span data-i18n="copy.form.acquisitionSource.label">입수처/기증자</span><input name="acquisitionSource"></label>
+              <label><span data-i18n="copy.form.copyNote.label">소장본 메모</span><textarea name="copyNote"></textarea></label>
             </div>
-            <button class="primary" type="submit">도서 등록</button>
+            <button class="primary" type="submit" data-i18n="title.button">도서 등록</button>
           </form>
         </div>
       </details>
 
       <details>
-        <summary>기존 도서에 소장본 추가</summary>
+        <summary data-i18n="catalog.section.addCopy">기존 도서에 소장본 추가</summary>
         <div class="inside">
           <form id="copyForm">
-            <label><span>도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
+            <label><span data-i18n="copy.form.titleKey.label">도서 ID 또는 ISBN *</span><input name="titleKey" required></label>
             <div class="grid two">
-              <label><span>바코드</span><input name="barcode" placeholder="비우면 자동 생성"></label>
-              <label><span>상태</span><select name="condition" class="conditionSelect"></select></label>
+              <label><span data-i18n="copy.form.barcode.label">바코드</span><input name="barcode" data-i18n-ph="copy.form.barcode.placeholder" placeholder="비우면 자동 생성"></label>
+              <label><span data-i18n="copy.form.condition.label">상태</span><select name="condition" class="conditionSelect"></select></label>
             </div>
             <div class="grid two">
-              <label><span>위치</span><input name="locationCode" value="MAIN"></label>
-              <label><span>서가</span><input name="shelfCode"></label>
+              <label><span data-i18n="copy.form.locationCode.label">위치</span><input name="locationCode" value="MAIN"></label>
+              <label><span data-i18n="copy.form.shelfCode.label">서가</span><input name="shelfCode"></label>
             </div>
             <div class="grid two">
-              <label><span>입수일</span><input name="acquiredAt" type="date"></label>
-              <label><span>가격</span><input name="price" type="number" min="0" step="1"></label>
+              <label><span data-i18n="copy.form.acquiredAt.label">입수일</span><input name="acquiredAt" type="date"></label>
+              <label><span data-i18n="copy.form.price.label">가격</span><input name="price" type="number" min="0" step="1"></label>
             </div>
-            <label><span>입수처/기증자</span><input name="acquisitionSource"></label>
-            <label><span>메모</span><textarea name="copyNote"></textarea></label>
-            <button class="secondary" type="submit">소장본 추가</button>
+            <label><span data-i18n="copy.form.acquisitionSource.label">입수처/기증자</span><input name="acquisitionSource"></label>
+            <label><span data-i18n="copy.form.note.label">메모</span><textarea name="copyNote"></textarea></label>
+            <button class="secondary" type="submit" data-i18n="copy.button">소장본 추가</button>
           </form>
         </div>
       </details>
     </section>
 
     <section id="tab-admin" hidden>
-      <h2 class="section-title">관리 도구</h2>
+      <h2 class="section-title" data-i18n="admin.title">관리 도구</h2>
       <div class="card">
-        <h3>무결성 · 파생 상태</h3>
-        <p class="help">DB 직접 편집이나 부분 실패로 생긴 불일치를 점검합니다.</p>
+        <h3 data-i18n="admin.integrity.title">무결성 · 파생 상태</h3>
+        <p class="help" data-i18n="admin.integrity.help">DB 직접 편집이나 부분 실패로 생긴 불일치를 점검합니다.</p>
         <div class="btn-row">
-          <button class="secondary" id="integrityButton">무결성 점검</button>
-          <button class="secondary admin-only" id="reconcileButton">소장본 상태 복구</button>
+          <button class="secondary" id="integrityButton" data-i18n="admin.integrity.button">무결성 점검</button>
+          <button class="secondary admin-only" id="reconcileButton" data-i18n="admin.reconcile.button">소장본 상태 복구</button>
         </div>
         <div id="integrityResults" class="result-list"></div>
       </div>
       <details>
-        <summary>소장본 상태 수동 변경</summary>
+        <summary data-i18n="admin.section.copyStatus">소장본 상태 수동 변경</summary>
         <div class="inside">
           <form id="copyStatusForm">
-            <label><span>바코드 또는 Copy ID *</span><input name="copyKey" required></label>
-            <label><span>새 상태 *</span><select name="status" id="copyStatusSelect"></select></label>
-            <label><span>사유</span><textarea name="note"></textarea></label>
-            <button class="secondary" type="submit">상태 변경</button>
+            <label><span data-i18n="copyStatus.form.copyKey.label">바코드 또는 Copy ID *</span><input name="copyKey" required></label>
+            <label><span data-i18n="copyStatus.form.status.label">새 상태 *</span><select name="status" id="copyStatusSelect"></select></label>
+            <label><span data-i18n="copyStatus.form.note.label">사유</span><textarea name="note"></textarea></label>
+            <button class="secondary" type="submit" data-i18n="copyStatus.button">상태 변경</button>
           </form>
         </div>
       </details>
       <details>
-        <summary>연체료 납부</summary>
+        <summary data-i18n="admin.section.fine">연체료 납부</summary>
         <div class="inside">
           <form id="fineForm">
-            <label><span>연체료 ID *</span><input name="fineId" required></label>
-            <label><span>납부 금액 *</span><input name="amount" type="number" min="1" step="1" required></label>
-            <button class="secondary" type="submit">납부 기록</button>
+            <label><span data-i18n="fine.form.fineId.label">연체료 ID *</span><input name="fineId" required></label>
+            <label><span data-i18n="fine.form.amount.label">납부 금액 *</span><input name="amount" type="number" min="1" step="1" required></label>
+            <button class="secondary" type="submit" data-i18n="fine.button">납부 기록</button>
           </form>
         </div>
       </details>
       <details class="admin-only">
-        <summary>직원 계정·권한</summary>
+        <summary data-i18n="admin.section.staff">직원 계정·권한</summary>
         <div class="inside">
           <form id="staffForm">
-            <label><span>Google 계정 이메일 *</span><input name="email" type="email" required></label>
-            <label><span>표시 이름</span><input name="displayName"></label>
+            <label><span data-i18n="staff.form.email.label">Google 계정 이메일 *</span><input name="email" type="email" required></label>
+            <label><span data-i18n="staff.form.displayName.label">표시 이름</span><input name="displayName"></label>
             <div class="grid two">
-              <label><span>역할</span>
+              <label><span data-i18n="staff.form.role.label">역할</span>
                 <select name="role">
-                  <option value="LIBRARIAN">사서</option>
-                  <option value="VIEWER">조회</option>
-                  <option value="ADMIN">관리자</option>
+                  <option value="LIBRARIAN" data-i18n="staff.role.librarian">사서</option>
+                  <option value="VIEWER" data-i18n="staff.role.viewer">조회</option>
+                  <option value="ADMIN" data-i18n="staff.role.admin">관리자</option>
                 </select>
               </label>
-              <label><span>상태</span>
-                <select name="status"><option value="ACTIVE">활성</option><option value="INACTIVE">비활성</option></select>
+              <label><span data-i18n="staff.form.status.label">상태</span>
+                <select name="status"><option value="ACTIVE" data-i18n="staff.status.active">활성</option><option value="INACTIVE" data-i18n="staff.status.inactive">비활성</option></select>
               </label>
             </div>
-            <button class="secondary" type="submit">직원 등록/변경</button>
+            <button class="secondary" type="submit" data-i18n="staff.button">직원 등록/변경</button>
           </form>
         </div>
       </details>
       <details class="admin-only">
-        <summary>기본 대출 정책 변경</summary>
+        <summary data-i18n="admin.section.policy">기본 대출 정책 변경</summary>
         <div class="inside">
           <form id="policyForm">
-            <label><span>정책 ID</span><input name="policyId" value="POL-DEFAULT"></label>
+            <label><span data-i18n="policy.form.policyId.label">정책 ID</span><input name="policyId" value="POL-DEFAULT"></label>
             <div class="grid two">
-              <label><span>대출 일수</span><input name="loanDays" type="number" min="0" step="1"></label>
-              <label><span>최대 대출 권수</span><input name="maxOpenLoans" type="number" min="0" step="1"></label>
-              <label><span>최대 연장 횟수</span><input name="maxRenewals" type="number" min="0" step="1"></label>
-              <label><span>연장 일수</span><input name="renewalDays" type="number" min="0" step="1"></label>
-              <label><span>최대 예약 건수</span><input name="maxReservations" type="number" min="0" step="1"></label>
-              <label><span>예약 보관 일수</span><input name="holdDays" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.loanDays.label">대출 일수</span><input name="loanDays" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.maxOpenLoans.label">최대 대출 권수</span><input name="maxOpenLoans" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.maxRenewals.label">최대 연장 횟수</span><input name="maxRenewals" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.renewalDays.label">연장 일수</span><input name="renewalDays" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.maxReservations.label">최대 예약 건수</span><input name="maxReservations" type="number" min="0" step="1"></label>
+              <label><span data-i18n="policy.form.holdDays.label">예약 보관 일수</span><input name="holdDays" type="number" min="0" step="1"></label>
             </div>
-            <label><span>일 연체료</span><input name="overdueFeePerDay" type="number" min="0" step="1"></label>
-            <p class="help">횟수·권수에 0을 입력하면 해당 기능을 허용하지 않습니다. 일수 0은 날짜를 더하지 않고 계산 기준일의 종료 시각을 사용합니다.</p>
-            <button class="secondary" type="submit">정책 변경</button>
+            <label><span data-i18n="policy.form.overdueFeePerDay.label">일 연체료</span><input name="overdueFeePerDay" type="number" min="0" step="1"></label>
+            <p class="help" data-i18n="policy.help">횟수·권수에 0을 입력하면 해당 기능을 허용하지 않습니다. 일수 0은 날짜를 더하지 않고 계산 기준일의 종료 시각을 사용합니다.</p>
+            <button class="secondary" type="submit" data-i18n="policy.button">정책 변경</button>
           </form>
         </div>
       </details>
-      <div class="notice">최초 설정·DB 시트 보호·일일 트리거 설치는 스프레드시트의 📚 도서관 관리 → 관리 메뉴에서 실행하세요. DB 보호를 켜면 활성 ADMIN만 편집할 수 있으므로, 바운드 사이드바를 쓰는 LIBRARIAN 계정의 저장 작업도 차단됩니다. 이 화면에서 직원을 바꾸면 보호 목록도 자동 동기화되며, STAFF 시트를 직접 고친 경우에는 DB 보호 메뉴를 다시 실행하세요.</div>
+      <div class="notice" data-i18n="admin.notice">최초 설정·DB 시트 보호·일일 트리거 설치는 스프레드시트의 📚 도서관 관리 → 관리 메뉴에서 실행하세요. DB 보호를 켜면 활성 ADMIN만 편집할 수 있으므로, 바운드 사이드바를 쓰는 LIBRARIAN 계정의 저장 작업도 차단됩니다. 이 화면에서 직원을 바꾸면 보호 목록도 자동 동기화되며, STAFF 시트를 직접 고친 경우에는 DB 보호 메뉴를 다시 실행하세요.</div>
     </section>
   </main>
 
-  <div id="feedback"><button class="close" type="button" aria-label="닫기">×</button><div id="feedbackText"></div></div>
+  <div id="feedback"><button class="close" type="button" data-i18n-aria-label="feedback.close" aria-label="닫기">×</button><div id="feedbackText"></div></div>
 
   <script>
     const INITIAL_TAB = <?!= JSON.stringify(initialTab) ?>;
-    const state = { bootstrap: null, activeTab: INITIAL_TAB || 'dashboard' };
+    const state = { bootstrap: null, activeTab: INITIAL_TAB || 'dashboard', bootstrapOptions: null, codeLabels: null, lastDashboard: null, lastSearch: null, lastIntegrity: null };
+
+    // ------------------------------------------------------------------
+    // todo/22(구 PATCH_SPEC P7) · 한/영 다국어
+    //
+    // I18N 사전 + t(key) — 웹앱 ADR-023의 t() 관례(미번역 키는 ko로 폴백, 그것도 없으면
+    // 키 자체 반환)를 그대로 따른다. 이 사전은 사이드바가 처음부터 마크업에 박아 둔 한글
+    // 문구를 실제로 뽑아 옮긴 것이며(자리표시 키를 새로 지어내지 않았다), ko 값은 원래
+    // 화면에 있던 문구와 100% 동일하다 — 그래서 로케일 복원 전(잠깐의 기본값 'ko') 렌더링도
+    // 기존 화면과 다르지 않다.
+    let currentLocale = 'ko';
+
+    const I18N = {
+      ko: {
+        'app.title': '도서관 관리',
+        'app.subtitleLoading': 'MVP 운영 사이드바 · 불러오는 중…',
+        'nav.dashboard': '현황', 'nav.search': '검색', 'nav.checkout': '대출', 'nav.return': '반납·연장',
+        'nav.reservation': '예약', 'nav.member': '회원', 'nav.catalog': '도서', 'nav.admin': '관리',
+
+        'dashboard.title': '운영 현황',
+        'dashboard.subtitleDefault': '원본 DB 기준 집계',
+        'dashboard.refreshedAtPrefix': '마지막 갱신 ',
+        'dashboard.card.dueOverdue': '오늘 반납 예정 · 연체',
+        'dashboard.card.readyPickup': '예약 수령 대기',
+        'dashboard.refreshButton': '현황 새로고침',
+        'dashboard.due.empty': '오늘 반납 예정 또는 연체 항목이 없습니다.',
+        'dashboard.due.overdue': '연체',
+        'dashboard.due.upcoming': '예정',
+        'dashboard.due.overdueDaysSuffix': '일',
+        'dashboard.ready.empty': '수령 준비 예약이 없습니다.',
+        'dashboard.ready.pickupPrefix': '수령기한 ',
+        'dashboard.refreshSuccess': '현황을 새로고침했습니다.',
+
+        'stat.activeTitles': '활성 도서', 'stat.availableCopies': '대출 가능', 'stat.openLoans': '대출 중',
+        'stat.dueToday': '오늘 반납', 'stat.overdue': '연체', 'stat.activeReservations': '예약 대기/준비',
+        'stat.activeMembers': '활성 회원',
+
+        'search.title': '통합 검색',
+        'search.subtitle': '정확한 바코드·회원번호·ID를 먼저 찾고, 제목·저자·연락처를 부분 검색합니다.',
+        'search.form.query.label': '검색어 *',
+        'search.form.query.placeholder': '제목, 저자, ISBN, 바코드, 회원번호',
+        'search.form.scope.label': '검색 범위',
+        'search.scope.all': '전체', 'search.scope.books': '도서', 'search.scope.copies': '소장본',
+        'search.scope.members': '회원', 'search.scope.loans': '대출', 'search.scope.reservations': '예약',
+        'search.scope.fines': '연체료',
+        'search.button': '검색',
+        'search.summaryPrefix': '검색 결과 ', 'search.summarySuffix': '건',
+        'search.summaryTopPrefix': ' · 상위 ', 'search.summaryTopSuffix': '건 표시',
+        'search.empty': '일치하는 결과가 없습니다.',
+
+        'checkout.title': '대출 처리',
+        'checkout.subtitle': '회원 상태·만료·한도·연체·예약 우선권·소장본 상태를 잠금 안에서 다시 확인합니다.',
+        'checkout.form.memberKey.label': '회원번호 또는 회원 ID *',
+        'checkout.form.memberKey.placeholder': '0000018 (7자리)',
+        'checkout.form.copyKey.label': '소장본 바코드 또는 Copy ID *',
+        'checkout.button': '대출 확정',
+        'checkout.notice': '바코드 스캐너는 보통 키보드처럼 동작합니다. 입력칸을 선택한 뒤 스캔하세요.',
+        'checkout.success': '대출이 완료되었습니다.',
+
+        'common.note': '메모',
+        'common.note.optionalPlaceholder': '선택 입력',
+        'common.phone': '전화번호',
+        'common.email': '이메일',
+        'common.noChange': '변경 안 함',
+        'common.changeOnlyPlaceholder': '변경할 때만',
+        'common.commaSeparatedPlaceholder': '쉼표로 구분',
+
+        'return.title': '반납 · 연장',
+        'return.section.return': '반납 처리',
+        'return.form.copyKey.label': '소장본 바코드 또는 Copy ID *',
+        'return.button': '반납 확정',
+        'return.success': '반납이 완료되었습니다.',
+        'return.section.renew': '대출 연장',
+        'renew.form.key.label': '대출 ID 또는 소장본 바코드 *',
+        'renew.button': '연장 적용',
+        'renew.success': '연장이 완료되었습니다.',
+        'return.section.lost': '대출 도서 분실 처리',
+        'lost.help': '진행 중 대출을 분실로 종료하고 소장본도 분실 상태로 바꿉니다. 대체 비용은 0원을 포함해 반드시 직접 입력하세요.',
+        'lost.form.key.label': '대출 ID 또는 소장본 바코드 *',
+        'lost.form.amount.label': '대체 비용 *',
+        'lost.form.note.label': '분실 사유/메모',
+        'lost.form.note.placeholder': '신고 경위, 확인 내용 등',
+        'lost.button': '분실 처리 확정',
+        'lost.notice': '분실 처리는 일반 반납으로 되돌리지 않습니다. 대출 ID·소장본과 대체 비용을 확인한 뒤 실행하세요.',
+        'lost.success': '대출과 소장본을 분실 상태로 처리했습니다.',
+        'lost.validate.keyRequired': '대출 ID 또는 소장본 바코드를 입력하세요.',
+        'lost.validate.amountInvalid': '대체 비용은 0 이상의 정수로 입력하세요.',
+
+        'reservation.title': '예약 관리',
+        'reservation.section.reserve': '예약 등록',
+        'reserve.form.memberKey.label': '회원번호 또는 회원 ID *',
+        'reserve.form.titleKey.label': '도서 ID 또는 ISBN *',
+        'reserve.button': '예약 등록',
+        'reserve.success': '예약이 등록되었습니다.',
+        'reservation.section.cancel': '예약 취소',
+        'cancelReservation.form.id.label': '예약 ID *',
+        'cancelReservation.form.note.label': '취소 사유',
+        'cancelReservation.button': '예약 취소',
+        'cancelReservation.success': '예약이 취소되었습니다.',
+
+        'member.title': '회원 등록',
+        'member.form.name.label': '이름 *',
+        'member.form.memberType.label': '회원 유형',
+        'member.form.grade.label': '학년 *',
+        'member.form.classNo.label': '반 *',
+        'member.form.studentNo.label': '번호',
+        'member.form.schoolNo.label': '학번',
+        'member.form.schoolNo.placeholder': '예: 20260102',
+        'member.section.guardian': '보호자 연락처·기타 (선택)',
+        'member.form.expiresAt.label': '유효기간 (교직원 외부인 등)',
+        'member.form.loanLimitOverride.label': '대출 한도 덮어쓰기',
+        'member.form.loanLimitOverride.placeholder': '비우면 정책값 사용',
+        'member.form.privacyConsent.label': '개인정보 수집 동의 확인',
+        'member.button': '회원 등록',
+        'member.success': '회원이 등록되었습니다.',
+        'member.section.update': '회원 정보·상태 변경',
+        'memberUpdate.form.memberKey.label': '회원번호 또는 회원 ID *',
+        'memberUpdate.form.name.label': '이름',
+        'memberUpdate.form.name.placeholder': '변경할 때만 입력',
+        'memberUpdate.form.memberType.label': '회원 유형',
+        'memberUpdate.form.status.label': '회원 상태',
+        'memberUpdate.form.grade.label': '학년',
+        'memberUpdate.form.classNo.label': '반',
+        'memberUpdate.form.studentNo.label': '번호',
+        'memberUpdate.form.schoolNo.label': '학번',
+        'memberUpdate.form.expiresAt.label': '새 유효기간',
+        'memberUpdate.form.loanLimitOverride.label': '대출 한도',
+        'memberUpdate.form.clearSuspension.label': '대출 정지 해제 (사서 판단)',
+        'memberUpdate.form.clearLoanLimit.label': '개인 대출 한도를 지우고 정책값 사용',
+        'memberUpdate.form.note.label': '변경 사유/메모',
+        'memberUpdate.button': '회원 정보 변경',
+        'memberUpdate.success': '회원 정보가 변경되었습니다.',
+
+        'catalog.title': '도서 · 소장본 등록',
+        'catalog.section.newTitle': '새 도서와 최초 소장본',
+        'title.form.isbn.label': 'ISBN',
+        'title.form.publishedYear.label': '발행연도',
+        'title.form.title.label': '도서명 *',
+        'title.form.subtitle.label': '부제',
+        'title.form.edition.label': '판차',
+        'title.form.publisher.label': '출판사',
+        'title.form.authors.label': '저자',
+        'title.form.authors.placeholder': '여러 명이면 쉼표로 구분',
+        'title.form.languageCode.label': '언어 코드',
+        'title.form.classificationNo.label': '분류기호',
+        'title.form.categoryCodes.label': '분류 코드',
+        'title.form.categoryCodes.placeholder': '예: KDC800',
+        'title.form.keywords.label': '키워드',
+        'title.form.description.label': '설명',
+        'title.form.createCopy.label': '최초 소장본도 함께 등록',
+        'title.button': '도서 등록',
+        'title.success': '도서가 등록되었습니다.',
+        'copy.form.barcode.label': '바코드',
+        'copy.form.barcode.placeholder': '비우면 자동 생성',
+        'copy.form.condition.label': '상태',
+        'copy.form.locationCode.label': '위치',
+        'copy.form.shelfCode.label': '서가',
+        'copy.form.acquiredAt.label': '입수일',
+        'copy.form.price.label': '가격',
+        'copy.form.acquisitionSource.label': '입수처/기증자',
+        'copy.form.copyNote.label': '소장본 메모',
+        'catalog.section.addCopy': '기존 도서에 소장본 추가',
+        'copy.form.titleKey.label': '도서 ID 또는 ISBN *',
+        'copy.form.note.label': '메모',
+        'copy.button': '소장본 추가',
+        'copy.success': '소장본이 추가되었습니다.',
+
+        'admin.title': '관리 도구',
+        'admin.integrity.title': '무결성 · 파생 상태',
+        'admin.integrity.help': 'DB 직접 편집이나 부분 실패로 생긴 불일치를 점검합니다.',
+        'admin.integrity.button': '무결성 점검',
+        'admin.reconcile.button': '소장본 상태 복구',
+        'admin.integrity.empty': '무결성 문제가 없습니다.',
+        'admin.integrity.issuesFoundSuffix': '개 문제를 찾았습니다.',
+        'admin.reconcile.successSuffix': '개 소장본 상태를 복구했습니다.',
+        'admin.section.copyStatus': '소장본 상태 수동 변경',
+        'copyStatus.form.copyKey.label': '바코드 또는 Copy ID *',
+        'copyStatus.form.status.label': '새 상태 *',
+        'copyStatus.form.note.label': '사유',
+        'copyStatus.button': '상태 변경',
+        'copyStatus.success': '소장본 상태가 변경되었습니다.',
+        'admin.section.fine': '연체료 납부',
+        'fine.form.fineId.label': '연체료 ID *',
+        'fine.form.amount.label': '납부 금액 *',
+        'fine.button': '납부 기록',
+        'fine.success': '납부 기록이 저장되었습니다.',
+        'admin.section.staff': '직원 계정·권한',
+        'staff.form.email.label': 'Google 계정 이메일 *',
+        'staff.form.displayName.label': '표시 이름',
+        'staff.form.role.label': '역할',
+        'staff.role.librarian': '사서', 'staff.role.viewer': '조회', 'staff.role.admin': '관리자',
+        'staff.form.status.label': '상태',
+        'staff.status.active': '활성', 'staff.status.inactive': '비활성',
+        'staff.button': '직원 등록/변경',
+        'staff.success': '직원 계정이 등록/변경되었습니다.',
+        'admin.section.policy': '기본 대출 정책 변경',
+        'policy.form.policyId.label': '정책 ID',
+        'policy.form.loanDays.label': '대출 일수',
+        'policy.form.maxOpenLoans.label': '최대 대출 권수',
+        'policy.form.maxRenewals.label': '최대 연장 횟수',
+        'policy.form.renewalDays.label': '연장 일수',
+        'policy.form.maxReservations.label': '최대 예약 건수',
+        'policy.form.holdDays.label': '예약 보관 일수',
+        'policy.form.overdueFeePerDay.label': '일 연체료',
+        'policy.help': '횟수·권수에 0을 입력하면 해당 기능을 허용하지 않습니다. 일수 0은 날짜를 더하지 않고 계산 기준일의 종료 시각을 사용합니다.',
+        'policy.button': '정책 변경',
+        'policy.success': '대출 정책이 변경되었습니다.',
+        'admin.notice': '최초 설정·DB 시트 보호·일일 트리거 설치는 스프레드시트의 📚 도서관 관리 → 관리 메뉴에서 실행하세요. DB 보호를 켜면 활성 ADMIN만 편집할 수 있으므로, 바운드 사이드바를 쓰는 LIBRARIAN 계정의 저장 작업도 차단됩니다. 이 화면에서 직원을 바꾸면 보호 목록도 자동 동기화되며, STAFF 시트를 직접 고친 경우에는 DB 보호 메뉴를 다시 실행하세요.',
+
+        'feedback.close': '닫기',
+        'feedback.loading': '처리 중…',
+        'feedback.emptyResponse': '응답을 받지 못했습니다.',
+        'error.unknown': '알 수 없는 오류가 발생했습니다.'
+      },
+      en: {
+        'app.title': 'Library Management',
+        'app.subtitleLoading': 'MVP operations sidebar · loading…',
+        'nav.dashboard': 'Dashboard', 'nav.search': 'Search', 'nav.checkout': 'Checkout', 'nav.return': 'Return/Renew',
+        'nav.reservation': 'Reservations', 'nav.member': 'Members', 'nav.catalog': 'Catalog', 'nav.admin': 'Admin',
+
+        'dashboard.title': 'Operations Overview',
+        'dashboard.subtitleDefault': 'Computed from the source DB',
+        'dashboard.refreshedAtPrefix': 'Last refreshed ',
+        'dashboard.card.dueOverdue': 'Due Today · Overdue',
+        'dashboard.card.readyPickup': 'Ready for Pickup',
+        'dashboard.refreshButton': 'Refresh Dashboard',
+        'dashboard.due.empty': 'No items due today or overdue.',
+        'dashboard.due.overdue': 'Overdue',
+        'dashboard.due.upcoming': 'Due',
+        'dashboard.due.overdueDaysSuffix': ' day(s)',
+        'dashboard.ready.empty': 'No reservations ready for pickup.',
+        'dashboard.ready.pickupPrefix': 'Pickup by ',
+        'dashboard.refreshSuccess': 'Dashboard refreshed.',
+
+        'stat.activeTitles': 'Active Titles', 'stat.availableCopies': 'Available', 'stat.openLoans': 'On Loan',
+        'stat.dueToday': 'Due Today', 'stat.overdue': 'Overdue', 'stat.activeReservations': 'Reservations (Waiting/Ready)',
+        'stat.activeMembers': 'Active Members',
+
+        'search.title': 'Search',
+        'search.subtitle': 'Exact barcode/member no./ID matches are checked first, then partial matches on title, author, and contact info.',
+        'search.form.query.label': 'Search term *',
+        'search.form.query.placeholder': 'Title, author, ISBN, barcode, member no.',
+        'search.form.scope.label': 'Scope',
+        'search.scope.all': 'All', 'search.scope.books': 'Titles', 'search.scope.copies': 'Copies',
+        'search.scope.members': 'Members', 'search.scope.loans': 'Loans', 'search.scope.reservations': 'Reservations',
+        'search.scope.fines': 'Charges',
+        'search.button': 'Search',
+        'search.summaryPrefix': 'Search results: ', 'search.summarySuffix': '',
+        'search.summaryTopPrefix': ' · showing top ', 'search.summaryTopSuffix': '',
+        'search.empty': 'No matching results.',
+
+        'checkout.title': 'Checkout',
+        'checkout.subtitle': 'Member status, expiry, limits, overdue status, reservation priority, and copy status are all re-checked inside the lock.',
+        'checkout.form.memberKey.label': 'Member no. or member ID *',
+        'checkout.form.memberKey.placeholder': '0000018 (7 digits)',
+        'checkout.form.copyKey.label': 'Copy barcode or copy ID *',
+        'checkout.button': 'Confirm Checkout',
+        'checkout.notice': 'Barcode scanners usually act like a keyboard. Click into the field, then scan.',
+        'checkout.success': 'Checkout completed.',
+
+        'common.note': 'Note',
+        'common.note.optionalPlaceholder': 'Optional',
+        'common.phone': 'Phone',
+        'common.email': 'Email',
+        'common.noChange': 'No change',
+        'common.changeOnlyPlaceholder': 'Only if changing',
+        'common.commaSeparatedPlaceholder': 'Comma-separated',
+
+        'return.title': 'Return · Renew',
+        'return.section.return': 'Process Return',
+        'return.form.copyKey.label': 'Copy barcode or copy ID *',
+        'return.button': 'Confirm Return',
+        'return.success': 'Return completed.',
+        'return.section.renew': 'Renew Loan',
+        'renew.form.key.label': 'Loan ID or copy barcode *',
+        'renew.button': 'Apply Renewal',
+        'renew.success': 'Renewal completed.',
+        'return.section.lost': 'Mark Loan as Lost',
+        'lost.help': 'Closes the open loan as lost and marks the copy as lost as well. Always enter a replacement cost, including 0.',
+        'lost.form.key.label': 'Loan ID or copy barcode *',
+        'lost.form.amount.label': 'Replacement cost *',
+        'lost.form.note.label': 'Reason / notes',
+        'lost.form.note.placeholder': 'Report details, verification notes, etc.',
+        'lost.button': 'Confirm Lost',
+        'lost.notice': 'Marking as lost cannot be undone with a normal return. Confirm the loan ID/copy and replacement cost before proceeding.',
+        'lost.success': 'Loan and copy marked as lost.',
+        'lost.validate.keyRequired': 'Enter a loan ID or copy barcode.',
+        'lost.validate.amountInvalid': 'Replacement cost must be an integer of 0 or more.',
+
+        'reservation.title': 'Reservations',
+        'reservation.section.reserve': 'Create Reservation',
+        'reserve.form.memberKey.label': 'Member no. or member ID *',
+        'reserve.form.titleKey.label': 'Title ID or ISBN *',
+        'reserve.button': 'Create Reservation',
+        'reserve.success': 'Reservation created.',
+        'reservation.section.cancel': 'Cancel Reservation',
+        'cancelReservation.form.id.label': 'Reservation ID *',
+        'cancelReservation.form.note.label': 'Cancellation reason',
+        'cancelReservation.button': 'Cancel Reservation',
+        'cancelReservation.success': 'Reservation cancelled.',
+
+        'member.title': 'Register Member',
+        'member.form.name.label': 'Name *',
+        'member.form.memberType.label': 'Member type',
+        'member.form.grade.label': 'Grade *',
+        'member.form.classNo.label': 'Class *',
+        'member.form.studentNo.label': 'No.',
+        'member.form.schoolNo.label': 'Student ID',
+        'member.form.schoolNo.placeholder': 'e.g., 20260102',
+        'member.section.guardian': 'Guardian contact · other (optional)',
+        'member.form.expiresAt.label': 'Valid until (staff/external, etc.)',
+        'member.form.loanLimitOverride.label': 'Loan limit override',
+        'member.form.loanLimitOverride.placeholder': 'Leave blank to use the policy value',
+        'member.form.privacyConsent.label': 'Confirmed privacy consent',
+        'member.button': 'Register Member',
+        'member.success': 'Member registered.',
+        'member.section.update': 'Update Member Info/Status',
+        'memberUpdate.form.memberKey.label': 'Member no. or member ID *',
+        'memberUpdate.form.name.label': 'Name',
+        'memberUpdate.form.name.placeholder': 'Only if changing',
+        'memberUpdate.form.memberType.label': 'Member type',
+        'memberUpdate.form.status.label': 'Member status',
+        'memberUpdate.form.grade.label': 'Grade',
+        'memberUpdate.form.classNo.label': 'Class',
+        'memberUpdate.form.studentNo.label': 'No.',
+        'memberUpdate.form.schoolNo.label': 'Student ID',
+        'memberUpdate.form.expiresAt.label': 'New valid-until date',
+        'memberUpdate.form.loanLimitOverride.label': 'Loan limit',
+        'memberUpdate.form.clearSuspension.label': 'Lift borrowing suspension (librarian discretion)',
+        'memberUpdate.form.clearLoanLimit.label': 'Clear personal loan limit, use policy value',
+        'memberUpdate.form.note.label': 'Reason / notes',
+        'memberUpdate.button': 'Update Member',
+        'memberUpdate.success': 'Member info updated.',
+
+        'catalog.title': 'Titles · Copies',
+        'catalog.section.newTitle': 'New Title with First Copy',
+        'title.form.isbn.label': 'ISBN',
+        'title.form.publishedYear.label': 'Published year',
+        'title.form.title.label': 'Title *',
+        'title.form.subtitle.label': 'Subtitle',
+        'title.form.edition.label': 'Edition',
+        'title.form.publisher.label': 'Publisher',
+        'title.form.authors.label': 'Authors',
+        'title.form.authors.placeholder': 'Comma-separated for multiple authors',
+        'title.form.languageCode.label': 'Language code',
+        'title.form.classificationNo.label': 'Classification no.',
+        'title.form.categoryCodes.label': 'Category code',
+        'title.form.categoryCodes.placeholder': 'e.g., KDC800',
+        'title.form.keywords.label': 'Keywords',
+        'title.form.description.label': 'Description',
+        'title.form.createCopy.label': 'Also register the first copy',
+        'title.button': 'Register Title',
+        'title.success': 'Title registered.',
+        'copy.form.barcode.label': 'Barcode',
+        'copy.form.barcode.placeholder': 'Leave blank to auto-generate',
+        'copy.form.condition.label': 'Condition',
+        'copy.form.locationCode.label': 'Location',
+        'copy.form.shelfCode.label': 'Shelf',
+        'copy.form.acquiredAt.label': 'Acquired on',
+        'copy.form.price.label': 'Price',
+        'copy.form.acquisitionSource.label': 'Source/donor',
+        'copy.form.copyNote.label': 'Copy note',
+        'catalog.section.addCopy': 'Add a Copy to an Existing Title',
+        'copy.form.titleKey.label': 'Title ID or ISBN *',
+        'copy.form.note.label': 'Note',
+        'copy.button': 'Add Copy',
+        'copy.success': 'Copy added.',
+
+        'admin.title': 'Admin Tools',
+        'admin.integrity.title': 'Integrity · Derived Status',
+        'admin.integrity.help': 'Checks for inconsistencies caused by direct DB edits or partial failures.',
+        'admin.integrity.button': 'Run Integrity Check',
+        'admin.reconcile.button': 'Reconcile Copy Status',
+        'admin.integrity.empty': 'No integrity issues found.',
+        'admin.integrity.issuesFoundSuffix': ' issue(s) found.',
+        'admin.reconcile.successSuffix': ' copy status(es) reconciled.',
+        'admin.section.copyStatus': 'Manually Change Copy Status',
+        'copyStatus.form.copyKey.label': 'Barcode or copy ID *',
+        'copyStatus.form.status.label': 'New status *',
+        'copyStatus.form.note.label': 'Reason',
+        'copyStatus.button': 'Change Status',
+        'copyStatus.success': 'Copy status changed.',
+        'admin.section.fine': 'Pay Charge',
+        'fine.form.fineId.label': 'Charge ID *',
+        'fine.form.amount.label': 'Payment amount *',
+        'fine.button': 'Record Payment',
+        'fine.success': 'Payment recorded.',
+        'admin.section.staff': 'Staff Accounts · Roles',
+        'staff.form.email.label': 'Google account email *',
+        'staff.form.displayName.label': 'Display name',
+        'staff.form.role.label': 'Role',
+        'staff.role.librarian': 'Librarian', 'staff.role.viewer': 'Viewer', 'staff.role.admin': 'Admin',
+        'staff.form.status.label': 'Status',
+        'staff.status.active': 'Active', 'staff.status.inactive': 'Inactive',
+        'staff.button': 'Save Staff Account',
+        'staff.success': 'Staff account saved.',
+        'admin.section.policy': 'Change Default Loan Policy',
+        'policy.form.policyId.label': 'Policy ID',
+        'policy.form.loanDays.label': 'Loan days',
+        'policy.form.maxOpenLoans.label': 'Max open loans',
+        'policy.form.maxRenewals.label': 'Max renewals',
+        'policy.form.renewalDays.label': 'Renewal days',
+        'policy.form.maxReservations.label': 'Max reservations',
+        'policy.form.holdDays.label': 'Hold days',
+        'policy.form.overdueFeePerDay.label': 'Overdue fee per day',
+        'policy.help': 'Entering 0 for a count/limit disables that feature. A day value of 0 does not add days — it uses the end of the reference day.',
+        'policy.button': 'Save Policy',
+        'policy.success': 'Loan policy updated.',
+        'admin.notice': 'Run initial setup, DB sheet protection, and daily-trigger install from the spreadsheet\'s 📚 도서관 관리 (Library Management) → 관리 (Admin) menu — that menu itself stays in Korean since it is drawn by the container spreadsheet, not this sidebar. Turning on DB protection means only active ADMINs can edit, so save actions from LIBRARIAN accounts using the bound sidebar are blocked too. Changing staff here automatically re-syncs the protected-editor list; if you edited the STAFF sheet directly, re-run the DB protection menu.',
+
+        'feedback.close': 'Close',
+        'feedback.loading': 'Working…',
+        'feedback.emptyResponse': 'No response received.',
+        'error.unknown': 'An unknown error occurred.'
+      }
+    };
+
+    function t(key) {
+      return (I18N[currentLocale] && I18N[currentLocale][key]) || I18N.ko[key] || key;
+    }
+
+    // 오류 코드 → 영어 메시지(~70+ 키, Code.gs의 모든 fail_() 호출 코드를 실사 조사해 빠짐없이
+    // 수록). 매핑에 없는 코드, 또는 currentLocale이 'ko'일 때는 서버가 이미 보낸 한글
+    // error.message를 그대로 쓴다(ADR-017: "서버는 이미 오류 코드를 반환하므로 클라이언트
+    // 매핑만으로 번역 완성" — 한국어 사용자에게는 이 매핑이 필요 없다, 폴백 = 기존 동작 그대로).
+    const ERROR_MESSAGES_EN = {
+      ALADIN_KEY_MISSING: 'Aladin API key is not configured (ScriptProperties: ALADIN_TTB_KEY).',
+      ALADIN_UNAVAILABLE: 'Could not reach the Aladin API. Try again or enter the details manually.',
+      AMBIGUOUS_MANUAL_ENTRY_MEMBER: 'Multiple active members match this student ID/name/member no. Use the member no. to disambiguate.',
+      AMBIGUOUS_TITLE: 'Multiple titles share this name. Use the title ID or ISBN instead.',
+      BAD_REQUEST: 'The request body is missing or malformed.',
+      BUSY_RETRY: 'Another operation is in progress. Please try again shortly.',
+      COPY_ALREADY_ON_LOAN: 'This copy already has an open loan.',
+      COPY_NOT_FOUND: 'Copy not found.',
+      COPY_UNAVAILABLE: 'This copy is not currently available for checkout.',
+      DERIVED_STATUS: 'ON_LOAN/HOLD_READY are computed automatically from loans and reservations, and cannot be set directly.',
+      DUPLICATE_BARCODE: 'This barcode is already in use.',
+      DUPLICATE_ISBN: 'A title with this ISBN already exists. Add a copy to the existing title instead.',
+      DUPLICATE_MEMBER: 'A member with matching details already exists.',
+      DUPLICATE_MEMBER_NO: 'This member number is already in use.',
+      DUPLICATE_REQUEST: 'This request is already being processed. Please check again shortly.',
+      DUPLICATE_RESERVATION: 'An active reservation for this title already exists.',
+      FAILED_REQUEST_REQUIRES_REVIEW: 'This request failed previously. Run an integrity check, then retry with a new request ID.',
+      FINE_CLOSED: 'This charge has already been paid or waived.',
+      FIRST_ADMIN_MUST_BE_OWNER: 'Initial setup on a personally-owned spreadsheet must be run by the file owner.',
+      INVALID_ADMIN_EMAIL: 'An active ADMIN’s email address is empty.',
+      INVALID_CATEGORY: 'Category code not found.',
+      INVALID_CODE: 'This code is not defined in the codebook.',
+      INVALID_CODE_FORMAT: 'Only letters, digits, and . _ : / - are allowed.',
+      INVALID_EMAIL: 'Invalid email format.',
+      INVALID_ISBN: 'Invalid ISBN — must be 10 or 13 digits.',
+      INVALID_ROLE: 'Unsupported staff role.',
+      INVALID_STATUS: 'Unsupported staff status.',
+      LAST_ADMIN: 'The last active ADMIN cannot be demoted or deactivated. Register another ADMIN first.',
+      LOAN_LIMIT: 'Loan limit exceeded.',
+      MANUAL_ENTRY_MEMBER_NOT_FOUND: 'No member matches this student ID/name.',
+      MEMBER_EXPIRED: 'This member’s validity period has expired.',
+      MEMBER_HAS_OPEN_LOAN: 'Members with an open loan cannot be graduated, transferred, suspended, or withdrawn. Process the return or loss first.',
+      MEMBER_HAS_READY_RESERVATION: 'Members with a ready-for-pickup reservation cannot be graduated, transferred, suspended, or withdrawn. Cancel or expire the reservation first.',
+      MEMBER_HAS_UNPAID_FINE: 'Members with an unpaid charge cannot be graduated, transferred, suspended, or withdrawn. Settle the charge first.',
+      MEMBER_INACTIVE: 'Only active members may use this feature.',
+      MEMBER_NOT_FOUND: 'Member not found.',
+      MEMBER_OVERDUE: 'This member has an overdue loan, so new checkouts are blocked.',
+      MEMBER_SUSPENDED: 'This member is currently suspended from borrowing.',
+      MEMBER_UNPAID_REPLACEMENT: 'An unpaid replacement charge is blocking new checkouts. Settle it first.',
+      METHOD_NOT_ALLOWED: 'This action cannot be called with GET (write actions require POST).',
+      MOBILE_REG_NOT_CONFIGURED: 'Mobile registration token is not configured.',
+      NOT_FOUND: 'Not found.',
+      NO_ACTIVE_ADMIN: 'There is no active ADMIN to protect the database sheets.',
+      NO_ACTIVE_SPREADSHEET: 'No active spreadsheet found. Run this from the bound script.',
+      NO_OPEN_LOAN: 'No open loan found for this item.',
+      OPEN_LOAN_EXISTS: 'This copy has an open loan — process a return or loss first.',
+      OVERPAYMENT: 'Payment cannot exceed the charged amount.',
+      OWNER_ADMIN_REQUIRED: 'The spreadsheet owner cannot be removed from protection and must remain an active ADMIN.',
+      OWNER_LOOKUP_FAILED: 'Could not confirm the spreadsheet owner.',
+      PERMISSION_DENIED: 'You do not have permission for this action.',
+      POLICY_NOT_FOUND: 'No applicable loan policy found.',
+      PROTECTION_DOMAIN_EDIT_ENABLED: 'Domain-wide edit access could not be disabled for this sheet’s protection.',
+      PROTECTION_EDITOR_MISMATCH: 'Could not verify the protected-editor sync for the database sheets.',
+      PROTECTION_NOT_ENFORCED: 'This sheet’s protection is still in warning-only mode.',
+      READY_RESERVATION_EXISTS: 'Cancel or expire the ready-for-pickup reservation first.',
+      RENEWAL_LIMIT: 'The maximum number of renewals has already been used.',
+      REPLACEMENT_FINE_CONFLICT: 'The existing replacement charge amount does not match the entered amount.',
+      REQUEST_ID_CONFLICT: 'This request ID was already used for a different action or payload.',
+      RESERVATION_EXISTS: 'Cannot renew — another member is waiting on a reservation for this title.',
+      RESERVATION_LIMIT: 'Reservation limit exceeded.',
+      RESERVATION_NOT_ACTIVE: 'Only waiting/ready reservations can be cancelled.',
+      RESERVATION_PRIORITY: 'Another member has reservation priority on this title.',
+      RESERVED_FOR_OTHER_MEMBER: 'This copy is reserved for a different member.',
+      SCHEMA_MISMATCH: 'A required sheet or column is missing.',
+      SELF_LOCKOUT: 'You cannot demote or deactivate the ADMIN account you are currently logged in as. Ask another ADMIN to make this change.',
+      STAFF_INACTIVE: 'This staff account is inactive.',
+      STAFF_NOT_REGISTERED: 'This Google account is not registered as staff. Ask an ADMIN to register it.',
+      STALE_OPERATION: 'A previous request may have partially failed. Run an integrity check, then retry with a new request.',
+      TITLE_INACTIVE: 'This title is inactive/withdrawn.',
+      TITLE_NOT_FOUND: 'Title not found.',
+      UNAUTHORIZED: 'Invalid token.',
+      UNKNOWN_ACTION: 'This action is not supported.',
+      USER_IDENTITY_UNAVAILABLE: 'Could not verify your Google account. Please re-authorize permissions.',
+      USE_ASSIGNED_COPY: 'A different copy is already assigned to this reservation.',
+      VALIDATION_ERROR: 'One or more values are invalid.',
+      VIZ_NOT_READY: 'Not aggregated yet (the daily batch has not run).'
+    };
+
+    function translateError(error) {
+      if (currentLocale === 'en' && error && error.code && ERROR_MESSAGES_EN[error.code]) return ERROR_MESSAGES_EN[error.code];
+      return (error && error.message) || t('error.unknown');
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       bindTabs();
       bindForms();
+      bindLangToggle();
       document.querySelector('#feedback .close').addEventListener('click', hideFeedback);
       document.getElementById('createCopyCheckbox').addEventListener('change', event => {
         document.getElementById('firstCopyFields').hidden = !event.target.checked;
       });
       activateTab(state.activeTab);
+      applyI18nStatic();
+      updateLangButtons();
+      // 사용자별 저장된 언어 복원 — apiGetUserLocale은 getActor_()를 거치지 않으므로
+      // 아직 STAFF에 등록되지 않은 계정에서도 항상 성공한다(실패해도 'ko'로 안전 폴백).
+      restoreLocale().then(() => {
+        applyI18nStatic();
+        updateLangButtons();
+      });
       callApi('apiBootstrap', { initialTab: state.activeTab }).then(data => {
         state.bootstrap = data;
         hydrateOptions(data.options || {});
@@ -526,8 +1063,56 @@
         renderDashboard(data.dashboard);
         document.getElementById('libraryMeta').textContent = `${data.dashboard.libraryName} · v${data.version} · ${data.dashboard.actorLabel}`;
         hideFeedback();
+        // CODEBOOK label_en — 새 additive 함수 하나로만 가져온다(apiBootstrap·getCodes_는
+        // 그대로 둔다). 실패해도(예: 권한 문제) 한국어 라벨로 계속 동작하므로 catch는 무시.
+        return callApi('apiGetCodeLabels', {}, false).then(labels => {
+          state.codeLabels = labels;
+          if (currentLocale === 'en') hydrateOptions(data.options || {});
+        }).catch(() => {});
       }).catch(() => {});
     });
+
+    function restoreLocale() {
+      return callApi('apiGetUserLocale', {}, false).then(data => {
+        currentLocale = (data && data.locale === 'en') ? 'en' : 'ko';
+      }).catch(() => { currentLocale = 'ko'; });
+    }
+
+    function bindLangToggle() {
+      document.getElementById('langKoButton').addEventListener('click', () => setLocale('ko'));
+      document.getElementById('langEnButton').addEventListener('click', () => setLocale('en'));
+    }
+
+    function setLocale(locale) {
+      if (currentLocale === locale) return;
+      currentLocale = locale;
+      updateLangButtons();
+      applyI18nStatic();
+      rerenderDynamicSections();
+      // 서버에 비동기로 저장 — UI는 이미 즉시 반영됐으므로(수용 기준 "토글 즉시 반영") 저장
+      // 실패는 조용히 무시한다(이번 세션 동안은 currentLocale이 유지되므로 사용성에 지장 없음).
+      callApi('apiSetUserLocale', { locale: locale }, false).catch(() => {});
+    }
+
+    function updateLangButtons() {
+      document.getElementById('langKoButton').classList.toggle('active', currentLocale === 'ko');
+      document.getElementById('langEnButton').classList.toggle('active', currentLocale === 'en');
+    }
+
+    function applyI18nStatic() {
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label'))); });
+    }
+
+    // 로케일 토글 시 이미 그려진 동적 섹션(현황·검색·무결성·옵션 select)을 마지막으로 받은
+    // 데이터로 다시 그린다 — 서버 재호출 없이 텍스트만 갈아 끼운다.
+    function rerenderDynamicSections() {
+      if (state.lastDashboard) renderDashboard(state.lastDashboard);
+      if (state.lastSearch) renderSearch(state.lastSearch);
+      if (state.lastIntegrity) renderIntegrity(state.lastIntegrity);
+      if (state.bootstrapOptions) hydrateOptions(state.bootstrapOptions);
+    }
 
     function bindTabs() {
       document.querySelectorAll('#tabs button').forEach(button => {
@@ -542,20 +1127,20 @@
     }
 
     function bindForms() {
-      bindApiForm('checkoutForm', 'apiCheckout', '대출이 완료되었습니다.');
-      bindApiForm('returnForm', 'apiReturn', '반납이 완료되었습니다.');
-      bindApiForm('renewForm', 'apiRenew', '연장이 완료되었습니다.');
-      bindApiForm('lostLoanForm', 'apiMarkLoanLost', '대출과 소장본을 분실 상태로 처리했습니다.', validateLostLoanPayload);
-      bindApiForm('reserveForm', 'apiReserve', '예약이 등록되었습니다.');
-      bindApiForm('cancelReservationForm', 'apiCancelReservation', '예약이 취소되었습니다.');
-      bindApiForm('memberForm', 'apiRegisterMember', '회원이 등록되었습니다.');
-      bindApiForm('memberUpdateForm', 'apiUpdateMember', '회원 정보가 변경되었습니다.');
-      bindApiForm('titleForm', 'apiRegisterTitle', '도서가 등록되었습니다.');
-      bindApiForm('copyForm', 'apiRegisterCopy', '소장본이 추가되었습니다.');
-      bindApiForm('copyStatusForm', 'apiUpdateCopyStatus', '소장본 상태가 변경되었습니다.');
-      bindApiForm('fineForm', 'apiPayFine', '납부 기록이 저장되었습니다.');
-      bindApiForm('staffForm', 'apiUpsertStaff', '직원 계정이 등록/변경되었습니다.');
-      bindApiForm('policyForm', 'apiUpdatePolicy', '대출 정책이 변경되었습니다.');
+      bindApiForm('checkoutForm', 'apiCheckout', () => t('checkout.success'));
+      bindApiForm('returnForm', 'apiReturn', () => t('return.success'));
+      bindApiForm('renewForm', 'apiRenew', () => t('renew.success'));
+      bindApiForm('lostLoanForm', 'apiMarkLoanLost', () => t('lost.success'), validateLostLoanPayload);
+      bindApiForm('reserveForm', 'apiReserve', () => t('reserve.success'));
+      bindApiForm('cancelReservationForm', 'apiCancelReservation', () => t('cancelReservation.success'));
+      bindApiForm('memberForm', 'apiRegisterMember', () => t('member.success'));
+      bindApiForm('memberUpdateForm', 'apiUpdateMember', () => t('memberUpdate.success'));
+      bindApiForm('titleForm', 'apiRegisterTitle', () => t('title.success'));
+      bindApiForm('copyForm', 'apiRegisterCopy', () => t('copy.success'));
+      bindApiForm('copyStatusForm', 'apiUpdateCopyStatus', () => t('copyStatus.success'));
+      bindApiForm('fineForm', 'apiPayFine', () => t('fine.success'));
+      bindApiForm('staffForm', 'apiUpsertStaff', () => t('staff.success'));
+      bindApiForm('policyForm', 'apiUpdatePolicy', () => t('policy.success'));
 
       document.getElementById('searchForm').addEventListener('submit', async event => {
         event.preventDefault();
@@ -574,7 +1159,7 @@
         try {
           const data = await callApi('apiRefreshDashboard', {}, false);
           renderDashboard(data);
-          showFeedback('현황을 새로고침했습니다.', 'success');
+          showFeedback(t('dashboard.refreshSuccess'), 'success');
         } catch (ignore) {
         } finally { setButtonLoading(event.currentTarget, false); }
       });
@@ -584,7 +1169,7 @@
         try {
           const data = await callApi('apiRunIntegrityCheck', {}, false);
           renderIntegrity(data);
-          showFeedback(data.issueCount ? `${data.issueCount}개 문제를 찾았습니다.` : '무결성 문제가 없습니다.', data.issueCount ? 'error' : 'success');
+          showFeedback(data.issueCount ? `${data.issueCount}${t('admin.integrity.issuesFoundSuffix')}` : t('admin.integrity.empty'), data.issueCount ? 'error' : 'success');
         } catch (ignore) {
         } finally { setButtonLoading(event.currentTarget, false); }
       });
@@ -593,7 +1178,7 @@
         setButtonLoading(event.currentTarget, true);
         try {
           const data = await callApi('apiReconcileCopyStatuses', { requestId: requestId() }, false);
-          showFeedback(`${data.changedCount}개 소장본 상태를 복구했습니다.`, 'success', data);
+          showFeedback(`${data.changedCount}${t('admin.reconcile.successSuffix')}`, 'success', data);
         } catch (ignore) {
         } finally { setButtonLoading(event.currentTarget, false); }
       });
@@ -616,7 +1201,7 @@
         setButtonLoading(button, true);
         try {
           const data = await callApi(apiName, payload, false);
-          showFeedback(successMessage, 'success', data);
+          showFeedback(typeof successMessage === 'function' ? successMessage() : successMessage, 'success', data);
           if (apiName !== 'apiUpdateCopyStatus' && apiName !== 'apiPayFine') form.reset();
           if (formId === 'titleForm') {
             document.getElementById('createCopyCheckbox').checked = true;
@@ -638,14 +1223,14 @@
       if (!String(payload.loanOrCopyKey == null ? '' : payload.loanOrCopyKey).trim()) {
         const keyInput = form.querySelector('[name="loanOrCopyKey"]');
         if (keyInput) keyInput.focus();
-        return '대출 ID 또는 소장본 바코드를 입력하세요.';
+        return t('lost.validate.keyRequired');
       }
       const rawAmount = String(payload.fineAmount == null ? '' : payload.fineAmount).trim();
       const amount = Number(rawAmount);
       if (!/^\d+$/.test(rawAmount) || !Number.isSafeInteger(amount) || amount < 0) {
         const amountInput = form.querySelector('[name="fineAmount"]');
         if (amountInput) amountInput.focus();
-        return '대체 비용은 0 이상의 정수로 입력하세요.';
+        return t('lost.validate.amountInvalid');
       }
       payload.fineAmount = amount;
       return '';
@@ -658,43 +1243,62 @@
     }
 
     function callApi(name, payload = {}, showLoading = true) {
-      if (showLoading) showFeedback('처리 중…', 'loading');
+      if (showLoading) showFeedback(t('feedback.loading'), 'loading');
       return new Promise((resolve, reject) => {
         const runner = google.script.run
           .withSuccessHandler(response => {
             if (!response || !response.ok) {
-              const error = response && response.error ? response.error : { code: 'EMPTY_RESPONSE', message: '응답을 받지 못했습니다.' };
-              showFeedback(`[${error.code}] ${error.message}`, 'error', error.details);
+              const error = response && response.error ? response.error : { code: 'EMPTY_RESPONSE', message: t('feedback.emptyResponse') };
+              showFeedback(`[${error.code}] ${translateError(error)}`, 'error', error.details);
               reject(error);
               return;
             }
             resolve(response.data);
           })
           .withFailureHandler(error => {
-            const message = error && error.message ? error.message : String(error);
-            showFeedback(message, 'error');
+            // 진짜 미처리 예외 경로 — Apps Script 특성상 .message만 신뢰할 수 있고
+            // .code는 보통 없다(translateError는 code가 없으면 그냥 message로 폴백하므로 안전).
+            showFeedback(translateError(error), 'error');
             reject(error);
           });
         runner[name](payload);
       });
     }
 
+    // group은 CODEBOOK.code_group 문자열과 정확히 일치해야 한다(MEMBER_TYPE/MEMBER_STATUS/
+    // CONDITION/COPY_STATUS) — apiGetCodeLabels()가 그 이름 그대로 묶어서 내려준다.
+    function localizedCodeLabel(group, item) {
+      if (currentLocale === 'en' && state.codeLabels && state.codeLabels.codeGroups && group) {
+        const groupMap = state.codeLabels.codeGroups[group];
+        if (groupMap && groupMap[item.code]) return groupMap[item.code];
+      }
+      return item.label;
+    }
+
+    function localizedCategoryLabel(item) {
+      if (currentLocale === 'en' && state.codeLabels && state.codeLabels.categories && state.codeLabels.categories[item.code]) {
+        return item.code + ' · ' + state.codeLabels.categories[item.code];
+      }
+      return item.label;
+    }
+
     function hydrateOptions(options) {
-      fillSelect(document.getElementById('memberTypeSelect'), options.memberTypes || [], 'GENERAL');
-      fillOptionalSelect(document.getElementById('memberTypeUpdateSelect'), options.memberTypes || [], '변경 안 함');
-      fillOptionalSelect(document.getElementById('memberStatusSelect'), options.memberStatuses || [], '변경 안 함');
-      document.querySelectorAll('.conditionSelect').forEach(select => fillSelect(select, options.copyConditions || [], 'GOOD'));
-      fillSelect(document.getElementById('copyStatusSelect'), (options.copyStatuses || []).filter(item => item.code !== 'ON_LOAN' && item.code !== 'HOLD_READY'));
+      state.bootstrapOptions = options;
+      fillSelect(document.getElementById('memberTypeSelect'), options.memberTypes || [], 'GENERAL', 'MEMBER_TYPE');
+      fillOptionalSelect(document.getElementById('memberTypeUpdateSelect'), options.memberTypes || [], t('common.noChange'), 'MEMBER_TYPE');
+      fillOptionalSelect(document.getElementById('memberStatusSelect'), options.memberStatuses || [], t('common.noChange'), 'MEMBER_STATUS');
+      document.querySelectorAll('.conditionSelect').forEach(select => fillSelect(select, options.copyConditions || [], 'GOOD', 'CONDITION'));
+      fillSelect(document.getElementById('copyStatusSelect'), (options.copyStatuses || []).filter(item => item.code !== 'ON_LOAN' && item.code !== 'HOLD_READY'), null, 'COPY_STATUS');
       const datalist = document.getElementById('categoryOptions');
-      datalist.innerHTML = (options.categories || []).map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(item.label)}</option>`).join('');
+      datalist.innerHTML = (options.categories || []).map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(localizedCategoryLabel(item))}</option>`).join('');
     }
 
-    function fillSelect(select, items, selectedCode) {
-      select.innerHTML = items.map(item => `<option value="${escapeHtml(item.code)}" ${item.code === selectedCode ? 'selected' : ''}>${escapeHtml(item.label)} (${escapeHtml(item.code)})</option>`).join('');
+    function fillSelect(select, items, selectedCode, group) {
+      select.innerHTML = items.map(item => `<option value="${escapeHtml(item.code)}" ${item.code === selectedCode ? 'selected' : ''}>${escapeHtml(localizedCodeLabel(group, item))} (${escapeHtml(item.code)})</option>`).join('');
     }
 
-    function fillOptionalSelect(select, items, emptyLabel) {
-      select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + items.map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(item.label)} (${escapeHtml(item.code)})</option>`).join('');
+    function fillOptionalSelect(select, items, emptyLabel, group) {
+      select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + items.map(item => `<option value="${escapeHtml(item.code)}">${escapeHtml(localizedCodeLabel(group, item))} (${escapeHtml(item.code)})</option>`).join('');
     }
 
     function hydrateRole(actor) {
@@ -711,35 +1315,44 @@
 
     function renderDashboard(data) {
       if (!data) return;
-      document.getElementById('refreshedAt').textContent = `마지막 갱신 ${data.refreshedAt}`;
+      state.lastDashboard = data;
+      document.getElementById('refreshedAt').textContent = `${t('dashboard.refreshedAtPrefix')}${data.refreshedAt}`;
       const cards = [
-        ['활성 도서', data.stats.activeTitles, ''],
-        ['대출 가능', data.stats.availableCopies, 'green'],
-        ['대출 중', data.stats.openLoans, ''],
-        ['오늘 반납', data.stats.dueToday, 'amber'],
-        ['연체', data.stats.overdue, 'red'],
-        ['예약 대기/준비', data.stats.activeReservations, 'purple'],
-        ['활성 회원', data.stats.activeMembers, 'green']
+        [t('stat.activeTitles'), data.stats.activeTitles, ''],
+        [t('stat.availableCopies'), data.stats.availableCopies, 'green'],
+        [t('stat.openLoans'), data.stats.openLoans, ''],
+        [t('stat.dueToday'), data.stats.dueToday, 'amber'],
+        [t('stat.overdue'), data.stats.overdue, 'red'],
+        [t('stat.activeReservations'), data.stats.activeReservations, 'purple'],
+        [t('stat.activeMembers'), data.stats.activeMembers, 'green']
       ];
       document.getElementById('stats').innerHTML = cards.map(card => `<div class="stat ${card[2]}"><div class="label">${card[0]}</div><div class="value">${numberFormat(card[1])}</div></div>`).join('');
+      // item.type('연체'/'예정')은 getDashboardData_(서버, 수정 금지 대상)가 만든 한글 원문이라
+      // 문자열 비교 대신 item.overdueDays(0 여부)로 다시 판단해 표시만 로케일에 맞게 고른다.
       document.getElementById('dueItems').innerHTML = data.dueItems && data.dueItems.length
-        ? data.dueItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.type)}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberNo)} · ${escapeHtml(item.memberName)} · ${escapeHtml(item.barcode)} · ${escapeHtml(item.dueAtText)}${item.overdueDays ? ` · ${item.overdueDays}일` : ''}</div></div></div>`).join('')
-        : '<div class="empty">오늘 반납 예정 또는 연체 항목이 없습니다.</div>';
+        ? data.dueItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.overdueDays ? t('dashboard.due.overdue') : t('dashboard.due.upcoming'))}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberNo)} · ${escapeHtml(item.memberName)} · ${escapeHtml(item.barcode)} · ${escapeHtml(item.dueAtText)}${item.overdueDays ? ` · ${item.overdueDays}${t('dashboard.due.overdueDaysSuffix')}` : ''}</div></div></div>`).join('')
+        : `<div class="empty">${t('dashboard.due.empty')}</div>`;
       document.getElementById('readyItems').innerHTML = data.readyItems && data.readyItems.length
-        ? data.readyItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.memberNo)}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberName)} · 수령기한 ${escapeHtml(item.pickupExpiresText)}</div></div></div>`).join('')
-        : '<div class="empty">수령 준비 예약이 없습니다.</div>';
+        ? data.readyItems.map(item => `<div class="table-row"><strong>${escapeHtml(item.memberNo)}</strong><div>${escapeHtml(item.title)}<div class="result-meta">${escapeHtml(item.memberName)} · ${t('dashboard.ready.pickupPrefix')}${escapeHtml(item.pickupExpiresText)}</div></div></div>`).join('')
+        : `<div class="empty">${t('dashboard.ready.empty')}</div>`;
     }
 
     function renderSearch(data) {
-      document.getElementById('searchSummary').textContent = `검색 결과 ${data.total}건${data.total > data.results.length ? ` · 상위 ${data.results.length}건 표시` : ''}`;
+      state.lastSearch = data;
+      // item.type/status/secondary/details는 search_()(서버)가 이미 조합해 돌려준 문장이다.
+      // search_()는 이번 라운드의 수정 대상이 아니라서(도메인 함수 재작성은 범위 밖 —
+      // docs/ASSUMPTIONS.md todo/22 참고) 그 안의 한글 부분 문자열은 번역하지 않는다.
+      document.getElementById('searchSummary').textContent = `${t('search.summaryPrefix')}${data.total}${t('search.summarySuffix')}${data.total > data.results.length ? `${t('search.summaryTopPrefix')}${data.results.length}${t('search.summaryTopSuffix')}` : ''}`;
       document.getElementById('searchResults').innerHTML = data.results.length ? data.results.map(item => {
         const statusClass = String(item.status || '').toLowerCase();
         return `<div class="result-item"><div class="result-top"><div class="result-title">${escapeHtml(item.primary)}</div><span class="badge ${escapeHtml(statusClass)}">${escapeHtml(item.status || item.type)}</span></div><div class="result-meta">${escapeHtml(item.type)} · ${escapeHtml(item.id)} · ${escapeHtml(item.secondary || '')}</div><div class="result-detail">${escapeHtml(item.details || '')}</div></div>`;
-      }).join('') : '<div class="empty">일치하는 결과가 없습니다.</div>';
+      }).join('') : `<div class="empty">${t('search.empty')}</div>`;
     }
 
     function renderIntegrity(data) {
-      document.getElementById('integrityResults').innerHTML = data.issues.length ? data.issues.map(issue => `<div class="result-item"><div class="result-top"><div class="result-title">${escapeHtml(issue.code)}</div><span class="badge failed">${escapeHtml(issue.sheet)}:${issue.row}</span></div><div class="result-detail">${escapeHtml(issue.message)}</div></div>`).join('') : '<div class="empty">무결성 문제가 없습니다.</div>';
+      state.lastIntegrity = data;
+      // issue.message도 search_()와 같은 이유로 서버 조합 문장 그대로 둔다.
+      document.getElementById('integrityResults').innerHTML = data.issues.length ? data.issues.map(issue => `<div class="result-item"><div class="result-top"><div class="result-title">${escapeHtml(issue.code)}</div><span class="badge failed">${escapeHtml(issue.sheet)}:${issue.row}</span></div><div class="result-detail">${escapeHtml(issue.message)}</div></div>`).join('') : `<div class="empty">${t('admin.integrity.empty')}</div>`;
     }
 
     function showFeedback(message, type = '', details) {
@@ -752,7 +1365,7 @@
     function hideFeedback() { document.getElementById('feedback').style.display = 'none'; }
     function setButtonLoading(button, loading) { if (button) button.disabled = loading; }
     function requestId() { return `WEB-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`.toUpperCase(); }
-    function numberFormat(value) { return new Intl.NumberFormat('ko-KR').format(Number(value || 0)); }
+    function numberFormat(value) { return new Intl.NumberFormat(currentLocale === 'en' ? 'en-US' : 'ko-KR').format(Number(value || 0)); }
     function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
   </script>
 </body>

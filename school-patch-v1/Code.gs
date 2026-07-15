@@ -9,6 +9,14 @@ var LIBRARY_MVP = Object.freeze({
   VERSION: '1.0.0',
   TIMEZONE: 'Asia/Seoul',
   CONSOLE_SHEET: '01_운영센터',
+  // todo/22(구 PATCH_SPEC P7) — 영어 사용자를 위한 운영센터 쌍둥이 시트. 전역 언어 토글 대신
+  // "시트 콘솔은 2장, 각자 자기 탭"(ADR-017) 원칙에 따라 별도 시트 이름으로 존재한다.
+  // 01_운영센터와 마찬가지로 서식이 미리 그려진 리포트 시트라 LIBRARY_MVP.HEADERS에는 넣지
+  // 않는다(HEADERS는 ensureSchema_/protectDatabaseSheets_이 순회하는 스키마 검증 대상 DB
+  // 시트 전용 — 01_운영센터 자신도 HEADERS에 없다, 아래 refreshDashboard_/writeDashboardToSheet_
+  // 참고). 이 환경은 바이너리 xlsx의 서식·라벨 셀을 만들 수 없으므로(todo/21과 동일한 제약),
+  // 이 시트가 실제 스프레드시트에 아직 없으면 refreshDashboard_는 조용히 건너뛴다.
+  CONSOLE_EN_SHEET: '01_Console_EN',
   GUIDE_SHEET: '02_사용법',
   SHEETS: Object.freeze({
     TITLES: '03_TITLES',
@@ -347,7 +355,21 @@ function refreshDashboard() {
 
 function refreshDashboard_() {
   var data = getDashboardData_();
-  var sheet = getRequiredSheet_(LIBRARY_MVP.CONSOLE_SHEET);
+  writeDashboardToSheet_(getRequiredSheet_(LIBRARY_MVP.CONSOLE_SHEET), data);
+  // todo/22(구 PATCH_SPEC P7) — 영어 콘솔 쌍둥이. 이 환경은 xlsx 서식(라벨 셀)을 새로
+  // 그릴 수 없으므로 시트 존재 여부를 매번 확인만 하고, 없으면 오류 없이 건너뛴다
+  // (getRequiredSheet_ 대신 getSheetByName으로 존재만 확인 — 01_운영센터 없는 사용자를
+  // 절대 깨뜨리지 않기 위해). 시트가 생기면(사용자가 xlsx에 탭을 추가하면) 다음 새로고침부터
+  // 자동으로 같이 기록된다 — 코드 변경 불필요.
+  var enSheet = getSpreadsheet_().getSheetByName(LIBRARY_MVP.CONSOLE_EN_SHEET);
+  if (enSheet) writeDashboardToSheet_(enSheet, data);
+  return data;
+}
+
+// todo/22 — refreshDashboard_ 안에 있던 "계산된 값을 시트 셀에 쓴다" 로직을 그대로(좌표·서식
+// 100% 동일) 함수로 뽑아낸 것. 순수 기계적 추출이며 01_운영센터 대상 동작은 한 글자도
+// 바뀌지 않는다 — 유일한 차이는 어떤 sheet 객체를 넘기느냐뿐이다.
+function writeDashboardToSheet_(sheet, data) {
   sheet.getRange('B3').setValue(data.libraryName);
   sheet.getRange('E3').setValue(data.actorLabel);
   sheet.getRange('J3').setValue(formatDateTime_(new Date()));
@@ -381,8 +403,6 @@ function refreshDashboard_() {
   while (readyRows.length < 7) readyRows.push(['', '', '', '']);
   readyRange.setValues(readyRows.slice(0, 7));
   if (data.readyItems.length) sheet.getRange(21, 9, Math.min(7, data.readyItems.length), 4).setBackground('#EDE9FE').setFontColor('#5B21B6');
-
-  return data;
 }
 
 function getDashboardData_() {
@@ -485,6 +505,68 @@ function apiSearch(payload) {
   return runApi_(function() {
     getActor_();
     return search_(payload || {});
+  });
+}
+
+// --------------------------- todo/22(구 PATCH_SPEC P7) 한/영 다국어 ---------------------------
+//
+// 새 함수만 추가 — apiBootstrap·getCodes_ 등 기존 함수는 건드리지 않는다.
+//
+// 1) 사용자별 언어 저장: PropertiesService.getUserProperties()는 (스크립트, 로그인 계정) 쌍마다
+//    격리되는 GAS 내장 저장소다 — 이 코드베이스에서 UserProperties를 쓰는 첫 사례지만(기존
+//    코드는 전부 DocumentProperties=시트 전체 공유 또는 ScriptProperties=배포 전역만 썼다),
+//    바로 그 "계정별 격리"가 이번 요구사항("두 브라우저에서 동시에 서로 다른 언어")의 근거다.
+//    이메일로 직접 키를 만들 필요조차 없다 — GAS가 이미 호출자별로 분리해 주기 때문이다.
+//    getActor_()를 거치지 않는다: STAFF 시트에 등록되지 않은 계정(또는 아직 등록 전 최초
+//    설정자)도 "등록되지 않았습니다" 오류 메시지 자체를 영어로 읽고 싶을 수 있으므로, 언어
+//    설정만은 직원 등록 여부와 무관하게 항상 동작해야 한다.
+function getUserLocale_() {
+  var stored = PropertiesService.getUserProperties().getProperty('UI_LOCALE');
+  return stored === 'en' ? 'en' : 'ko';
+}
+
+function setUserLocale_(locale) {
+  var normalized = locale === 'en' ? 'en' : 'ko';
+  PropertiesService.getUserProperties().setProperty('UI_LOCALE', normalized);
+  return normalized;
+}
+
+function apiGetUserLocale() {
+  return runApi_(function() {
+    return { locale: getUserLocale_() };
+  });
+}
+
+function apiSetUserLocale(payload) {
+  return runApi_(function() {
+    return { locale: setUserLocale_(payload && payload.locale) };
+  });
+}
+
+// 2) CODEBOOK label_en 활용 — PATCH_SPEC.md는 "이미 존재, 추가 작업 없음"이라 적었지만 실제로는
+//    그렇지 않다: getCodes_(2650행 부근)는 `label: row.label_ko || row.code`만 돌려주고
+//    label_en은 애초에 읽지도 않으며, apiBootstrap의 categories 매핑도 `row.name_ko`만 쓴다.
+//    즉 label_en 컬럼은 CODEBOOK 시트 안에 존재할 뿐 지금까지 어떤 서버 함수도 클라이언트에
+//    전달한 적이 없다 — "이미 존재"는 시트 컬럼 얘기였지, 배선(配線)까지 이미 있다는 뜻이
+//    아니었다. getCodes_·apiBootstrap을 고치는 대신(그 두 함수는 그대로 두라는 과제 지침)
+//    새 함수를 하나 추가해 label_en/name_en만 별도로 내려준다. 사이드바는 이 맵을 이용해
+//    영어 모드일 때만 이미 그려둔 select/datalist의 표시 텍스트를 코드 기준으로 다시 씌운다
+//    (값=code는 그대로라 폼 제출 로직은 전혀 안 바뀐다).
+function apiGetCodeLabels() {
+  return runApi_(function() {
+    getActor_();
+    var byGroup = {};
+    readTable_(LIBRARY_MVP.SHEETS.CODEBOOK).rows.forEach(function(row) {
+      if (row.status_code !== 'ACTIVE') return;
+      if (!byGroup[row.code_group]) byGroup[row.code_group] = {};
+      byGroup[row.code_group][row.code] = row.label_en || row.label_ko || row.code;
+    });
+    var categories = {};
+    readTable_(LIBRARY_MVP.SHEETS.CATEGORIES).rows.forEach(function(row) {
+      if (row.status_code !== 'ACTIVE') return;
+      categories[row.category_code] = row.name_en || row.name_ko || row.category_code;
+    });
+    return { codeGroups: byGroup, categories: categories };
   });
 }
 

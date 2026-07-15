@@ -1575,3 +1575,75 @@
   `JSON.stringify`하므로 이 필드들은 화면에 렌더링하지 않아도 이미 복사 결과에는 포함됐을
   것이지만(최소 요건), 사람이 화면에서 바로 읽을 수 있어야 진단 로그 강화의 취지에 맞다고 보고
   화면 렌더링도 추가했다.
+
+## todo/22 · 사이드바 한/영 (구 P7) (2026-07-15)
+
+- **PATCH_SPEC.md의 "CODEBOOK label_ko/label_en 활용 — 이미 존재, 추가 작업 없음"은 실제로는
+  틀린 진단이었다.** 원문이 맞았던 부분은 "시트 컬럼(`16_CODEBOOK.label_en`, `06_CATEGORIES.name_en`)이
+  이미 존재한다"까지다 — 그러나 그 컬럼을 클라이언트로 실어 나르는 배선은 어디에도 없었다:
+  `getCodes_()`(Code.gs)는 `label: row.label_ko || row.code`만 만들어 `label_en`을 아예 읽지
+  않고, `apiBootstrap`의 categories 매핑도 `row.category_code + ' · ' + row.name_ko`로
+  `name_ko`만 쓴다. 즉 지금까지 어떤 서버 함수도 label_en/name_en 값을 사이드바에 전달한 적이
+  없었다 — "이미 존재"가 "이미 배선됨"을 뜻하지는 않았다. 과제 지침대로 `getCodes_`·`apiBootstrap`은
+  고치지 않고, 새 함수 `apiGetCodeLabels()`(Code.gs)를 추가해 label_en/name_en만 별도로
+  내려주는 방식을 택했다 — `Sidebar.html`은 영어 모드일 때만 이 맵으로 이미 그려둔 select/datalist의
+  표시 텍스트를 `item.code` 기준으로 다시 씌운다(제출되는 값=code는 그대로라 폼 로직에는 영향 없음).
+  라이브 스프레드시트의 `label_en`/`name_en` 셀이 비어 있으면 `row.label_ko || row.code`로
+  자동 폴백하므로 아직 영어 라벨을 채워 넣지 않은 학교에서도 빈 텍스트가 뜨지 않는다.
+
+- **`getUserLocale_`/`setUserLocale_`(그리고 이를 감싸는 `apiGetUserLocale`/`apiSetUserLocale`)는
+  `getActor_()`를 거치지 않는다** — 언어 설정은 STAFF 시트 등록 여부와 무관하게 항상 동작해야
+  한다고 판단했다. 예를 들어 아직 등록되지 않은 계정이 사이드바를 열면 `apiBootstrap`이
+  `STAFF_NOT_REGISTERED` 오류로 실패하는데, 그 오류 메시지 자체를 영어로 읽고 싶은 사용자가
+  언어 토글을 먼저 눌러야 하는 상황을 막고 싶었다. `PropertiesService.getUserProperties()`는
+  이 코드베이스에서 UserProperties를 쓰는 첫 사례다(기존 코드는 전부 `getDocumentProperties()`=
+  시트 전체 공유 또는 `getScriptProperties()`=배포 전역만 썼다) — 이메일로 직접 키를 만들
+  필요조차 없다, GAS가 이미 (스크립트, 로그인 계정) 쌍으로 저장소를 격리해 주기 때문이다.
+  이것이 "두 브라우저에서 동시에 서로 다른 언어"(수용 기준)가 코드 한 줄 추가 없이 성립하는
+  이유다.
+
+- **`refreshDashboard_`의 추출은 좌표·서식 100% 동일한 기계적 추출이다.** 기존 15줄 로직을
+  `writeDashboardToSheet_(sheet, data)`로 뽑아내고, `refreshDashboard_()`는 이 함수를
+  `01_운영센터`(`getRequiredSheet_` — 없으면 기존과 동일하게 예외)에 한 번, 그리고
+  `01_Console_EN`이 **존재할 때만**(`getSpreadsheet_().getSheetByName(...)`가 non-null일 때만)
+  한 번 더 호출한다. 이 환경은 바이너리 xlsx의 서식·라벨 셀을 새로 그릴 수 없으므로(todo/21이
+  `02_사용법`에서 마주친 것과 같은 제약) `01_Console_EN` 탭 자체는 만들 수 없다 — 그래서
+  존재하지 않으면 오류 없이 건너뛰어 기존 사용자(아직 이 탭이 없는 모든 학교)를 절대 깨뜨리지
+  않게 했다. `refreshDashboard_()`의 반환값(`data`)과 호출부는 전혀 바뀌지 않았다.
+
+- **`01_Console_EN`에 쓰이는 `dueItems[].type` 값도 여전히 한글("연체"/"예정")이다** —
+  `getDashboardData_()`(읽기 전용 대상, 수정 금지)가 만드는 원본 데이터를 두 시트에 그대로
+  나눠 쓸 뿐이지, 그 데이터 자체를 로케일별로 다시 계산하지 않기 때문이다. 사이드바 쪽에서는
+  이 한계를 피할 수 있었다 — `item.type` 문자열을 비교하는 대신 `item.overdueDays`(0 초과 여부)로
+  판단해 `t('dashboard.due.overdue'|'upcoming')`를 고르므로 화면에는 항상 올바른 언어가 보인다.
+  그러나 시트 셀에 직접 쓰는 값(`writeDashboardToSheet_`가 받는 `data.dueItems[].type`)은
+  `getDashboardData_`가 만든 그대로라 `01_Console_EN`의 "구분" 열에도 한글 "연체"/"예정"이
+  나타난다 — `getDashboardData_`를 고치지 않기로 한 이상 감수해야 하는 대가로 판단했고, 이후
+  라운드에서 `getDashboardData_`를 건드리는 것이 승인되면(이번 라운드에서는 명시적으로 read-only
+  대상이었다) 함께 해소될 수 있다.
+
+- **검색 결과(`search_`)의 `secondary`/`details`와 무결성 점검 이슈의 `message`는 이번
+  라운드에서 번역하지 않았다** — 둘 다 서버가 이미 완성된 한국어 문장으로 조합해 돌려주는
+  값이다(예: "소장 3권 / 대출가능 1권", "2학년 3반 12번", "현재 대출 2권 / 활성 예약 1건" 등).
+  `search_`는 PATCH_SPEC의 "건드리지 말 것" 명시 목록에는 없지만, 이 문장들에서 번역 가능한
+  부분만 클라이언트가 골라내려면 조합된 한국어 문장을 정규식 등으로 역파싱해야 하는데, 이는
+  깨지기 쉽고(문구가 바뀌면 파싱이 조용히 실패) 사실상 그 서버 함수의 출력 계약을 다시 설계하는
+  일이라 이번 항목의 "~150키 UI 사전 + 오류 코드 매핑 + CODEBOOK 라벨 + 콘솔 이중화" 범위를
+  넘어선다고 판단했다. `item.status`(예: `AVAILABLE`/`ACTIVE`)는 이미 CODEBOOK 코드 그 자체라
+  ADR-017의 "데이터는 코드"에 맞게 두 로케일 모두에서 있는 그대로 봐도 무리가 없어 그대로 뒀다.
+  README.md "한/영 전환" 절에 이 경계를 사용자에게도 명시했다. 이후 라운드 후보.
+
+- **오류 코드→영어 매핑은 "~70개"가 아니라 Code.gs 전체의 `fail_(` 호출을 grep으로 전수
+  조사해 나온 76개 코드 전부를 담았다** — 임의로 상위 70개만 고르는 것보다, 실제 존재하는
+  코드 전체를 담아 두는 쪽이 나중에 어떤 오류가 실제로 발생해도 번역 누락이 없다는 걸 보장하기
+  쉽다고 판단했다(사이드바에서 절대 도달하지 않는 `doPost`/모바일 등록 전용 코드도 일부
+  포함되어 있지만, 포함해도 해가 없고 향후 그 경로들이 사이드바에 노출될 때도 바로 쓸 수 있다).
+
+- **`02_사용법`·`01_Console_EN` 두 시트 모두 todo/21과 같은 이유로 이 환경에서 직접 만들거나
+  편집하지 못했다** — `도서관_관리_MVP.xlsx`는 바이너리라 이 코딩 환경에 xlsx 편집 도구가
+  없다. todo/21이 세운 대체 경로(사용법 절차를 README.md에 문서화 + 실제 스프레드시트에는
+  사서/관리자가 수기로 옮겨 적으라는 안내)를 그대로 따라 `school-patch-v1/README.md`에
+  "한/영 전환 (사이드바 언어 설정)" 절을 새로 추가했다 — 영어 사용법 섹션 원문(그대로 복사해
+  02_사용법 탭에 붙여 넣을 영문 절차)과 `01_Console_EN` 탭을 만드는 수기 절차(라벨 복제 시
+  건드리면 안 되는 값 셀 좌표 명시)를 함께 담았다. `PATCH_NOTES.md`의 Phase B 체크리스트
+  5번(한/영 전환)·6번(사용법 갱신)도 갱신했다.

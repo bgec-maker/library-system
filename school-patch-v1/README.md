@@ -117,6 +117,37 @@ Apps Script 자체가 응답하지 않을 때(배포 오류·네트워크 두절
 - 마지막 활성 `ADMIN`은 강등하거나 비활성화할 수 없습니다. 다른 활성 관리자를 먼저 등록해야 합니다.
 - 파일 소유자는 다른 관리자가 있더라도 보호 편집 권한에서 제거할 수 없으므로 활성 `ADMIN` 상태를 유지해야 합니다.
 
+## 한/영 전환 (사이드바 언어 설정)
+
+사이드바 헤더 오른쪽의 `KO`/`EN` 버튼으로 화면 언어를 바꿉니다. 이 설정은 **Google 계정별로 따로 저장**됩니다(Apps Script `PropertiesService.getUserProperties()` — 시트 전체가 공유하는 저장소가 아니라 로그인한 계정마다 격리된 저장소입니다). 그래서 같은 스프레드시트를 서로 다른 브라우저·계정으로 열어 둔 두 사람이 동시에 다른 언어를 볼 수 있습니다(한 사람은 한국어, 다른 사람은 영어). 새로고침하거나 나중에 다시 열어도 마지막으로 고른 언어가 그대로 유지됩니다.
+
+- 폼 라벨·버튼·빈 화면 문구 등 사이드바 자체의 고정 문구는 즉시 번역됩니다.
+- 회원 유형·상태, 소장본 상태·상태(컨디션), 분류 코드처럼 `16_CODEBOOK`/`06_CATEGORIES`에서 오는 값은 영어 모드에서 그 시트의 `label_en`/`name_en` 컬럼 값으로 바뀝니다(값이 비어 있으면 한국어 라벨로 자동 폴백 — 빈 칸이 보이는 일은 없습니다).
+- 서버 오류 메시지는 사이드바 안에 내장된 코드→영어 매핑표로 번역됩니다. 매핑에 없는(드문) 오류 코드는 서버가 원래 보내는 한국어 메시지를 그대로 보여줍니다 — 빈 메시지가 뜨는 일은 없습니다.
+- 검색 결과·무결성 점검 결과의 세부 문장(예: "소장 3권 / 대출가능 1권", "2학년 3반 12번" 같은 조합 문구)은 이번 라운드에서는 번역하지 않았습니다. 이 문장들은 서버 함수(`search_`, 무결성 점검)가 이미 완성된 한국어 문장으로 조합해 내려주므로, 사이드바에서 부분 문자열만 골라 번역하려면 그 서버 함수 자체를 고쳐야 하는데 이번 패치 범위 밖입니다(자세한 판단 근거는 `docs/ASSUMPTIONS.md`의 "todo/22" 절 참고).
+
+### 운영센터 영어 탭(`01_Console_EN`) — 수기 생성 필요
+
+`refreshDashboard_()`는 이제 `01_운영센터`(한국어)와 `01_Console_EN`(영어) **두 시트**에 같은 값을 씁니다 — 사용자별 토글이 아니라 "각자 자기 언어 탭을 연다" 방식입니다(사용법 시트와 마찬가지로 여러 사람이 동시에 보는 공유 화면이라 시트 자체는 언어별로 나눠야 합니다). 다만 이 코딩 환경은 `도서관_관리_MVP.xlsx`의 서식·라벨 셀을 새로 그릴 수 없으므로(`02_사용법` 탭과 같은 제약 — 아래 참고), **`01_Console_EN` 탭은 아직 실제 스프레드시트에 없습니다.** 그동안 `refreshDashboard_()`는 이 탭이 없으면 조용히 건너뛰므로 기존 사용에는 영향이 없습니다.
+
+영어 콘솔을 실제로 쓰려면 사서/관리자가 직접:
+
+1. `01_운영센터` 탭을 복제해 이름을 정확히 `01_Console_EN`으로 바꿉니다(따옴표 없이, 대소문자 그대로).
+2. 라벨 텍스트(제목·통계 이름 등, 셀 값 자체)만 영어로 고쳐 씁니다 — `B3`·`E3`·`J3`·`A6`~`K6`·`A21:G27`·`I21:L27` 등 **숫자·값이 쓰이는 셀 좌표와 서식은 절대 옮기거나 바꾸지 마세요**(`refreshDashboard_`가 이 좌표에 그대로 씁니다).
+3. 다음 「현황 새로고침」부터 자동으로 두 탭 모두 최신 값이 채워집니다 — 코드 변경은 필요 없습니다.
+
+### `02_사용법` 탭에 추가할 영어 섹션 (수기 반영 필요)
+
+todo/21(수기입력)에서와 같은 이유로, `02_사용법` 탭 자체(바이너리 xlsx 셀)는 이 코딩 환경에서 편집할 수 없습니다. 아래 내용을 실제 운영 스프레드시트의 `02_사용법` 탭 맨 아래에 사서/관리자가 직접 옮겨 적으세요.
+
+> **Language (KO/EN)**
+>
+> Use the `KO`/`EN` buttons at the top of the sidebar to switch the display language. This choice is saved **per Google account** (not shared across the whole spreadsheet), so two people can have the sidebar open in different browsers/accounts and see two different languages at the same time. Your choice is remembered the next time you open the sidebar.
+>
+> Error messages, form labels, and dropdown values (member type/status, copy condition/status, category) are translated automatically when available. If a particular error code has no English translation yet, you will see the original Korean message instead of a blank message.
+>
+> The operations console has two tabs: `01_운영센터` (Korean) and `01_Console_EN` (English) — open whichever matches your language. Both are refreshed together whenever either is refreshed from the sidebar or the **현황 새로고침** menu item.
+
 ## 주의사항
 
 - `03_TITLES` 이후 DB 시트의 헤더명은 변경하지 마세요.
