@@ -1084,3 +1084,90 @@
   (`retryFailed`)는 `entry.action`으로 분기해 `submitRegister`/`submitManualRegister` 중 맞는
   쪽에 `payload`를 `as` 캐스트해 넘긴다 — 두 액션의 payload 모양은 서로 다르지만 저장이 실제로
   일어나는 지점(각 `submit*` 함수)은 이미 타입이 확정된 자리라 캐스트가 안전하다.
+
+## todo/17 · 서지 일괄 보강 (2026-07-15)
+
+- **웹앱 설정 뷰(26)는 이번 항목에서 만들지 않았다** — todo 원문이 "웹앱 설정 뷰(26)에서 실행
+  버튼"이라고 적었지만, `todo/26-settings-view.md`를 직접 열어 보니 26번 항목 자신이 "서지
+  보강(17) 실행 버튼"을 자기 완료 조건으로 명시한다 — 즉 26이 17의 백엔드를 소비하는 방향이지
+  그 반대가 아니다. 26이 아직 큐에 없는 상태에서 여기서 설정 뷰를 새로 만들면 26이 도착했을 때
+  중복/폐기될 UI가 된다. 확인 결과 `webapp/src/registry.ts`의 `VIEW_REGISTRY`에는 `settings`
+  엔트리가 전혀 없고 `webapp/src/views/`에도 관련 폴더가 없다 — 26번이 정말 빈 상태에서
+  시작한다는 뜻이다. 대신 이번 항목은 (1) `Code.gs`에 `enrichBibliographic` doPost 액션을
+  완결된 형태로 만들고, (2) 사이드바 관리 메뉴("서지 일괄 보강" → `runBibliographicEnrichment`)
+  로 오늘 바로 완료 조건("빈 페이지수 항목이 실행 후 감소 로그")을 시연 가능하게 했다. 웹앱
+  파일은 단 한 바이트도 건드리지 않았다(`npm run size` 결과 work desktop 69.4KB·student
+  51.6KB로 todo/16 기준과 완전히 동일 — 번들 델타 0 확인).
+
+- **"페이지 채움"을 `03_TITLES`가 아니라 `21_BOOK_CACHE`에 캐시 행을 만드는 일로 재해석**했다 —
+  `03_TITLES`에는 애초에 페이지수 컬럼이 없다(HEADERS 배열 확인, `docs/ASSUMPTIONS.md` todo/11
+  섹션이 이미 이 갭을 발견해 `apiWebTitleDetail_`이 `21_BOOK_CACHE`를 isbn13으로 최선노력
+  조인하도록 만들어 뒀다). 따라서 이 배치의 실제 임무는 TITLES를 수정하는 게 아니라, TITLES에
+  있는 모든 ISBN에 대해 `21_BOOK_CACHE`가 `page_count` 있는 행을 갖도록 채워서 그 기존 조인이
+  실제로 값을 찾아내게 만드는 것이다. `cover_url`은 `03_TITLES`의 정식 컬럼이므로 이건 그대로
+  TITLES에 직접 쓰되, 이미 값이 있으면 절대 덮어쓰지 않는다("채움"이지 "재조회 갱신"이 아니다).
+
+- **후보 판정을 O(titles×book_cache)가 아니라 O(titles+book_cache)로 만들려고 인덱스를 새로
+  만들었다**(`buildBookCacheIndexByIsbn_`) — 기존 `findBookCacheRow_`는 호출 1회마다
+  `21_BOOK_CACHE`를 선형 탐색하는데(단건 조회 전용으로 설계됨, `apiLookupIsbn_`처럼 ISBN 1개만
+  다루는 곳에서는 문제 없음), 이 배치는 전체 `03_TITLES`를 훑어 후보를 골라야 해서 그대로
+  재사용하면 CLAUDE.md 절대 규칙 8번(파생 뷰 O(n²) 금지)에 걸린다. 대신 후보 "선정" 단계에서만
+  새 인덱스 함수로 `21_BOOK_CACHE`를 1회 인덱싱하고, 실제 "처리" 루프(상한 ≤200건으로 이미
+  크기가 고정됨)에서는 기존 `findBookCacheRow_`를 그대로 재사용했다 — 상한이 걸려 있어 titles
+  전체 크기와 무관하게 안전하다. `findBookCacheRow_`/`bookCacheRowToPayload_`/`upsertBookCache_`/
+  `lookupAladin_` 네 함수는 본문을 전혀 수정하지 않았다.
+
+- **재실행 이어가기("resume")는 커서/북마크 없이 "후보 집합이 매번 자연히 줄어드는" 성질로
+  구현**했다 — 이번 실행에서 채운 서지는 다음 실행의 후보 집합에서 자동으로 빠지므로, 매 실행이
+  항상 "안정 순서의 다음 N건"을 그대로 뽑기만 해도 여러 번의 실행이 전체 백로그를 누적
+  커버한다. 별도 진행 상태를 저장할 시트/프로퍼티가 필요 없다.
+
+- **안정 순서는 `title_id` 정렬이 아니라 시트 원본 행 순서(= `readTable_`가 이미 보존하는
+  append-only 생성 순서)를 그대로 썼다** — todo 본문이 "e.g. by title_id"라고 예시를 들었지만,
+  실제로 `title_id`는 `newId_()`가 `Utilities.getUuid()` 기반으로 생성하는 랜덤 문자열이라
+  사전식 정렬해도 생성 순서·서가 위치 등 어떤 의미 있는 순서와도 무관하다. 반면 시트 원본 행
+  순서는 이미 안정적이고(같은 행 집합이면 항상 같은 순서) 오래된 서지(대개 폰 등록 이전, 알라딘
+  조회를 거치지 않았을 가능성이 더 높은 서지)부터 먼저 보강한다는 의미도 있어 더 나은 선택이라고
+  판단했다.
+
+- **`ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_ = 200`은 리터럴 상수로 뒀다**(`getConfig_`/CONFIG 시트
+  키로 만들지 않음) — `VIZ_LOAN_HEATMAP_DAYS_`·`TITLE_DETAIL_LOAN_HISTORY_LIMIT_` 등 이
+  코드베이스의 기존 배치/조회 상한들이 전부 이런 리터럴 `var ..._ = N;` 관례를 따르고, CONFIG
+  시트에 새 키를 추가하려면 스키마를 건드려야 해서(이번 스코프의 "추가만" 원칙에서 시트 스키마는
+  대상이 아니지만 굳이 필요하지 않은 확장이라고 판단) 더 무거워진다. 다만 `payload.limit`을
+  선택적으로 받아 **상한을 줄이는 방향으로만** 허용했다(`Math.min(requested,
+  ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_)`) — 호출자가 상한 자체를 넘어서게 만들 수는 없어 안전
+  마진(UrlFetch 절약)이 항상 보장되면서도, todo/26이나 테스트가 "이번엔 10건만" 같은 작은
+  실행을 원할 때 재량을 준다.
+
+- **실패 처리 방식**: `lookupAladin_(isbn)` 호출을 후보 하나마다 개별 `try/catch`로 감쌌다 —
+  절판·품절 ISBN은 `fail_('NOT_FOUND', ...)`을, 네트워크/파싱 오류는 `fail_('ALADIN_UNAVAILABLE',
+  ...)`을 던지는데(둘 다 `Error`를 `throw`하는 `fail_`의 표준 동작), 이 오류들은 그 한 건만
+  `failures` 배열(메모리 내 요약, `{titleId, isbn, code, message}`)에 쌓고 다음 후보로 계속
+  진행한다 — 배치 전체를 절대 중단하지 않는다. 감사 로그는 후보 1건마다 남기지 않고 실행 전체를
+  요약하는 `writeAudit_` 호출 1번(`action_code='ENRICH_BIBLIOGRAPHIC'`, `entity_type='BATCH'`,
+  `entity_id='BIBLIOGRAPHIC'`)만 남긴다 — 실패가 수백 건이어도 `15_AUDIT_LOG`가 부풀지 않는다.
+
+- **`21_BOOK_CACHE` 쓰기(`upsertBookCache_`)는 `executeWrite_`의 보상 트랜잭션(`transaction`)에
+  태우지 않았다** — `upsertBookCache_` 자신이 이미 일반 `updateRecord_`/`appendRecord_`만 쓰고
+  `transactionUpdateRecord_`/`transactionAppendRecord_`를 쓰지 않게 설계돼 있다(위쪽 주석
+  "BOOK_CACHE는 조회 결과 재사용을 위한 부가 캐시 시트일 뿐 진위 데이터가 아니다" 참고,
+  `apiLookupIsbn_`도 트랜잭션 밖에서 호출). 이 배치가 나중에 실패해 롤백되더라도 그 사이 캐시에
+  적재된 `page_count` 자체는 유효한 조회 결과이므로 되돌릴 이유가 없다고 판단했다 — 롤백 대상은
+  `03_TITLES.cover_url` 변경(`transactionUpdateRecord_`로 정확히 태움)과 감사 로그뿐이다.
+
+- **배치 자체는 `dailyLibraryMaintenance`와 달리 트랜잭션(보상 컨텍스트)을 그대로 활용**했다 —
+  todo가 "간단한 비-트랜잭션 변형도 당신 판단"이라고 열어 뒀지만, `executeWrite_`가 어차피
+  `transaction`을 만들어 콜백에 넘겨주므로 `TITLES.cover_url` 갱신에 `transactionUpdateRecord_`를
+  쓰는 데 추가 비용이 없고, 이 코드베이스의 다른 모든 쓰기 경로(`checkout_`/`return_`/
+  `reconcileCopyStatuses_` 등)와 동일한 규약을 유지하는 편이 향후 유지보수자가 "이 함수만 왜
+  롤백이 안 되지"라고 헷갈릴 위험을 없앤다고 판단했다.
+
+- **`buildLibraryMenu_`의 `adminMenu` 체인에 한 줄 추가** —
+  `.addItem('서지 일괄 보강', 'runBibliographicEnrichment')`. 이 체인은 마지막 항목이 `;`로
+  끝나는 fluent chain이라 새 항목을 추가하려면 기존 마지막 줄의 종결자를 `;`→`,`로 바꾸고 그
+  아래 새 줄을 추가해야 한다(JS 문법상 불가피) — `installLibraryTriggers`에 독립 구문 한 줄을
+  더한 todo/06의 선례(완전히 순수한 신규 줄 추가)와는 diff 모양이 살짝 다르지만, 같은 급의
+  예외로 취급했다. `git diff`로 확인한 결과 `buildLibraryMenu_` 함수 안에서 실제로 바뀐 줄은
+  이 두 줄(종결자 변경 1줄 + 신규 `.addItem` 1줄)뿐이고, 그 함수의 다른 어떤 줄도 건드리지
+  않았다.

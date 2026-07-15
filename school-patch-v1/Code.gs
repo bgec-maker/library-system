@@ -74,7 +74,8 @@ function buildLibraryMenu_() {
     .addItem('DB 시트 보호(ADMIN 전용)', 'protectDatabaseSheets')
     .addItem('무결성 점검', 'runIntegrityCheck')
     .addItem('소장본 상태 복구', 'reconcileCopyStatuses')
-    .addItem('일일 관리 트리거 설치', 'installLibraryTriggers');
+    .addItem('일일 관리 트리거 설치', 'installLibraryTriggers')
+    .addItem('서지 일괄 보강', 'runBibliographicEnrichment');
 
   ui.createMenu('📚 도서관 관리')
     .addItem('사이드바 열기', 'showLibrarySidebar')
@@ -2530,6 +2531,7 @@ function doPost(e) {
       if (action === 'inventoryScan') return apiWebInventoryScan_(payload);
       if (action === 'registerTitle') return apiWebRegisterTitle_(payload);
       if (action === 'registerCopy') return apiWebRegisterCopy_(payload);
+      if (action === 'enrichBibliographic') return apiWebEnrichBibliographic_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -3666,4 +3668,138 @@ function apiWebRegisterCopy_(payload) {
   return executeWrite_('CREATE_COPY', payload || {}, function(actor, requestId, transaction) {
     return registerCopy_(payload || {}, actor, requestId, transaction);
   });
+}
+
+// --------------------------- 서지 일괄 보강(todo/17, "약속 상환") ---------------------------
+//
+// ISBN은 있는데 페이지·표지가 비어 있는 03_TITLES를 알라딘 조회(21_BOOK_CACHE 우선)로 채운다.
+// 03_TITLES에는 애초에 페이지수 컬럼이 없다(HEADERS 참고 · apiWebTitleDetail_ 주석 ·
+// docs/ASSUMPTIONS.md todo/11) — 그래서 "페이지 채움"은 TITLES를 고치는 일이 아니라
+// 21_BOOK_CACHE에 해당 isbn13의 캐시 행(page_count 포함)이 존재하도록 만드는 일이다. 이렇게 해야
+// apiWebTitleDetail_의 기존 "최선노력" 조인이 실제로 값을 찾아낸다 — 예: registerByIsbn_(폰 등록)
+// 경로를 거치지 않고 ISBN만 타이핑되어 등록된 서지(registerTitle_의 일반 경로, todo/16 이전부터
+// 있던 수동 등록 화면 포함)나 대량 이관 서지가 대상이다. cover_url은 TITLES 정식 컬럼이라 비어
+// 있으면 직접 채운다(이미 값이 있으면 절대 덮어쓰지 않는다 — "채움"이지 "재조회 갱신"이 아니다).
+//
+// UrlFetch(알라딘 실호출) 절약: 21_BOOK_CACHE에 page_count가 있는 캐시 히트면 절대 재호출하지
+// 않는다(findBookCacheRow_/bookCacheRowToPayload_ 재사용, 무수정). 1회 실행 상한
+// (ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_)을 두고, "재실행으로 이어가기"는 별도 커서/북마크 없이
+// 구현했다 — 후보 집합 자체가 이번 실행에서 채운 만큼 자연히 줄어들므로, 매 실행이 "다음 N건"을
+// 그대로 다시 뽑기만 해도 반복 호출이 전체 백로그를 순서대로 커버한다. 안정 순서는 title_id
+// 정렬이 아니라 시트 원본 행 순서(= append-only 원장의 생성 순서, readTable_가 이미 보존)를
+// 그대로 쓴다 — title_id가 newId_()의 UUID 기반이라 정렬해도 의미 있는 순서가 아니기 때문
+// (docs/ASSUMPTIONS.md todo/17 참고).
+var ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_ = 200;
+
+function buildBookCacheIndexByIsbn_() {
+  var index = {};
+  readTable_(LIBRARY_MVP.SHEETS.BOOK_CACHE).rows.forEach(function(row) {
+    var key = normalizeIsbnLoose_(row.isbn13);
+    if (key) index[key] = row;
+  });
+  return index;
+}
+
+function hasCachedPageCount_(cacheRow) {
+  return Boolean(cacheRow && cacheRow.page_count !== '' && cacheRow.page_count !== null && cacheRow.page_count !== undefined);
+}
+
+// 전체 TITLES를 훑는 후보 판정은 O(titles) 1회 + O(book_cache) 1회(인덱스 생성)로 끝낸다 — 후보
+// 마다 findBookCacheRow_()(호출 시마다 21_BOOK_CACHE를 선형 탐색)를 부르면 O(titles × book_cache)가
+// 되어 CLAUDE.md 절대 규칙 8번(파생 뷰 O(n²) 금지)에 걸린다. 실제 후보 "처리" 루프는 상한(≤200건)
+// 으로 이미 개수가 고정돼 있으므로 그 안에서는 기존 findBookCacheRow_()를 그대로 재사용해도
+// 안전하다(고정 상한 × book_cache 크기일 뿐, titles 전체 크기와 무관하다).
+function findEnrichCandidates_(cacheByIsbn) {
+  return readTable_(LIBRARY_MVP.SHEETS.TITLES).rows.filter(function(title) {
+    var isbn = normalizeIsbnLoose_(title.isbn13);
+    if (!isbn) return false;
+    if (!cleanText_(title.cover_url)) return true;
+    return !hasCachedPageCount_(cacheByIsbn[isbn]);
+  });
+}
+
+function enrichBibliographicBatch_(payload, actor, requestId, transaction) {
+  payload = payload || {};
+  var limit = ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_;
+  if (payload.limit !== undefined && payload.limit !== '' && payload.limit !== null) {
+    var requested = Math.floor(Number(payload.limit));
+    if (requested > 0) limit = Math.min(requested, ENRICH_BIBLIOGRAPHIC_BATCH_LIMIT_);
+  }
+
+  var cacheIndexBefore = buildBookCacheIndexByIsbn_();
+  var beforeCandidates = findEnrichCandidates_(cacheIndexBefore);
+  var blankBeforeCount = beforeCandidates.length;
+  var candidates = beforeCandidates.slice(0, limit);
+
+  var enrichedCount = 0;
+  var skippedCacheHitCount = 0;
+  var failedCount = 0;
+  var failures = [];
+
+  candidates.forEach(function(title) {
+    var isbn = normalizeIsbnLoose_(title.isbn13);
+    try {
+      var cacheRow = findBookCacheRow_(isbn);
+      var bibliographic;
+      if (hasCachedPageCount_(cacheRow)) {
+        bibliographic = bookCacheRowToPayload_(cacheRow);
+        skippedCacheHitCount++;
+      } else {
+        // UrlFetchApp 실호출 — 알라딘 절판/네트워크 오류(lookupAladin_ 내부의
+        // fail_('NOT_FOUND'|'ALADIN_UNAVAILABLE', ...))가 이 ISBN 하나 때문에 던져질 수 있다.
+        // try/catch로 이 건만 실패 처리하고 배치 전체는 절대 중단하지 않는다(요구사항 그대로).
+        bibliographic = lookupAladin_(isbn);
+        upsertBookCache_(isbn, bibliographic);
+        enrichedCount++;
+      }
+      if (!cleanText_(title.cover_url) && cleanText_(bibliographic.coverUrl)) {
+        transactionUpdateRecord_(transaction, LIBRARY_MVP.SHEETS.TITLES, 'title_id', title.title_id, { cover_url: safeText_(bibliographic.coverUrl) }, actor.id);
+      }
+    } catch (error) {
+      failedCount++;
+      failures.push({ titleId: title.title_id, isbn: isbn, code: error.code || 'UNEXPECTED_ERROR', message: String(error.message || error).slice(0, 200) });
+    }
+  });
+
+  var remainingBlankCount = findEnrichCandidates_(buildBookCacheIndexByIsbn_()).length;
+
+  writeAudit_(actor, requestId, 'ENRICH_BIBLIOGRAPHIC', 'BATCH', 'BIBLIOGRAPHIC',
+    { blankBeforeCount: blankBeforeCount, limit: limit },
+    { processedCount: candidates.length, enrichedCount: enrichedCount, skippedCacheHitCount: skippedCacheHitCount, failedCount: failedCount, remainingBlankCount: remainingBlankCount },
+    '서지 일괄 보강 · 빈 항목 ' + blankBeforeCount + '→' + remainingBlankCount + '건 · 처리 ' + candidates.length + '건(신규조회 ' + enrichedCount + ' · 캐시히트 ' + skippedCacheHitCount + ' · 실패 ' + failedCount + ')',
+    transaction);
+
+  return {
+    targetType: 'BATCH', targetId: 'BIBLIOGRAPHIC',
+    blankBeforeCount: blankBeforeCount,
+    processedCount: candidates.length,
+    enrichedCount: enrichedCount,
+    skippedCacheHitCount: skippedCacheHitCount,
+    failedCount: failedCount,
+    remainingBlankCount: remainingBlankCount,
+    failures: failures.slice(0, 50)
+  };
+}
+
+// 웹앱 action = 'enrichBibliographic'. todo/26(웹앱 설정 뷰)이 이 액션에 버튼 하나만 wiring하면
+// 된다 — 이 함수 자체로 이미 완결된 액션이다(payload 없이 apiWebEnrichBibliographic_({})만
+// 호출해도 기본 상한(200건)으로 동작). 26번 항목 이전에는 아래 runBibliographicEnrichment()
+// (사이드바 관리 메뉴)로 오늘 바로 실행/시연할 수 있다.
+function apiWebEnrichBibliographic_(payload) {
+  return executeWrite_('ENRICH_BIBLIOGRAPHIC', payload || {}, function(actor, requestId, transaction) {
+    return enrichBibliographicBatch_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+// 사이드바 관리 메뉴("서지 일괄 보강")가 호출하는 진입점 — 완료 조건("빈 페이지수 항목이 실행
+// 후 감소 로그")을 웹앱 버튼(todo/26) 이전에도 오늘 바로 확인할 수 있게 한다.
+function runBibliographicEnrichment() {
+  var result = apiWebEnrichBibliographic_({});
+  SpreadsheetApp.getUi().alert(
+    '서지 일괄 보강 완료',
+    '실행 전 빈 항목 ' + result.blankBeforeCount + '건 → 실행 후 ' + result.remainingBlankCount + '건\n' +
+      '이번 실행 처리 ' + result.processedCount + '건 (신규조회 ' + result.enrichedCount + ' · 캐시히트 ' + result.skippedCacheHitCount + ' · 실패 ' + result.failedCount + ')',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+  return result;
 }

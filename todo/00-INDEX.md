@@ -21,7 +21,7 @@
 - [x] 14 inventory-mode — 장서점검 + ZXing Worker
 - [x] 15 search-plus — 미러 전문검색 + 초성 + 필터
 - [x] 16 register-plus — 무ISBN 수동 + 복본 일괄
-- [ ] 17 enrich-batch — 기존 등록분 서지 일괄 보강
+- [x] 17 enrich-batch — 기존 등록분 서지 일괄 보강
 - [ ] 18 viz-v1-b — 하루의 파도 · 열두 달 · 연체 흐름 · 반 참여 링
 - [ ] 19 viz-v1-c — 서가 온도 · 장서 나이 · 학년 격차 · 예산
 - [ ] 20 book-page-public — /b/ 읽기 전용 (빌리기=로그인 배너)
