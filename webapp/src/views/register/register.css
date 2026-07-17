@@ -187,6 +187,82 @@
   word-break: break-all;
 }
 
+/* ── 결과 트레이(todo/28 — 등록 파이프라인 진행·결과) ── */
+.reg-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.reg-trayHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.reg-trayHead h2 {
+  font: 600 var(--fs-xs)/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.reg-trayHead button {
+  width: auto;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs);
+}
+.reg-trayRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-sm);
+}
+.reg-trayStatus {
+  font: 600 var(--fs-xs) var(--mono);
+  color: var(--wait);
+  flex: none;
+}
+.reg-trayRow.status-sending .reg-trayStatus {
+  color: var(--deep);
+}
+.reg-trayBook {
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reg-trayCopies {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  flex: none;
+}
+.reg-trayBarcodes {
+  color: var(--pass);
+  font-weight: 700;
+  flex: none;
+}
+.reg-trayIdempotent {
+  color: var(--wait);
+  font-size: var(--fs-xs);
+  max-width: 92%;
+}
+.reg-trayBulk {
+  width: 100%;
+  margin-top: var(--sp-2);
+  text-align: left;
+}
+.reg-trayBulk summary {
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  padding: var(--sp-2) 0;
+}
+.reg-trayBulk summary:focus-visible {
+  outline: 2px solid var(--brass);
+}
+
 /* ── 실패 목록 ────────────────────────────── */
 .reg-failList {
   border-top: 1px solid var(--rule);

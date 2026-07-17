@@ -4,7 +4,17 @@ import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { useSession } from '../../services/session';
 import { apiCall, newRequestId, onApiLog, getRecentApiLog, type ApiCallLogEntry } from '../../services/api';
-import { publishDataChange } from '../../services/dataChangeBus';
+import {
+  enqueueRegister,
+  onRegisterQueueChange,
+  getRegisterQueueEntries,
+  clearDoneEntries,
+  recordExtraIssued,
+  readTodayCount,
+  readFailedList,
+  type RegisterQueueEntry,
+  type RegisterFailedEntry
+} from '../../services/registerQueue';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { operatorNoteFor } from '../../services/operatorNote';
@@ -36,23 +46,8 @@ interface LookupIsbnResult {
   existingTitleId?: string;
 }
 
-interface RegisterByIsbnResult {
-  titleId?: string;
-  barcodes: string[];
-  title: string;
-  created?: boolean;
-  copyCount: number;
-}
-
-// registerTitle_(school-patch-v1/Code.gs ~818)의 반환 모양 그대로 — 무ISBN 수동 등록(todo/16)이
-// createCopy:true로 함께 만든 첫 소장본의 barcode/copyId도 여기 실려온다.
-interface RegisterTitleResult {
-  titleId: string;
-  title: string;
-  isbn?: string;
-  copyId?: string;
-  barcode?: string;
-}
+// todo/28: registerByIsbn/registerTitle 응답 소비는 registerQueue로 이동 — 뷰는 큐 엔트리
+// (RegisterQueueEntry)의 완료 필드만 읽는다.
 
 // registerCopy_(school-patch-v1/Code.gs ~895)의 반환 모양 — 복본 일괄 발급(todo/16)이 이
 // 응답의 barcode 하나씩을 순차로 쌓는다.
@@ -101,19 +96,8 @@ type ManualRegisterPayload = {
   requestId: string;
 } & Record<string, unknown>;
 
-type RegisterAction = 'registerByIsbn' | 'registerTitle';
-
-interface FailedEntry {
-  requestId: string;
-  action: RegisterAction;
-  // 실패 목록 표시용으로 필요한 최소 정보만 최상위에 꺼내둔다(payload는 두 액션이 서로 다른
-  // 모양이라 유니온으로 두면 FailedList가 title/isbn을 꺼낼 때 unknown이 되어 JSX에 못 넣는다
-  // — DataTable 등 다른 곳의 관례처럼 "표시용 필드는 평평하게" 원칙을 따른다).
-  title: string;
-  isbn: string;
-  payload: Record<string, unknown>;
-  reason: string;
-}
+// todo/28: FailedEntry(표시용 필드 평평하게)는 registerQueue.RegisterFailedEntry로 이동 —
+// 실패 목록의 쓰기 주체가 큐 서비스로 일원화되면서 타입도 그쪽이 단일 원천이다.
 
 interface FormState {
   title: string;
@@ -141,7 +125,9 @@ interface ManualFormState {
   condition: BookCondition;
 }
 
-type Screen = 'scan' | 'lookup' | 'confirm' | 'manualConfirm' | 'saving' | 'result';
+// todo/28: 'saving'·'result' 화면 제거 — 저장은 registerQueue에 적재 후 즉시 scan으로
+// 복귀하고, 진행·결과는 아래 QueueTray가 화면 하단에서 최신순으로 보여준다.
+type Screen = 'scan' | 'lookup' | 'confirm' | 'manualConfirm';
 
 const EMPTY_FORM: FormState = {
   title: '',
@@ -178,29 +164,9 @@ function formFromLookup(data: LookupIsbnResult): FormState {
   };
 }
 
-// register.html의 localStorage 영속(오늘 카운터·실패 목록)을 계승 — apiUrl/token/operator만
-// 세션 서비스로 옮기고, 이 둘은 뷰 자체 상태라 여기서 직접 관리한다.
-const TODAY_KEY = `lib.register.today.${new Date().toISOString().slice(0, 10)}`;
-const FAILED_KEY = 'lib.register.failed';
-
-function readTodayCount(): number {
-  const n = Number(localStorage.getItem(TODAY_KEY) ?? '0');
-  return Number.isFinite(n) ? n : 0;
-}
-function writeTodayCount(n: number): void {
-  localStorage.setItem(TODAY_KEY, String(n));
-}
-function readFailedList(): FailedEntry[] {
-  try {
-    const raw = localStorage.getItem(FAILED_KEY);
-    return raw ? (JSON.parse(raw) as FailedEntry[]) : [];
-  } catch {
-    return [];
-  }
-}
-function writeFailedList(list: FailedEntry[]): void {
-  localStorage.setItem(FAILED_KEY, JSON.stringify(list));
-}
+// todo/28: 오늘 카운터·실패 목록의 localStorage 영속은 registerQueue로 이동 — 큐(백그라운드
+// 완료)와 뷰가 각자 쓰면 마지막 쓰기가 이기는 경합이 생기므로 쓰기 주체를 서비스 하나로
+// 일원화하고, 뷰는 onRegisterQueueChange 구독으로 다시 읽기만 한다.
 
 function outcomeLabel(outcome: ApiCallLogEntry['outcome']): string {
   switch (outcome) {
@@ -260,7 +226,7 @@ function DiagnosticsPanel({ log, onCopy }: { log: ApiCallLogEntry[]; onCopy: () 
   );
 }
 
-function FailedList({ entries, onRetry }: { entries: FailedEntry[]; onRetry: (entry: FailedEntry) => void }) {
+function FailedList({ entries, onRetry }: { entries: RegisterFailedEntry[]; onRetry: (entry: RegisterFailedEntry) => void }) {
   if (entries.length === 0) return null;
   return (
     <div className="reg-failList">
@@ -276,6 +242,99 @@ function FailedList({ entries, onRetry }: { entries: FailedEntry[]; onRetry: (en
         </div>
       ))}
     </div>
+  );
+}
+
+// todo/28 결과 트레이 — 큐에 적재된 등록 건의 진행(대기·저장 중·재시도)과 결과(등록번호)를
+// 최신순으로 보여준다. 기존 result 화면의 역할(등록번호 크게 + 연필 힌트 + 복본 일괄 발급
+// 진입)을 "가장 최근 완료 건" 카드가 그대로 이어받는다 — 그래야 연속 등록 중에도 방금 끝난
+// 책의 번호가 항상 제일 크게 보인다. 이전 완료 건들은 컴팩트 행으로 접힌다(연필로 옮겨 적기
+// 전 유실 방지 — 큐가 최근 30건을 localStorage에 유지).
+function trayStatusLabel(entry: RegisterQueueEntry): string {
+  switch (entry.status) {
+    case 'sending':
+      return t('views.register.saving');
+    case 'retryWait':
+      return t('views.register.trayRetryWait', { attempt: entry.attempts });
+    default:
+      return t('views.register.trayQueued');
+  }
+}
+
+function QueueTray({
+  entries,
+  operator,
+  onBulkIssued
+}: {
+  entries: readonly RegisterQueueEntry[];
+  operator: string;
+  onBulkIssued: (issuedCount: number) => void;
+}) {
+  if (entries.length === 0) return null;
+  const newestFirst = [...entries].reverse();
+  const newestDone = newestFirst.find((e) => e.status === 'done');
+  const hasDone = Boolean(newestDone);
+  return (
+    <section className="reg-tray">
+      <div className="reg-trayHead">
+        <h2>{t('views.register.trayHeading')}</h2>
+        {hasDone && (
+          <button type="button" className="ghost" onClick={clearDoneEntries}>
+            {t('views.register.trayClearDone')}
+          </button>
+        )}
+      </div>
+
+      {newestFirst.map((entry) => {
+        if (entry.status !== 'done') {
+          return (
+            <div key={entry.requestId} className={`reg-trayRow panel status-${entry.status}`}>
+              <span className="reg-trayStatus">{trayStatusLabel(entry)}</span>
+              <span className="reg-trayBook">{entry.title || entry.isbn}</span>
+              {entry.copyCount > 1 && <span className="reg-trayCopies mono">×{entry.copyCount}</span>}
+            </div>
+          );
+        }
+        if (entry === newestDone) {
+          const barcodes = entry.barcodes ?? [];
+          return (
+            <div key={entry.requestId} className="reg-result panel">
+              <div className={`reg-bignum${barcodes.length > 1 ? ' multi' : ''}`}>{barcodes[0] ?? '—'}</div>
+              {barcodes.length > 1 && (
+                <div className="reg-barcodeList">
+                  {barcodes.slice(1).map((b) => (
+                    <div key={b}>{b}</div>
+                  ))}
+                </div>
+              )}
+              <div className="reg-resultTitle">
+                {entry.resultTitle ?? entry.title}
+                {entry.created === true && t('views.register.newTitleSuffix')}
+                {entry.created === false && t('views.register.dupTitleSuffix')}
+                {t('views.register.pencilHint')}
+              </div>
+              {entry.idempotentReplay && <div className="reg-trayIdempotent">{t('views.register.trayIdempotentNote')}</div>}
+              <div className="reg-resultMeta mono">
+                {entry.titleId && <div>{t('views.register.titleIdLine', { id: entry.titleId })}</div>}
+                <div>{t('views.register.requestIdLine', { id: entry.requestId })}</div>
+              </div>
+              {entry.titleId && (
+                <details className="reg-trayBulk">
+                  <summary>{t('views.register.bulkHeading')}</summary>
+                  <BulkCopyPanel titleId={entry.titleId} operator={operator} onIssued={onBulkIssued} />
+                </details>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div key={entry.requestId} className="reg-trayRow panel status-done">
+            <span className="reg-trayBarcodes mono">{(entry.barcodes ?? []).join(' ') || '—'}</span>
+            <span className="reg-trayBook">{entry.resultTitle ?? entry.title}</span>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -424,13 +483,25 @@ export default function RegisterView({ shell }: ViewProps) {
 
   const [errorBanner, setErrorBanner] = useState('');
   const [todayCount, setTodayCount] = useState<number>(readTodayCount);
-  const [failedList, setFailedList] = useState<FailedEntry[]>(readFailedList);
-  const [result, setResult] = useState<(RegisterByIsbnResult & { requestId: string }) | null>(null);
+  const [failedList, setFailedList] = useState<RegisterFailedEntry[]>(readFailedList);
+  const [queueEntries, setQueueEntries] = useState<readonly RegisterQueueEntry[]>(getRegisterQueueEntries);
 
   const [diagOpen, setDiagOpen] = useState(false);
   const [diagLog, setDiagLog] = useState<ApiCallLogEntry[]>(() => [...getRecentApiLog()]);
 
   useEffect(() => onApiLog((entry) => setDiagLog((prev) => [entry, ...prev].slice(0, 50))), []);
+
+  // todo/28: 큐가 백그라운드에서 항목을 완료·실패시키므로, 카운터·실패 목록·트레이는 전부
+  // 이 구독 하나로 다시 읽는다(뷰가 직접 쓰지 않는다 — 쓰기 주체는 registerQueue 하나).
+  useEffect(
+    () =>
+      onRegisterQueueChange(() => {
+        setQueueEntries([...getRegisterQueueEntries()]);
+        setTodayCount(readTodayCount());
+        setFailedList(readFailedList());
+      }),
+    []
+  );
 
   const beginLookup = useCallback(async (rawIsbn: string) => {
     setIsbn(rawIsbn);
@@ -482,84 +553,10 @@ export default function RegisterView({ shell }: ViewProps) {
     void beginLookup(digits);
   }
 
-  const submitRegister = useCallback(async (requestId: string, payload: RegisterPayload) => {
-    setErrorBanner('');
-    setScreen('saving');
-    const res = await apiCall<RegisterByIsbnResult>('registerByIsbn', payload);
-    if (!res.ok) {
-      const reason = res.error.message || t('common.unknownError');
-      setErrorBanner(t('views.register.errorSaveFailed', { reason }));
-      setFailedList((prev) => {
-        const next = [
-          ...prev.filter((f) => f.requestId !== requestId),
-          { requestId, action: 'registerByIsbn' as const, title: payload.title, isbn: payload.isbn, payload, reason }
-        ];
-        writeFailedList(next);
-        return next;
-      });
-      setScreen('confirm');
-      return;
-    }
-    setFailedList((prev) => {
-      const next = prev.filter((f) => f.requestId !== requestId);
-      writeFailedList(next);
-      return next;
-    });
-    setTodayCount((prev) => {
-      const next = prev + (res.data.copyCount || payload.copyCount);
-      writeTodayCount(next);
-      return next;
-    });
-    setResult({ ...res.data, requestId });
-    setScreen('result');
-    // FRONTEND.md 대시보드 갱신 트리거 "트랜잭션 후" — dashboardData가 구독해 재조회한다.
-    publishDataChange();
-  }, []);
-
-  // 무ISBN 수동 등록(todo/16) 저장 — submitRegister와 같은 실패/성공 뼈대(진단 로그·실패
-  // 목록·오늘 카운터·result 화면·publishDataChange)를 따르지만 다른 action('registerTitle')과
-  // 다른 응답 모양(barcodes 배열이 아니라 barcode 하나)이라 별도 함수로 둔다.
-  const submitManualRegister = useCallback(async (requestId: string, payload: ManualRegisterPayload) => {
-    setErrorBanner('');
-    setScreen('saving');
-    const res = await apiCall<RegisterTitleResult>('registerTitle', payload);
-    if (!res.ok) {
-      const reason = res.error.message || t('common.unknownError');
-      setErrorBanner(t('views.register.errorSaveFailed', { reason }));
-      setFailedList((prev) => {
-        const next = [
-          ...prev.filter((f) => f.requestId !== requestId),
-          { requestId, action: 'registerTitle' as const, title: payload.title, isbn: '', payload, reason }
-        ];
-        writeFailedList(next);
-        return next;
-      });
-      setScreen('manualConfirm');
-      return;
-    }
-    setFailedList((prev) => {
-      const next = prev.filter((f) => f.requestId !== requestId);
-      writeFailedList(next);
-      return next;
-    });
-    setTodayCount((prev) => {
-      const next = prev + 1;
-      writeTodayCount(next);
-      return next;
-    });
-    setResult({
-      titleId: res.data.titleId,
-      title: res.data.title,
-      barcodes: res.data.barcode ? [res.data.barcode] : [],
-      created: true,
-      copyCount: 1,
-      requestId
-    });
-    setScreen('result');
-    publishDataChange();
-  }, []);
-
-  const handleSave = useCallback(async () => {
+  // todo/28: submitRegister/submitManualRegister(화면을 점유하던 await 저장)는 registerQueue
+  // 적재로 대체 — 실패 목록·오늘 카운터·대시보드 갱신(publishDataChange)은 전부 큐가 맡고,
+  // 뷰는 위 onRegisterQueueChange 구독으로 결과를 트레이에 그린다.
+  const handleSave = useCallback(() => {
     if (!lookup) return;
     const title = form.title.trim();
     if (!title) {
@@ -586,8 +583,14 @@ export default function RegisterView({ shell }: ViewProps) {
       condition: form.condition,
       requestId
     };
-    await submitRegister(requestId, payload);
-  }, [lookup, form, operator, submitRegister]);
+    // 적재 즉시 scan 복귀 — 전송·재시도·완료는 큐 펌프가 백그라운드에서 처리한다.
+    enqueueRegister({ requestId, action: 'registerByIsbn', payload, title, isbn: lookup.isbn, copyCount });
+    setErrorBanner('');
+    setLookup(null);
+    setDupVisible(false);
+    setForm(EMPTY_FORM);
+    setScreen('scan');
+  }, [lookup, form, operator]);
 
   // 무ISBN 수동 등록(todo/16) 저장 — 사이드바 titleForm과 같은 서버 로직(registerTitle_)을
   // 그대로 쓰되, 이 폼은 서명·저자만 필수(handleSave의 title-only 필수 검증과 다르다 — ISBN
@@ -622,21 +625,25 @@ export default function RegisterView({ shell }: ViewProps) {
       note: operatorNoteFor(operator),
       requestId
     };
-    await submitManualRegister(requestId, payload);
-  }, [manualForm, operator, submitManualRegister]);
+    enqueueRegister({ requestId, action: 'registerTitle', payload, title, isbn: '', copyCount: 1 });
+    setErrorBanner('');
+    setManualForm(EMPTY_MANUAL_FORM);
+    setScreen('scan');
+  }, [manualForm, operator]);
 
-  const retryFailed = useCallback(
-    (entry: FailedEntry) => {
-      // 재시도는 항상 같은 requestId — 서버 멱등(requestId)이 중복 저장을 흡수한다.
-      // 자동 재시도는 하지 않는다: 사용자가 버튼을 눌러야만 여기 도달한다.
-      if (entry.action === 'registerTitle') {
-        void submitManualRegister(entry.requestId, entry.payload as ManualRegisterPayload);
-      } else {
-        void submitRegister(entry.requestId, entry.payload as RegisterPayload);
-      }
-    },
-    [submitRegister, submitManualRegister]
-  );
+  const retryFailed = useCallback((entry: RegisterFailedEntry) => {
+    // 재시도는 항상 같은 requestId — 서버 멱등(requestId)이 중복 저장을 흡수한다.
+    // 자동 재시도는 하지 않는다: 사용자가 버튼을 눌러야만 여기 도달한다. todo/28부터는
+    // 직접 전송 대신 큐 재적재 — 진행 중인 다른 등록과 순서 경합하지 않고 파이프라인에 줄 선다.
+    enqueueRegister({
+      requestId: entry.requestId,
+      action: entry.action,
+      payload: entry.payload as Record<string, unknown> & { requestId: string },
+      title: entry.title,
+      isbn: entry.isbn,
+      copyCount: Math.max(1, Number((entry.payload as { copyCount?: unknown }).copyCount) || 1)
+    });
+  }, []);
 
   function handleCancel() {
     setLookup(null);
@@ -652,24 +659,11 @@ export default function RegisterView({ shell }: ViewProps) {
     setScreen('scan');
   }
 
-  function handleNext() {
-    setLookup(null);
-    setResult(null);
-    setForm(EMPTY_FORM);
-    setManualForm(EMPTY_MANUAL_FORM);
-    setScreen('scan');
-  }
-
-  // 복본 일괄 발급(todo/16) 완료 콜백 — submitRegister/submitManualRegister의 성공 경로와 같은
-  // 두 가지 부수효과(오늘 카운터·대시보드 갱신 트리거)를 그대로 따른다. 부분 실패라도 실제로
-  // 발급된 권수(issuedCount)만큼은 반영한다 — 이미 만들어진 소장본을 통계에서 숨기지 않는다.
+  // 복본 일괄 발급(todo/16) 완료 콜백 — 부분 실패라도 실제로 발급된 권수(issuedCount)만큼은
+  // 반영한다. todo/28부터 카운터·대시보드 갱신은 registerQueue.recordExtraIssued로 합류
+  // (쓰기 주체 일원화 — 큐 완료분과 이 콜백이 같은 localStorage 키를 두고 경합하지 않게).
   const handleBulkIssued = useCallback((issuedCount: number) => {
-    setTodayCount((prev) => {
-      const next = prev + issuedCount;
-      writeTodayCount(next);
-      return next;
-    });
-    publishDataChange();
+    recordExtraIssued(issuedCount);
   }, []);
 
   async function handleCopyDiagLog() {
@@ -829,7 +823,7 @@ export default function RegisterView({ shell }: ViewProps) {
               <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
             </select>
 
-            <button type="button" onClick={() => void handleManualSave()}>
+            <button type="button" onClick={handleManualSave}>
               {t('common.save')}
             </button>
             <button type="button" className="ghost" onClick={handleManualCancel}>
@@ -938,7 +932,7 @@ export default function RegisterView({ shell }: ViewProps) {
                 <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
               </select>
 
-              <button type="button" onClick={() => void handleSave()}>
+              <button type="button" onClick={handleSave}>
                 {t('common.save')}
               </button>
               <button type="button" className="ghost" onClick={handleCancel}>
@@ -949,41 +943,7 @@ export default function RegisterView({ shell }: ViewProps) {
         </section>
       )}
 
-      {screen === 'saving' && (
-        <section className="reg-lookup panel">
-          <div className="reg-spinner" aria-hidden="true" />
-          <div>{t('views.register.saving')}</div>
-        </section>
-      )}
-
-      {screen === 'result' && result && (
-        <section className="reg-result panel">
-          <div className={`reg-bignum${result.barcodes.length > 1 ? ' multi' : ''}`}>{result.barcodes[0]}</div>
-          {result.barcodes.length > 1 && (
-            <div className="reg-barcodeList">
-              {result.barcodes.slice(1).map((b) => (
-                <div key={b}>{b}</div>
-              ))}
-            </div>
-          )}
-          <div className="reg-resultTitle">
-            {result.title}
-            {result.created ? t('views.register.newTitleSuffix') : t('views.register.dupTitleSuffix')}
-            {t('views.register.pencilHint')}
-          </div>
-          <div className="reg-resultMeta mono">
-            {result.titleId && <div>{t('views.register.titleIdLine', { id: result.titleId })}</div>}
-            <div>{t('views.register.requestIdLine', { id: result.requestId })}</div>
-          </div>
-          <button type="button" onClick={handleNext}>
-            {t('views.register.nextScan')}
-          </button>
-        </section>
-      )}
-
-      {screen === 'result' && result && result.titleId && (
-        <BulkCopyPanel titleId={result.titleId} operator={operator} onIssued={handleBulkIssued} />
-      )}
+      <QueueTray entries={queueEntries} operator={operator} onBulkIssued={handleBulkIssued} />
 
       <FailedList entries={failedList} onRetry={retryFailed} />
     </div>
