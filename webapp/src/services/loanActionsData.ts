@@ -1,4 +1,6 @@
 import { apiCall, newRequestId } from './api';
+import { cachedApiCall } from './readCache';
+import { publishDataChange } from './dataChangeBus';
 import { mockUnpaidFines } from '../mocks/fines';
 
 // 연장·분실·변상(todo/13) 데이터 계층 — school-patch-v1/Code.gs의 신규 액션 4개를 소비한다:
@@ -26,7 +28,11 @@ export type RenewOutcome = { ok: true; data: RenewResult } | { ok: false; code: 
  *  loan_id든 소장본 바코드든 넘길 수 있다(renew_이 둘 다 시도해서 찾는다). */
 export async function renewLoan(loanOrCopyKey: string, note: string): Promise<RenewOutcome> {
   const res = await apiCall<RenewResult>('renew', { loanOrCopyKey, note, requestId: newRequestId() });
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    // todo/29: 쓰기 성공 = publishDataChange (reservationData와 같은 사유 — 캐시 무효화 전제).
+    publishDataChange();
+    return { ok: true, data: res.data };
+  }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
 
@@ -52,7 +58,10 @@ export type MarkLostOutcome = { ok: true; data: MarkLostResult } | { ok: false; 
  *  직접 입력한다. */
 export async function markLoanLost(loanOrCopyKey: string, fineAmount: number, note: string): Promise<MarkLostOutcome> {
   const res = await apiCall<MarkLostResult>('markLost', { loanOrCopyKey, fineAmount, note, requestId: newRequestId() });
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    publishDataChange();
+    return { ok: true, data: res.data };
+  }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
 
@@ -72,7 +81,10 @@ export type PayFineOutcome = { ok: true; data: PayFineResult } | { ok: false; co
  *  수는 없다(docs/ASSUMPTIONS.md `## todo/13` 참고). */
 export async function payFine(fineId: string, amount: number): Promise<PayFineOutcome> {
   const res = await apiCall<PayFineResult>('payFine', { fineId, amount, requestId: newRequestId() });
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    publishDataChange();
+    return { ok: true, data: res.data };
+  }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
 
@@ -100,7 +112,7 @@ export type UnpaidFinesOutcome = { ok: true; data: UnpaidFineRow[]; sample: bool
 /** 미변상(REPLACEMENT) 목록 — reports 허브 「미변상 목록」 + book-detail 「변상」 버튼 판단(이
  *  소장본에 연결된 미변상 건이 있는지) 둘 다 이 하나의 읽기를 공유한다. */
 export async function fetchUnpaidFines(): Promise<UnpaidFinesOutcome> {
-  const res = await apiCall<{ rows: UnpaidFineRow[] }>('unpaidFines', {});
+  const res = await cachedApiCall<{ rows: UnpaidFineRow[] }>('unpaidFines', {}, 15000);
   if (res.ok) return { ok: true, data: res.data.rows, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 unpaidFines 액션이 없는 배포(재배포 전) — 다른 읽기 화면과 같은 정상 상태, 샘플로 폴백.

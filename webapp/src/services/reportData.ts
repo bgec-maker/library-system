@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { cachedApiCall } from './readCache';
 import {
   mockAnnualOperationsReport,
   mockDonorThanksReport,
@@ -222,7 +222,7 @@ export interface AnnualOperationsReport {
 export type ReportFetchOutcome<T> = { ok: true; data: T; sample: boolean } | { ok: false; message: string };
 
 async function fetchReport<T>(type: string, params: Record<string, unknown>, sampleData: T): Promise<ReportFetchOutcome<T>> {
-  const res = await apiCall<T>('report', { type, ...params });
+  const res = await cachedApiCall<T>('report', { type, ...params }, 60000);
   if (res.ok) return { ok: true, data: res.data, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 report 액션이 없는 배포(재배포 전) — dashboardData.ts와 같은 정상 상태, 샘플로 폴백.

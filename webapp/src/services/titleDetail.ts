@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { cachedApiCall } from './readCache';
 import { mockTitleDetail } from '../mocks/titleDetail';
 
 // book-detail(todo/11) 데이터 계층 — school-patch-v1/Code.gs의 신규 읽기 전용 액션
@@ -91,7 +91,8 @@ export async function fetchTitleDetail(query: TitleDetailQuery): Promise<TitleDe
   if (query.copyKey) payload.copyKey = query.copyKey;
   if (query.titleId) payload.titleId = query.titleId;
 
-  const res = await apiCall<TitleDetail>('titleDetail', payload);
+  // todo/29: 같은 책을 짧은 간격으로 다시 열 때(검색↔상세 왕복) 중복 조회 억제.
+  const res = await cachedApiCall<TitleDetail>('titleDetail', payload, 30000);
   if (res.ok) return { ok: true, data: res.data, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // titleDetail 액션이 아직 없는 배포(재배포 전) — 다른 화면과 같은 정상 상태, 샘플로 폴백.

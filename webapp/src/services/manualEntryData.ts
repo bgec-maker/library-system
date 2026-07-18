@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiCall } from './api';
+import { cachedApiCall } from './readCache';
 import { subscribeDataChange } from './dataChangeBus';
 import { mockManualEntryPendingCount } from '../mocks/manualEntry';
 
@@ -21,7 +21,7 @@ export interface ManualEntryPendingState {
 }
 
 async function fetchManualEntryPendingCount(): Promise<{ count: number; sample: boolean } | null> {
-  const res = await apiCall<{ pendingCount: number }>('manualEntryPendingCount', {});
+  const res = await cachedApiCall<{ pendingCount: number }>('manualEntryPendingCount', {}, 30000);
   if (res.ok) return { count: res.data.pendingCount, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 이 액션이 없는 배포(재배포 전) — 다른 읽기 화면과 같은 정상 상태, 샘플로 폴백.

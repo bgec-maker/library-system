@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiCall, newRequestId } from './api';
-import { subscribeDataChange } from './dataChangeBus';
+import { cachedApiCall } from './readCache';
+import { publishDataChange, subscribeDataChange } from './dataChangeBus';
 import { mockReservationsList } from '../mocks/reservations';
 
 // 예약 프론트(todo/12) 데이터 계층 — school-patch-v1/Code.gs의 신규 액션 3개(전부 기존
@@ -50,7 +51,7 @@ export type ReservationsFetchOutcome =
 
 /** 관리 뷰(views/reservations) 목록 조회 — status 생략 시 WAITING+READY 전체. */
 export async function fetchReservations(status?: ReservationStatusFilter): Promise<ReservationsFetchOutcome> {
-  const res = await apiCall<ReservationsListResult>('reservations', status ? { status } : {});
+  const res = await cachedApiCall<ReservationsListResult>('reservations', status ? { status } : {}, 15000);
   if (res.ok) return { ok: true, data: res.data, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 reservations 액션이 없는 배포(재배포 전) — 다른 읽기 화면과 같은 정상 상태, 샘플로 폴백.
@@ -80,7 +81,12 @@ export type CreateReservationOutcome =
 /** 예약 걸기 — reserve_(Code.gs)가 기대하는 페이로드 키(memberKey·titleKey) 그대로. */
 export async function createReservation(memberKey: string, titleKey: string): Promise<CreateReservationOutcome> {
   const res = await apiCall<CreateReservationResult>('reserve', { memberKey, titleKey, requestId: newRequestId() });
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    // todo/29: 쓰기 성공 = 데이터 변경 신호(FRONTEND.md 「트랜잭션 후」) — 읽기 캐시 무효화와
+    // 대시보드 재조회가 이 한 줄에 걸려 있다(그동안 대출·반납만 발행하고 있었다).
+    publishDataChange();
+    return { ok: true, data: res.data };
+  }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
 
@@ -98,7 +104,10 @@ export type CancelReservationOutcome =
 /** 예약 취소 — cancelReservation_(Code.gs)이 기대하는 페이로드 키(reservationId) 그대로. */
 export async function cancelReservation(reservationId: string): Promise<CancelReservationOutcome> {
   const res = await apiCall<CancelReservationResult>('cancelReservation', { reservationId, requestId: newRequestId() });
-  if (res.ok) return { ok: true, data: res.data };
+  if (res.ok) {
+    publishDataChange();
+    return { ok: true, data: res.data };
+  }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
 

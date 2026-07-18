@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { cachedApiCall } from './readCache';
 import { mockRecentOps } from '../mocks/recentOps';
 
 // FRONTEND.md 「최근 처리」(recent-ops) 뷰의 데이터 계층 — services/reportData.ts와 같은
@@ -29,7 +29,8 @@ export type RecentOpsFetchOutcome = { ok: true; rows: RecentOpRow[]; sample: boo
 // RETURN/RENEW/MARK_LOST는 못 잡는 알려진 한계, services/titleDetail.ts의 loanHistory가
 // 정확한 대출 이력을 보완한다. Code.gs apiWebRecentOps_ 주석·docs/ASSUMPTIONS.md todo/11 참고).
 export async function fetchRecentOps(limit = 100, entityId?: string): Promise<RecentOpsFetchOutcome> {
-  const res = await apiCall<{ rows: RecentOpRow[] }>('recentOps', entityId ? { limit, entityId } : { limit });
+  // todo/29: 읽기 캐시 — 대시보드 갱신 신호마다 열려 있는 소비자들이 동시 재조회해도 fetch는 1회.
+  const res = await cachedApiCall<{ rows: RecentOpRow[] }>('recentOps', entityId ? { limit, entityId } : { limit }, 15000);
   if (res.ok) return { ok: true, rows: res.data.rows, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 recentOps 액션이 없는 배포(재배포 전) — dashboardData.ts와 같은 정상 상태, 샘플로 폴백.

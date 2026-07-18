@@ -1,4 +1,5 @@
 import { apiCall, newRequestId } from './api';
+import { cachedApiCall } from './readCache';
 import { publishDataChange } from './dataChangeBus';
 import { mockIntegrityCheckResult, mockSettingsOverview } from '../mocks/settings';
 
@@ -59,7 +60,8 @@ export interface SettingsOverview {
 export type SettingsOverviewOutcome = { ok: true; data: SettingsOverview; sample: boolean } | { ok: false; message: string };
 
 export async function fetchSettingsOverview(): Promise<SettingsOverviewOutcome> {
-  const res = await apiCall<SettingsOverview>('settingsOverview', {});
+  // todo/29: 정책·설정은 느리게 변한다 — 60초 캐시(무결성 점검 버튼은 캐시 없이 그대로).
+  const res = await cachedApiCall<SettingsOverview>('settingsOverview', {}, 60000);
   if (res.ok) return { ok: true, data: res.data, sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 settingsOverview 액션이 없는 배포(재배포 전) — 다른 읽기 화면과 같은 정상 상태.

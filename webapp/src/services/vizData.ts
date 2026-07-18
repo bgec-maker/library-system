@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiCall } from './api';
+import { cachedApiCall } from './readCache';
 import {
   mockBudgetPicture,
   mockCategoryTreemap,
@@ -244,7 +244,8 @@ async function fetchViz<K extends VizType>(
   type: K,
   sampleData: VizDataMap[K]
 ): Promise<{ data: VizDataMap[K]; sample: boolean; computedAt: string } | { error: string }> {
-  const res = await apiCall<VizApiResponse<VizDataMap[K]>>('viz', { type });
+  // todo/29: 시각화는 계산 비용이 큰 읽기 — 60초 캐시(쓰기 신호가 오면 즉시 무효화).
+  const res = await cachedApiCall<VizApiResponse<VizDataMap[K]>>('viz', { type }, 60000);
   if (res.ok) return { data: res.data.data, sample: false, computedAt: res.data.computedAt };
   if (res.error.code === 'UNKNOWN_ACTION' || res.error.code === 'VIZ_NOT_READY') {
     // 둘 다 "지금 보여줄 진짜 데이터가 없다"는 뜻이라 프론트는 폴백 목적으로 같이 다룬다 —

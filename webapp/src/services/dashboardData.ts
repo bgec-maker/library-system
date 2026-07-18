@@ -70,6 +70,7 @@ class DashboardDataService {
   private intervalTimer: ReturnType<typeof setInterval> | null = null;
   private dataChangeUnsub: (() => void) | null = null;
   private inFlight: Promise<void> | null = null;
+  private dataChangeDebounce: ReturnType<typeof setTimeout> | null = null;
 
   getState(): DashboardStoreState {
     return this.state;
@@ -97,7 +98,17 @@ class DashboardDataService {
       this.intervalTimer = setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS);
     }
     if (this.dataChangeUnsub === null) {
-      this.dataChangeUnsub = subscribeDataChange(() => void this.refresh());
+      // todo/29: 러시아워(연속 대출·반납)엔 트랜잭션마다 이 재조회가 나갔다 — 1.5초 트레일링
+      // 디바운스로 폭풍을 병합한다. "트랜잭션 후 갱신"(FRONTEND.md) 계약은 유지: 마지막
+      // 트랜잭션 후 1.5초 안에 반드시 한 번 재조회된다. 네트워크 호출을 새로 만드는 폴링이
+      // 아니라 이미 발생할 호출을 줄이는 이벤트 병합이므로 폴링 금지 원칙과 충돌하지 않는다.
+      this.dataChangeUnsub = subscribeDataChange(() => {
+        if (this.dataChangeDebounce !== null) clearTimeout(this.dataChangeDebounce);
+        this.dataChangeDebounce = setTimeout(() => {
+          this.dataChangeDebounce = null;
+          void this.refresh();
+        }, 1500);
+      });
     }
     void this.refresh();
   }
