@@ -61,6 +61,26 @@ const memberTypeLabel = (code: string) => withCode(MEMBER_TYPE_LABELS[code], cod
 const materialTypeLabel = (code: string) => withCode(MATERIAL_TYPE_LABELS[code], code);
 const policyStatusLabel = (code: string) => withCode(POLICY_STATUS_LABELS[code], code);
 
+// todo/77 — 무결성 문제 코드의 사용자 언어화: 제목·권장 조치·심각도. 서버가 주는 message
+// (한글 상세)는 그대로 두고, 코드 원문 노출만 제목으로 바꾼다. 심각도(색=의미): 지금 처리
+// (--fail) = 실물과 장부가 어긋나 대출 업무가 잘못 흐를 수 있는 것 / 확인 권장(--wait) = 기록
+// 정합성 문제. 미지 코드는 원문 표시 + 심각도 없음(서버가 검사를 추가해도 안 깨진다).
+const INTEGRITY_HIGH = new Set(['MULTIPLE_OPEN_LOANS', 'COPY_STATUS_MISMATCH', 'READY_STATUS_MISMATCH', 'MULTIPLE_READY_RESERVATIONS']);
+const INTEGRITY_ISSUE_TEXTS: Record<string, { label: () => string; hint: () => string }> = {
+  MISSING_KEY: { label: () => t('views.settings.integrityIssue.MISSING_KEY.label'), hint: () => t('views.settings.integrityIssue.MISSING_KEY.hint') },
+  DUPLICATE_KEY: { label: () => t('views.settings.integrityIssue.DUPLICATE_KEY.label'), hint: () => t('views.settings.integrityIssue.DUPLICATE_KEY.hint') },
+  ORPHAN_FOREIGN_KEY: { label: () => t('views.settings.integrityIssue.ORPHAN_FOREIGN_KEY.label'), hint: () => t('views.settings.integrityIssue.ORPHAN_FOREIGN_KEY.hint') },
+  INVALID_DATE_ORDER: { label: () => t('views.settings.integrityIssue.INVALID_DATE_ORDER.label'), hint: () => t('views.settings.integrityIssue.INVALID_DATE_ORDER.hint') },
+  RESERVATION_COPY_MISMATCH: { label: () => t('views.settings.integrityIssue.RESERVATION_COPY_MISMATCH.label'), hint: () => t('views.settings.integrityIssue.RESERVATION_COPY_MISMATCH.hint') },
+  DUPLICATE_ACTIVE_RESERVATION: { label: () => t('views.settings.integrityIssue.DUPLICATE_ACTIVE_RESERVATION.label'), hint: () => t('views.settings.integrityIssue.DUPLICATE_ACTIVE_RESERVATION.hint') },
+  MULTIPLE_READY_RESERVATIONS: { label: () => t('views.settings.integrityIssue.MULTIPLE_READY_RESERVATIONS.label'), hint: () => t('views.settings.integrityIssue.MULTIPLE_READY_RESERVATIONS.hint') },
+  MULTIPLE_OPEN_LOANS: { label: () => t('views.settings.integrityIssue.MULTIPLE_OPEN_LOANS.label'), hint: () => t('views.settings.integrityIssue.MULTIPLE_OPEN_LOANS.hint') },
+  COPY_STATUS_MISMATCH: { label: () => t('views.settings.integrityIssue.COPY_STATUS_MISMATCH.label'), hint: () => t('views.settings.integrityIssue.COPY_STATUS_MISMATCH.hint') },
+  READY_STATUS_MISMATCH: { label: () => t('views.settings.integrityIssue.READY_STATUS_MISMATCH.label'), hint: () => t('views.settings.integrityIssue.READY_STATUS_MISMATCH.hint') }
+};
+const issueLabel = (code: string) => INTEGRITY_ISSUE_TEXTS[code]?.label() ?? code;
+const issueHint = (code: string) => INTEGRITY_ISSUE_TEXTS[code]?.hint() ?? '';
+
 export default function SettingsView({ shell }: ViewProps) {
   const [overview, setOverview] = useState<SettingsOverview | null>(null);
   const [sample, setSample] = useState(false);
@@ -186,10 +206,34 @@ export default function SettingsView({ shell }: ViewProps) {
 
   const issueColumns = useMemo<DataTableColumn<IntegrityIssue & { rowKeyId: string }>[]>(
     () => [
-      { key: 'sheet', header: t('views.settings.issueCol.sheet'), sortable: true, mobilePrimary: true },
+      {
+        // todo/77 — 코드 원문 대신 사람 말 제목 + 심각도 뱃지. 정렬·검색은 라벨과 코드 모두로.
+        key: 'code',
+        header: t('views.settings.issueCol.code'),
+        sortable: true,
+        mobilePrimary: true,
+        sortAccessor: (row) => issueLabel(row.code),
+        filterValue: (row) => `${row.code} ${issueLabel(row.code)}`,
+        csvValue: (row) => `${issueLabel(row.code)} (${row.code})`,
+        render: (row) => (
+          <span className="settings-issue-label">
+            <span className={`settings-issue-severity${INTEGRITY_HIGH.has(row.code) ? ' is-high' : ''}`}>
+              {INTEGRITY_HIGH.has(row.code) ? t('views.settings.issueSeverityHigh') : t('views.settings.issueSeverityWarn')}
+            </span>
+            {issueLabel(row.code)}
+          </span>
+        )
+      },
+      { key: 'sheet', header: t('views.settings.issueCol.sheet'), sortable: true, mono: true },
       { key: 'row', header: t('views.settings.issueCol.row'), sortable: true, numeric: true },
-      { key: 'code', header: t('views.settings.issueCol.code'), sortable: true, mono: true },
-      { key: 'message', header: t('views.settings.issueCol.message'), sortable: true, mobileSecondary: true }
+      { key: 'message', header: t('views.settings.issueCol.message'), sortable: true, mobileSecondary: true },
+      {
+        key: 'hint',
+        header: t('views.settings.issueCol.hint'),
+        filterValue: (row) => issueHint(row.code),
+        csvValue: (row) => issueHint(row.code),
+        render: (row) => <span className="settings-issue-hint">{issueHint(row.code)}</span>
+      }
     ],
     []
   );
@@ -285,6 +329,8 @@ export default function SettingsView({ shell }: ViewProps) {
                   {checkSample && <SampleDataBadge />}
                 </p>
                 {checkResult.truncated && <p className="settings-hint">{t('views.settings.integrityTruncatedHint')}</p>}
+                {/* todo/77 — 0건은 침묵이 아니라 안심 문구(NN/g 빈 상태 1단계와 같은 원리). */}
+                {checkResult.issueCount === 0 && <p className="settings-allclear">{t('views.settings.integrityAllClear')}</p>}
                 {checkResult.issueCount > 0 && (
                   <DataTable<IntegrityIssue & { rowKeyId: string }>
                     columns={issueColumns}

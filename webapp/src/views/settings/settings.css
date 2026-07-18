@@ -125,3 +125,31 @@
   font-size: var(--fs-xs);
   text-align: center;
 }
+
+/* todo/77 — 무결성 문제 라벨(심각도 뱃지 + 사람 말 제목)·권장 조치·0건 안심 문구 */
+.settings-issue-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-issue-severity {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--wait);
+  color: var(--panel);
+}
+.settings-issue-severity.is-high {
+  background: var(--fail);
+}
+.settings-issue-hint {
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+}
+.settings-allclear {
+  color: var(--pass);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}

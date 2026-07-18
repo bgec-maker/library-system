@@ -629,12 +629,28 @@
       "integrityIssuesFound": "Found {count} issue(s).",
       "integrityFailed": "Integrity check failed — {message}",
       "integrityResultSummary": "{count} issue(s) as of {at}",
+      "integrityAllClear": "No issues found — the ledger matches reality.",
+      "issueSeverityHigh": "Fix now",
+      "issueSeverityWarn": "Review",
+      "integrityIssue": {
+        "MISSING_KEY": { "label": "Missing required value", "hint": "Fill the empty required cell in that sheet row." },
+        "DUPLICATE_KEY": { "label": "Duplicate ID", "hint": "The same ID is used twice — remove or re-ID the later row." },
+        "ORPHAN_FOREIGN_KEY": { "label": "Broken reference", "hint": "The referenced record (title, member, …) doesn't exist — check the ID." },
+        "INVALID_DATE_ORDER": { "label": "Dates out of order", "hint": "Return/due date is earlier than checkout — fix the dates." },
+        "RESERVATION_COPY_MISMATCH": { "label": "Reservation–copy mismatch", "hint": "The assigned copy belongs to a different title — check the assignment." },
+        "DUPLICATE_ACTIVE_RESERVATION": { "label": "Duplicate reservation", "hint": "Same member reserved the same title twice — cancel one." },
+        "MULTIPLE_READY_RESERVATIONS": { "label": "Multiple ready holds", "hint": "One copy has several ready holds — keep only one." },
+        "MULTIPLE_OPEN_LOANS": { "label": "Double loan", "hint": "One copy is on loan to two members — locate the book and return one loan." },
+        "COPY_STATUS_MISMATCH": { "label": "Loan status mismatch", "hint": "Loan records disagree with the copy status — scan the book in Checkout/Return." },
+        "READY_STATUS_MISMATCH": { "label": "Hold status mismatch", "hint": "Ready-hold records disagree with the copy status — check it in Reservations." }
+      },
       "integrityTruncatedHint": "Too many issues — showing the first 200 only.",
       "issueCol": {
         "sheet": "Sheet",
         "row": "Row",
         "code": "Code",
-        "message": "Message"
+        "message": "Message",
+        "hint": "Suggested fix"
       },
       "enrichTitle": "Bibliographic enrichment",
       "enrichRun": "Run enrichment",
