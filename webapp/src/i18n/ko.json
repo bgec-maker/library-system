@@ -318,6 +318,7 @@
       "baselineCount": "이번 세션 점검 대상 {count}권 (대출가능·예약대기)",
       "progress": "점검 완료 {scanned} / {total}권",
       "remaining": "미점검 {count}권",
+      "isbnScanHint": "책 뒤 ISBN 바코드가 아니라 우리 등록번호 라벨을 스캔하세요.",
       "scanWriteFailed": "최근점검일 갱신 실패 — {message}. 이 책을 다시 스캔하면 재시도합니다.",
       "resultHeading": "장서 점검 결과",
       "resultSummary": "대상 {total}권 중 {scanned}권 확인 · 분실 후보 {lost}권",

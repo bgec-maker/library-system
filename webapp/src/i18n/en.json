@@ -318,6 +318,7 @@
       "baselineCount": "{count} copies in scope this session (available / hold-ready)",
       "progress": "Checked {scanned} / {total}",
       "remaining": "{count} remaining",
+      "isbnScanHint": "That's the back-cover ISBN — scan our copy-number label instead.",
       "scanWriteFailed": "Failed to update last-checked date — {message}. Scan this copy again to retry.",
       "resultHeading": "Inventory check result",
       "resultSummary": "Checked {scanned} of {total} · {lost} lost candidates",

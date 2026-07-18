@@ -119,10 +119,16 @@ export default function InventoryView({ shell }: ViewProps) {
         if (!sessionActive) return;
         if (getEffectiveScanRoute() !== 'inventory') return;
         const target = evt.target;
+        // todo/116 — 현장 최빈 오조작: 우리 라벨 대신 뒤표지 EAN-13(ISBN)을 찍는 경우.
+        // 조용히 무시하면 "스캔이 안 먹네"로 읽힌다 — 어느 바코드를 찍어야 하는지 안내.
+        if (target.kind === 'isbn') {
+          shell.toast(t('views.inventory.isbnScanHint'), 'error');
+          return;
+        }
         const barcode = target.kind === 'book' ? target.barcode : target.kind === 'book-url' ? target.barcode : null;
         if (barcode) handleBookScan(barcode);
       }),
-    [sessionActive, handleBookScan]
+    [sessionActive, handleBookScan, shell]
   );
 
   function handleStartSession() {
