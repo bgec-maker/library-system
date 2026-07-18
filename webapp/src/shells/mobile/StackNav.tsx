@@ -4,7 +4,7 @@ import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
 import { VIEW_COMPONENTS } from '../../viewResolver';
 import { ViewErrorBoundary } from '../../components/ViewErrorBoundary';
-import { t } from '../../i18n';
+import { subscribeLocale, t } from '../../i18n';
 
 // FRONTEND.md '모바일 셸 — 탭 + 스택': book-detail 같은 push 전용 뷰(registry의 mobile.tab이 없는 뷰)를
 // 위한 스택 내비게이터. 브라우저/제스처 뒤로가기(popstate) 또는 자체 뒤로가기 버튼으로 pop하고,
@@ -16,6 +16,9 @@ interface StackEntry {
   viewId: ViewId;
   params: Record<string, unknown>;
   title: string;
+  /** todo/97 — 뷰가 setTitle로 레지스트리 기본과 다른 값(책 제목 등)을 넣었는가.
+   *  false면 로케일 전환 알림 때 레지스트리에서 새 언어 제목을 재매핑한다. */
+  customTitle: boolean;
 }
 
 export interface StackNavHandle {
@@ -83,6 +86,20 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
     window.history.pushState({ __mstackDepth: 0 } satisfies HistoryState, '');
   }, []);
 
+  // todo/97 — 로케일 전환 시 비커스텀 엔트리 제목을 레지스트리(이미 새 언어로 mutate됨,
+  // ADR-023)에서 재매핑. 커스텀(책 제목 등)은 언어 무관이라 보존. 데스크톱 Window todo/10 동형.
+  useEffect(
+    () =>
+      subscribeLocale(() => {
+        setStack((prev) =>
+          prev.map((entry) =>
+            entry.customTitle ? entry : { ...entry, title: getViewMeta(entry.viewId)?.title ?? entry.viewId }
+          )
+        );
+      }),
+    []
+  );
+
   useEffect(() => {
     function handlePopState(e: PopStateEvent) {
       const targetDepth = readDepth(e.state);
@@ -128,7 +145,8 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
           key: `${viewId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           viewId,
           params,
-          title: meta?.title ?? viewId
+          title: meta?.title ?? viewId,
+          customTitle: false
         };
         window.history.pushState({ __mstackDepth: stackRef.current.length + 1 } satisfies HistoryState, '');
         setEntered('push');
@@ -153,7 +171,13 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
 
   const shell: ShellContext = {
     setTitle(title) {
-      setStack((prev) => prev.map((entry) => (entry.key === top.key ? { ...entry, title } : entry)));
+      setStack((prev) =>
+        prev.map((entry) =>
+          entry.key === top.key
+            ? { ...entry, title, customTitle: title !== (getViewMeta(entry.viewId)?.title ?? entry.viewId) }
+            : entry
+        )
+      );
     },
     requestClose() {
       if (stackRef.current.length === 0) return;

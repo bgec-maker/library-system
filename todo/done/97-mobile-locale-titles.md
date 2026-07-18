@@ -11,3 +11,15 @@ tabTitle과 StackNav 엔트리 title이 "설정 시점 문자열"로 동결(setT
 에서 재매핑(도서 상세의 책 제목 같은 커스텀은 보존). e2e: EN 전환 → 헤더 'More' 단정 신설.
 
 완료 조건: e2e 단정, 전 게이트.
+
+---
+
+## 이행 노트 (완료)
+
+- MobileShell: tabTitle의 기본값 종류(meta/tab/custom)를 ref로 추적 — setTitle에서 분류,
+  selectTab에서 'tab' 복귀, subscribeLocale 때 비커스텀만 재파생(더보기는 t('common.more')).
+- StackNav: 엔트리에 customTitle 플래그(push=false, setTitle에서 레지스트리 기본과 비교),
+  로케일 알림 때 비커스텀만 레지스트리(새 언어로 이미 mutate — ADR-023)에서 재매핑.
+  도서 상세의 책 제목 같은 커스텀은 보존 — 데스크톱 Window(todo/10)와 완전 동형.
+- e2e(mobile-smoke 확장): EN 전환→헤더 'More', push 제목 'Reservations', 열린 채 KO 복귀→
+  「더보기」 — 사전 결함이던 지점을 상주 단정으로. 전 게이트 · 12 e2e 통과.

@@ -14,7 +14,7 @@ import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
-import { setLocale, t, useLocale, type Locale } from '../../i18n';
+import { setLocale, subscribeLocale, t, useLocale, type Locale } from '../../i18n';
 import TabBar, { type TabSelection } from './TabBar';
 import StackNav, { type StackNavHandle } from './StackNav';
 import './mobile.css';
@@ -220,6 +220,25 @@ export default function MobileShell() {
   const [stackTop, setStackTop] = useState<ViewId | null>(null);
   const stackNavRef = useRef<StackNavHandle>(null);
 
+  // todo/97 — 헤더 제목의 로케일 생동성(데스크톱 Window의 todo/10과 동일 패턴). tabTitle은
+  // "설정 시점 문자열"이라 언어 토글이 손대지 못했다 — 지금 값이 어떤 기본값(meta 제목/탭
+  // 라벨)에서 왔는지 종류를 기억해 두고, 로케일 알림 때 비커스텀만 새 언어로 재파생한다.
+  // (도서 상세의 책 제목처럼 뷰가 넣은 커스텀 문자열은 언어와 무관 — 보존.)
+  const activeTabIdRef = useRef<TabSelection>(activeTabId);
+  const tabTitleKindRef = useRef<'meta' | 'tab' | 'custom'>('tab');
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
+  useEffect(
+    () =>
+      subscribeLocale(() => {
+        const id = activeTabIdRef.current;
+        if (tabTitleKindRef.current === 'tab') setTabTitle(tabHeaderTitle(id));
+        else if (tabTitleKindRef.current === 'meta' && id !== 'more') setTabTitle(getViewMeta(id)?.title ?? id);
+      }),
+    []
+  );
+
   // 역할이 바뀌어(세션 재설정 등) 지금 탭이 더 이상 유효하지 않으면 첫 탭으로 되돌린다.
   useEffect(() => {
     if (activeTabId !== 'more' && !tabs.some((t) => t.id === activeTabId)) {
@@ -236,6 +255,7 @@ export default function MobileShell() {
     setActiveTabId(id);
     setActiveTabParams(params);
     setTabTitle(tabHeaderTitle(id));
+    tabTitleKindRef.current = 'tab'; // todo/97 — 탭 기본 제목 상태로 복귀
   }, []);
 
   // ShellContext.open — book-detail처럼 mobile.tab이 없는 뷰는 StackNav push, tab 매핑이 있는
@@ -252,7 +272,13 @@ export default function MobileShell() {
     [selectTab]
   );
 
-  const setTitleFn = useCallback((title: string) => setTabTitle(title), []);
+  const setTitleFn = useCallback((title: string) => {
+    // todo/97 — 이 값이 어떤 기본값과 일치하는지 분류(로케일 알림 때 재파생 가능 여부 판단).
+    const id = activeTabIdRef.current;
+    const metaTitle = id !== 'more' ? getViewMeta(id)?.title : undefined;
+    tabTitleKindRef.current = title === metaTitle ? 'meta' : title === tabHeaderTitle(id) ? 'tab' : 'custom';
+    setTabTitle(title);
+  }, []);
   // 탭 루트에는 "닫을 대상"이 없다 — no-op. (push 화면의 requestClose는 StackNav 안에서 pop으로 구현됨)
   const requestCloseFn = useCallback(() => {}, []);
   const toastFn = useCallback((message: string, kind?: ToastKind) => pushToast(message, kind), []);
