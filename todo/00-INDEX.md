@@ -123,6 +123,9 @@
 - [x] 117 settings-name-collision — 「설정」 이름 충돌 해소 (시각 감사 15R)
 - [x] 118 manual-form-actions — 등록 폼 액션 위계·취소 문구·오류 포커스 (사용자 제보)
 - [x] 119 manual-form-fields — 무ISBN 폼 필드 구성 점검 (사용자 제보)
+- [ ] 120 gate-form-standard — 연결 설정 폼 키보드·필수 표준 (전수 1/3)
+- [ ] 121 report-form-inputs — 리포트 패널 숫자 입력·모바일 폼 줄 (전수 2/3)
+- [ ] 122 bulk-row-align — 대량 발권 줄 버튼 정렬 (전수 3/3)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
