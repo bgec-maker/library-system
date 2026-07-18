@@ -39,22 +39,25 @@ export interface CatalogRow {
 // 아니라 임의 데이터이기 때문 — localeCompare 결과가 플랫폼·로케일에 흔들리지 않게 한다.
 export const CATALOG_ROWS: CatalogRow[] = [
   {
-    copyId: 'copy-zebra', barcode: '2000001', titleId: 'title-zebra', title: 'Zebra Tales',
+    // todo/115 — 바코드는 Luhn 유효값이어야 한다(6자리 base+체크 1자리, scanBus가 검증):
+    // 체크섬 위반 목 데이터는 스캔 주입이 분류 단계에서 조용히 탈락해 점검 세션 같은
+    // 스캔 소비 흐름이 e2e 시야 밖이 된다(실제로 그랬다 — inventory.spec의 존재 이유).
+    copyId: 'copy-zebra', barcode: '2000008', titleId: 'title-zebra', title: 'Zebra Tales',
     authors: 'Author Z', classification: '800', statusCode: 'AVAILABLE', loanCount: 3,
     lastLoanAt: '2026-06-01', shelfCode: 'A1', acquiredAt: '2024-01-01', updatedAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    copyId: 'copy-apple', barcode: '2000002', titleId: 'title-apple', title: 'Apple Season',
+    copyId: 'copy-apple', barcode: '2000016', titleId: 'title-apple', title: 'Apple Season',
     authors: 'Author A', classification: '800', statusCode: 'AVAILABLE', loanCount: 1,
     lastLoanAt: '2026-05-01', shelfCode: 'A2', acquiredAt: '2024-02-01', updatedAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    copyId: 'copy-mango', barcode: '2000003', titleId: 'title-mango', title: 'Mango Grove',
+    copyId: 'copy-mango', barcode: '2000024', titleId: 'title-mango', title: 'Mango Grove',
     authors: 'Author M', classification: '800', statusCode: 'ON_LOAN', loanCount: 5,
     lastLoanAt: '2026-04-01', shelfCode: 'A3', acquiredAt: '2024-03-01', updatedAt: '2026-01-01T00:00:00.000Z'
   },
   {
-    copyId: 'copy-banana', barcode: '2000004', titleId: 'title-banana', title: 'Banana Republic',
+    copyId: 'copy-banana', barcode: '2000032', titleId: 'title-banana', title: 'Banana Republic',
     authors: 'Author B', classification: '800', statusCode: 'AVAILABLE', loanCount: 2,
     lastLoanAt: '2026-03-01', shelfCode: 'A4', acquiredAt: '2024-04-01', updatedAt: '2026-01-01T00:00:00.000Z'
   }
