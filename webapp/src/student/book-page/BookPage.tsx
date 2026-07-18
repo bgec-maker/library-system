@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Lock, MessageCircle, Star } from 'lucide-react';
 import { t } from '../../i18n';
 import { fetchPublicBookData, type PublicBookAvailability, type PublicBookData } from '../../services/publicBookData';
-import { safeCoverUrl } from '../../services/urlGuard';
+import { CoverThumb } from '../../components/CoverThumb';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 
 export interface BookPageProps {
@@ -84,47 +84,16 @@ export default function BookPage({ barcode }: BookPageProps) {
       </h1>
 
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-        {safeCoverUrl(data.coverUrl) ? (
-          <img
-            src={safeCoverUrl(data.coverUrl)}
-            alt={t('student.bookPage.coverAlt', { title: data.title })}
-            width={COVER_WIDTH}
-            height={COVER_HEIGHT}
-            loading="lazy"
-            style={{
-              width: COVER_WIDTH,
-              height: COVER_HEIGHT,
-              objectFit: 'cover',
-              borderRadius: 'var(--radius)',
-              background: 'var(--panel)',
-              border: '1px solid var(--rule)',
-              flexShrink: 0
-            }}
-          />
-        ) : (
-          <div
-            role="img"
-            aria-label={t('student.bookPage.coverMissing')}
-            style={{
-              width: COVER_WIDTH,
-              height: COVER_HEIGHT,
-              borderRadius: 'var(--radius)',
-              background: 'var(--panel)',
-              border: '1px solid var(--rule)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--ink-3)',
-              flexShrink: 0
-            }}
-          >
-            {/* todo/48(디자인 연구 P2-4): 깨진 이미지 아이콘(ImageOff)은 오류처럼 읽힌다 —
-                책 아이콘 + 안내 문구로 "표지가 없는 정상 상태"임을 말한다. */}
-            <BookOpen size={28} aria-hidden />
-            <span style={{ fontSize: 'var(--fs-xs)', marginTop: 6 }}>{t('student.bookPage.coverMissing')}</span>
-          </div>
-        )}
+        {/* todo/85 — 없음/로드 실패 모두 CoverThumb(공용 폴백). todo/48의 "표지 없는 정상 상태"
+            카피는 emptyLabel로 승계. */}
+        <CoverThumb
+          url={data.coverUrl}
+          alt={t('student.bookPage.coverAlt', { title: data.title })}
+          width={COVER_WIDTH}
+          height={COVER_HEIGHT}
+          emptyLabel={t('student.bookPage.coverMissing')}
+          style={{ flexShrink: 0 }}
+        />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
           <h2 style={{ fontSize: 'var(--fs-xl)', margin: 0 }}>{data.title}</h2>

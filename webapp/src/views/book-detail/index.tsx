@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Banknote, BookMarked, BookOpen, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Banknote, BookMarked, RefreshCw } from 'lucide-react';
 import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
-import { safeCoverUrl } from '../../services/urlGuard';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
+import { CoverThumb } from '../../components/CoverThumb';
 import {
   fetchTitleDetail,
   type TitleDetail,
@@ -533,21 +533,15 @@ export default function BookDetailView({ shell, params }: ViewProps) {
         <>
           <section className="panel bd-bib">
             <div className="bd-cover">
-              {safeCoverUrl(detail.coverUrl) ? (
-                <img
-                  src={safeCoverUrl(detail.coverUrl)}
-                  alt={t('views.bookDetail.coverAlt', { title: detail.title })}
-                  loading="lazy"
-                  width={120}
-                  height={168}
-                  className="bd-cover-img"
-                />
-              ) : (
-                <div className="bd-cover-placeholder" role="img" aria-label={t('views.bookDetail.noCover')}>
-                  <BookOpen size={32} aria-hidden />
-                  <span>{t('views.bookDetail.noCover')}</span>
-                </div>
-              )}
+              {/* todo/85 — 없음/로드 실패 모두 CoverThumb 한 곳에서(onError 폴백 공용화) */}
+              <CoverThumb
+                url={detail.coverUrl}
+                alt={t('views.bookDetail.coverAlt', { title: detail.title })}
+                width={120}
+                height={168}
+                emptyLabel={t('views.bookDetail.noCover')}
+                className="bd-cover-img"
+              />
             </div>
             <div className="bd-bib-fields">
               <div className="bd-bib-head">

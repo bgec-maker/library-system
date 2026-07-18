@@ -17,8 +17,8 @@ import {
 } from '../../services/registerQueue';
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
+import { CoverThumb } from '../../components/CoverThumb';
 import { operatorNoteFor } from '../../services/operatorNote';
-import { safeCoverUrl } from '../../services/urlGuard';
 import { t } from '../../i18n';
 import { formatTimeHM } from '../../i18n/format';
 import './register.css';
@@ -920,9 +920,8 @@ export default function RegisterView({ shell }: ViewProps) {
           {!dupVisible && (
             <div className="reg-confirmForm panel">
               <div className="reg-titleRow">
-                {safeCoverUrl(lookup.coverUrl) && (
-                  <img className="reg-cover" src={safeCoverUrl(lookup.coverUrl)} alt="" width={56} height={80} loading="lazy" />
-                )}
+                {/* todo/85 — URL 없음/로드 실패 모두 같은 자리 표시(칸이 사라지지 않아 레이아웃 안정) */}
+                <CoverThumb url={lookup.coverUrl} alt="" width={56} height={80} className="reg-cover" />
                 <div>
                   <div className="mono reg-isbn">{lookup.isbn}</div>
                   <span className="reg-srcTag">{lookup.source ?? 'MANUAL'}</span>

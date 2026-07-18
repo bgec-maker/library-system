@@ -1,0 +1,20 @@
+/* components/CoverThumb.tsx — todo/85. 색상은 전부 var(--token). */
+.cover-thumb {
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--paper);
+  flex: none;
+}
+.cover-thumb--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  font-size: var(--fs-xs);
+  text-align: center;
+  padding: 4px;
+  word-break: keep-all;
+}
