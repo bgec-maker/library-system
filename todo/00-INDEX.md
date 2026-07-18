@@ -99,7 +99,7 @@
 - [x] 93 card-meta-nowrap — 모바일 카드 메타 값 중간 줄바꿈 (시각 감사 1R)
 - [x] 94 detail-skeleton — 도서 상세 첫 로딩 스켈레톤 (시각 감사 1R)
 - [x] 95 table-token-nowrap — 표 토큰값(ID·날짜) 중간 꺾임 잔여 전수 (시각 감사 2R)
-- [ ] 96 inventory-hero-width — 장서점검 시작 버튼 전폭 완화 (시각 감사 2R)
+- [x] 96 inventory-hero-width — 장서점검 시작 버튼 전폭 완화 (시각 감사 2R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
