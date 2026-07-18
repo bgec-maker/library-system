@@ -22,7 +22,7 @@ import { fetchRecentOps, type RecentOpRow } from '../../services/recentOpsData';
 import { useReadyReservationCount } from '../../services/reservationData';
 import { useManualEntryPendingCount } from '../../services/manualEntryData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
-import { intlLocaleTag, t } from '../../i18n';
+import { t } from '../../i18n';
 import { formatTimeHM } from '../../i18n/format';
 import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, ShelfHeatmap, VizLazyMount } from '../../viz';
 import { useWindowStore } from './useWindowStore';
