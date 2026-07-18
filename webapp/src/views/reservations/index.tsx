@@ -156,7 +156,8 @@ export default function ReservationsView({ shell, params }: ViewProps) {
         sortAccessor: (row) => (row.statusCode === 'WAITING' ? row.queueSeq : row.pickupExpiresAtMs),
         render: (row) => (row.statusCode === 'WAITING' ? t('views.reservations.queuePosition', { seq: row.queueSeq }) : row.pickupExpiresAt || t('common.none'))
       },
-      { key: 'requestedAt', header: t('views.reservations.col.requestedAt'), sortable: true, mono: true },
+      // todo/93 — nowrap: 타임스탬프가 카드(모바일) 반폭에서 "2026-07-" 뒤로 꺾이던 실측 결함 방지.
+      { key: 'requestedAt', header: t('views.reservations.col.requestedAt'), sortable: true, mono: true, nowrap: true },
       {
         key: 'actions',
         header: t('views.reservations.col.actions'),
@@ -226,6 +227,7 @@ export default function ReservationsView({ shell, params }: ViewProps) {
         rows={filteredRows}
         rowKey={(row) => row.reservationId}
         platform={shell.platform}
+        cardMetaColumns={1}
         loading={loading && items.length === 0}
         error={error}
         emptyHint={t('views.reservations.empty')}

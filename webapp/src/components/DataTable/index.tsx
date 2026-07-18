@@ -78,6 +78,10 @@ export interface DataTableProps<T> {
    *  (표시 컬럼/전체 컬럼)가 생긴다. 전체 컬럼도 같은 toCsvBlob 경로 — 수식 방어(defuse)가
    *  모든 셀에 동일 적용된다. 호출측이 원값(코드) 충실도를 결정한다. */
   csvFullColumns?: DataTableColumn<T>[];
+  /** todo/93 — 모바일 카드 메타(라벨:값) 한 줄당 쌍 수. 기본 2(todo/52 압축). 타임스탬프처럼
+   *  반폭에 안 들어가는 값을 가진 화면(예약 관리 등)은 1로 — 그리드가 값을 중간에서 꺾거나
+   *  옆 쌍을 짓누르는 것보다 세로 한 줄의 여유가 낫다. */
+  cardMetaColumns?: 1 | 2;
   csvFileName?: string;
   defaultSort?: SortState;
   pageSizeOptions?: number[];
@@ -101,6 +105,7 @@ export function DataTable<T>({
   emptyHint,
   emptyAction,
   csvFullColumns,
+  cardMetaColumns = 2,
   csvFileName = 'export.csv',
   defaultSort,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
@@ -368,11 +373,15 @@ export function DataTable<T>({
               >
                 {primaryCol && <div className="data-table-card-primary">{cellDisplay(row, primaryCol)}</div>}
                 {secondaryCol && <div className="data-table-card-secondary">{cellDisplay(row, secondaryCol)}</div>}
-                <dl className="data-table-card-rest">
+                <dl className={`data-table-card-rest${cardMetaColumns === 1 ? ' data-table-card-rest--single' : ''}`}>
                   {restCols.map((col) => (
                     <div key={col.key} className="data-table-card-row">
                       <dt>{col.header}</dt>
-                      <dd className={col.mono ? 'mono' : ''}>{cellDisplay(row, col)}</dd>
+                      {/* todo/93 — 표 모드의 nowrap 계약(todo/47: 날짜·상태 등 짧은 값)을 카드에도.
+                          없으면 "2026-07-" 뒤에서 값이 꺾인다(예약 관리 카드 실측). */}
+                      <dd className={[col.mono ? 'mono' : '', col.nowrap ? 'is-nowrap' : ''].filter(Boolean).join(' ')}>
+                        {cellDisplay(row, col)}
+                      </dd>
                     </div>
                   ))}
                 </dl>

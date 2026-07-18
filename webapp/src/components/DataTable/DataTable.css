@@ -243,6 +243,11 @@
 .data-table-card-rest:has(> .data-table-card-row:nth-child(9)) {
   grid-template-columns: auto 1fr;
 }
+/* todo/93 — 호출측 명시 강등(cardMetaColumns=1): 타임스탬프+행동 버튼처럼 반폭이 구조적으로
+   부족한 화면(예약 관리 실측 — nowrap만으론 옆 쌍이 짓눌림). :has와 달리 명시라 전 브라우저 확정. */
+.data-table-card-rest--single {
+  grid-template-columns: auto 1fr;
+}
 .data-table-card-row {
   display: contents;
 }
@@ -257,6 +262,13 @@
   font-size: var(--fs-sm);
   text-align: right;
   margin: 0;
+  word-break: keep-all; /* todo/93 — 값도 어절 단위로만("1번/째" 같은 어절 중간 꺾임 방지) */
+}
+/* todo/93 — nowrap 열(todo/47 계약: 날짜·상태 등 중간에서 꺾이면 안 되는 짧은 값)의 카드 값.
+   "2026-07-" 뒤 꺾임 방지(예약 관리 카드 실측). 1fr 트랙의 자동 최소값이 nowrap 값의 전체
+   폭으로 올라가므로 그리드가 스스로 트랙을 넓힌다 — 대신 옆 라벨이 keep-all 어절 단위로 접힌다. */
+.data-table-card-row dd.is-nowrap {
+  white-space: nowrap;
 }
 .data-table-card-no-match {
   text-align: center;

@@ -471,8 +471,9 @@ export default function BookDetailView({ shell, params }: ViewProps) {
     () => [
       { key: 'barcode', header: t('views.catalog.col.barcode'), sortable: true, mono: true, mobilePrimary: true },
       { key: 'memberName', header: t('views.bookDetail.col.borrower'), sortable: true, mobileSecondary: true },
-      { key: 'checkedOutAt', header: t('views.bookDetail.col.checkedOutAt'), sortable: true, mono: true },
-      { key: 'dueAt', header: t('views.bookDetail.col.dueAt'), sortable: true, mono: true },
+      // todo/93 — 타임스탬프류 nowrap: 카드 반폭 중간 꺾임 방지(예약 관리 실측과 동일 결).
+      { key: 'checkedOutAt', header: t('views.bookDetail.col.checkedOutAt'), sortable: true, mono: true, nowrap: true },
+      { key: 'dueAt', header: t('views.bookDetail.col.dueAt'), sortable: true, mono: true, nowrap: true },
       {
         key: 'returnedAt',
         header: t('views.bookDetail.col.returnedAt'),
@@ -510,7 +511,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
         sortable: true,
         render: (row) => reservationStatusLabel(row.statusCode)
       },
-      { key: 'requestedAt', header: t('views.bookDetail.col.requestedAt'), sortable: true, mono: true }
+      { key: 'requestedAt', header: t('views.bookDetail.col.requestedAt'), sortable: true, mono: true, nowrap: true }
     ],
     []
   );

@@ -37,6 +37,10 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+/* todo/93 — 카드(모바일)에선 값 정렬 규칙(우측)에 맞춰 행동 버튼도 우측 끝으로. */
+.data-table-card .rsv-row-actions {
+  justify-content: flex-end;
+}
 
 .rsv-row-actions button {
   padding: 6px 10px;

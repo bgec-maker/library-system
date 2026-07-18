@@ -301,7 +301,7 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
         numeric: true,
         render: (row) => formatKRW(row.amount)
       },
-      { key: 'assessedAt', header: t('views.reports.unpaidFines.colAssessedAt'), sortable: true, mono: true },
+      { key: 'assessedAt', header: t('views.reports.unpaidFines.colAssessedAt'), sortable: true, mono: true, nowrap: true },
       {
         key: 'rowActions',
         header: t('views.reservations.col.actions'),
