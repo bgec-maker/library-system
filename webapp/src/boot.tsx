@@ -3,6 +3,7 @@ import './tokens/work.css';
 import './styles/base.css';
 import './styles/print.css';
 import { SessionGate } from './components/SessionGate';
+import { UpdateBanner } from './components/UpdateBanner';
 import { ensureLocaleReady } from './i18n';
 
 // 셸 선택 + 스킨 로드 — FRONTEND.md: "셸은 부팅 시 하나만 선택, 리사이즈로 셸 전환 안 함".
@@ -49,7 +50,11 @@ export default function Boot() {
         {studentRoute ? (
           <StudentRoot />
         ) : (
-          <SessionGate>{platform === 'desktop' ? <DesktopShell /> : <MobileShell />}</SessionGate>
+          <>
+            {/* todo/86 — 사서 표면 전용(학생 QR 페이지는 일회성 열람이라 새 버전 안내 불필요) */}
+            <UpdateBanner />
+            <SessionGate>{platform === 'desktop' ? <DesktopShell /> : <MobileShell />}</SessionGate>
+          </>
         )}
       </I18nGate>
     </Suspense>

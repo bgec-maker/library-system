@@ -89,7 +89,7 @@
 - [x] 83 bundle-report — 번들 리포트 세분화(기준 대비 증감)
 - [x] 84 icon-import-audit — lucide 임포트 감사 스크립트
 - [x] 85 cover-fallback — 표지 이미지 폴백 전수
-- [ ] 86 update-banner — 새 버전 감지 배너
+- [x] 86 update-banner — 새 버전 감지 배너
 - [ ] 87 skeleton-desktop-rows — 스켈레톤 데스크톱 표형 정합
 - [ ] 88 i18n-en-pass — 영어 카피 품질 패스
 - [ ] 89 handoff-refresh — HANDOFF·문서 최신화

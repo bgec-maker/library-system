@@ -13,7 +13,17 @@ const buildId = String(processEnv.GITHUB_SHA ?? 'dev').slice(0, 7);
 export default defineConfig({
   base: '/library-system/app/',
   define: { __BUILD_ID__: JSON.stringify(buildId) },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // todo/86 — 새 버전 감지용. UpdateBanner가 index.html을 재조회해 이 메타를 번들 상수
+      // __BUILD_ID__와 비교한다(번들 안 값은 배포 후 못 바꾸지만 문서는 매 조회가 서버 원본).
+      name: 'inject-build-id-meta',
+      transformIndexHtml() {
+        return [{ tag: 'meta', attrs: { name: 'build-id', content: buildId }, injectTo: 'head' }];
+      }
+    }
+  ],
   build: {
     outDir: 'dist',
     sourcemap: true,

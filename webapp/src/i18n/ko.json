@@ -18,16 +18,36 @@
     "sampleDataBadge": "샘플 데이터"
   },
   "registry": {
-    "loanReturn": { "title": "대출·반납" },
-    "register": { "title": "도서 등록" },
-    "search": { "title": "통합 검색" },
-    "inventory": { "title": "장서 점검" },
-    "catalog": { "title": "장서 대장" },
-    "bookDetail": { "title": "도서 상세" },
-    "recentOps": { "title": "최근 처리" },
-    "reports": { "title": "리포트" },
-    "reservations": { "title": "예약 관리" },
-    "settings": { "title": "설정" }
+    "loanReturn": {
+      "title": "대출·반납"
+    },
+    "register": {
+      "title": "도서 등록"
+    },
+    "search": {
+      "title": "통합 검색"
+    },
+    "inventory": {
+      "title": "장서 점검"
+    },
+    "catalog": {
+      "title": "장서 대장"
+    },
+    "bookDetail": {
+      "title": "도서 상세"
+    },
+    "recentOps": {
+      "title": "최근 처리"
+    },
+    "reports": {
+      "title": "리포트"
+    },
+    "reservations": {
+      "title": "예약 관리"
+    },
+    "settings": {
+      "title": "설정"
+    }
   },
   "dashboard": {
     "title": "대시보드",
@@ -102,6 +122,10 @@
     }
   },
   "shell": {
+    "update": {
+      "newVersion": "새 버전이 배포되었습니다",
+      "reload": "새로고침"
+    },
     "desktop": {
       "minimizedSuffix": " (최소화됨)",
       "scannerLabel": "스캐너",
@@ -636,16 +660,46 @@
       "issueSeverityHigh": "지금 처리",
       "issueSeverityWarn": "확인 권장",
       "integrityIssue": {
-        "MISSING_KEY": { "label": "필수 값 누락", "hint": "해당 시트의 그 행에서 비어 있는 필수 칸을 채워주세요." },
-        "DUPLICATE_KEY": { "label": "ID 중복", "hint": "같은 ID가 두 번 쓰였어요 — 나중에 추가된 행을 지우거나 ID를 바꿔주세요." },
-        "ORPHAN_FOREIGN_KEY": { "label": "연결 대상 없음", "hint": "가리키는 상대(서지·회원 등)가 없어요 — 참조 ID를 확인해주세요." },
-        "INVALID_DATE_ORDER": { "label": "날짜 앞뒤 바뀜", "hint": "반납·예정일이 대출일보다 빠릅니다 — 날짜를 확인해주세요." },
-        "RESERVATION_COPY_MISMATCH": { "label": "예약-소장본 불일치", "hint": "배정된 책이 예약한 도서가 아니에요 — 예약 행의 배정 칸을 확인해주세요." },
-        "DUPLICATE_ACTIVE_RESERVATION": { "label": "중복 예약", "hint": "같은 학생이 같은 책에 예약이 두 건 있어요 — 하나를 취소해주세요." },
-        "MULTIPLE_READY_RESERVATIONS": { "label": "도착 예약 중복", "hint": "한 권에 수령 대기 예약이 여러 건이에요 — 한 건만 남겨주세요." },
-        "MULTIPLE_OPEN_LOANS": { "label": "이중 대출", "hint": "한 권이 동시에 두 명에게 대출된 상태예요 — 실제 소재를 확인하고 한 건을 반납 처리하세요." },
-        "COPY_STATUS_MISMATCH": { "label": "대출 상태 불일치", "hint": "대출 기록과 책 상태가 어긋나요 — 그 책을 스캔해 대출·반납으로 상태를 맞춰주세요." },
-        "READY_STATUS_MISMATCH": { "label": "예약보관 상태 불일치", "hint": "예약 도착 기록과 책 상태가 어긋나요 — 예약 관리에서 해당 건을 확인해주세요." }
+        "MISSING_KEY": {
+          "label": "필수 값 누락",
+          "hint": "해당 시트의 그 행에서 비어 있는 필수 칸을 채워주세요."
+        },
+        "DUPLICATE_KEY": {
+          "label": "ID 중복",
+          "hint": "같은 ID가 두 번 쓰였어요 — 나중에 추가된 행을 지우거나 ID를 바꿔주세요."
+        },
+        "ORPHAN_FOREIGN_KEY": {
+          "label": "연결 대상 없음",
+          "hint": "가리키는 상대(서지·회원 등)가 없어요 — 참조 ID를 확인해주세요."
+        },
+        "INVALID_DATE_ORDER": {
+          "label": "날짜 앞뒤 바뀜",
+          "hint": "반납·예정일이 대출일보다 빠릅니다 — 날짜를 확인해주세요."
+        },
+        "RESERVATION_COPY_MISMATCH": {
+          "label": "예약-소장본 불일치",
+          "hint": "배정된 책이 예약한 도서가 아니에요 — 예약 행의 배정 칸을 확인해주세요."
+        },
+        "DUPLICATE_ACTIVE_RESERVATION": {
+          "label": "중복 예약",
+          "hint": "같은 학생이 같은 책에 예약이 두 건 있어요 — 하나를 취소해주세요."
+        },
+        "MULTIPLE_READY_RESERVATIONS": {
+          "label": "도착 예약 중복",
+          "hint": "한 권에 수령 대기 예약이 여러 건이에요 — 한 건만 남겨주세요."
+        },
+        "MULTIPLE_OPEN_LOANS": {
+          "label": "이중 대출",
+          "hint": "한 권이 동시에 두 명에게 대출된 상태예요 — 실제 소재를 확인하고 한 건을 반납 처리하세요."
+        },
+        "COPY_STATUS_MISMATCH": {
+          "label": "대출 상태 불일치",
+          "hint": "대출 기록과 책 상태가 어긋나요 — 그 책을 스캔해 대출·반납으로 상태를 맞춰주세요."
+        },
+        "READY_STATUS_MISMATCH": {
+          "label": "예약보관 상태 불일치",
+          "hint": "예약 도착 기록과 책 상태가 어긋나요 — 예약 관리에서 해당 건을 확인해주세요."
+        }
       },
       "integrityTruncatedHint": "문제가 많아 상위 200건만 표시합니다.",
       "issueCol": {
@@ -837,7 +891,7 @@
         "unavailable": "지금은 빌릴 수 없어요"
       },
       "borrowPreHint": "아직 학생 로그인 준비 중이에요 — 빌리려면 사서 선생님께 가져가 주세요.",
-        "borrowButton": "이 책 빌리기",
+      "borrowButton": "이 책 빌리기",
       "loginGateMessage": "준비 중 — 사서 선생님께 대출하세요",
       "ratingHeading": "별점",
       "ratingPlaceholder": "로그인 후 이용 가능",
