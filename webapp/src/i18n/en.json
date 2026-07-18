@@ -206,6 +206,8 @@
       "diagRecentRequests": "Recent API requests ({count})",
       "diagCopyButton": "Copy log",
       "diagEmpty": "No requests recorded yet.",
+      "barcodeCopied": "Copied barcode {barcode}.",
+      "barcodeCopyAria": "Copy barcode {barcode}",
       "diagCopySuccess": "Diagnostic log copied to clipboard.",
       "diagCopyFailure": "Failed to copy to clipboard.",
       "failedListHeading": "Failed — needs retry",

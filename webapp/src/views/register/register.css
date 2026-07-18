@@ -190,6 +190,27 @@
   font: 800 clamp(2.75rem, 9vw, 5rem)/1 var(--mono);
   letter-spacing: -0.02em;
   color: var(--pass);
+  /* todo/67 — 이제 button(탭=복사): 전역 버튼 크롬 리셋, 시각은 기존 큰 숫자 그대로.
+     프레스 상태(56)의 scale은 전역 규칙이 그대로 적용된다. */
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: auto;
+  cursor: pointer;
+}
+.reg-bignum:disabled {
+  opacity: 1;
+  cursor: default;
+}
+/* todo/67 — 추가 발급분 목록도 탭=복사 버튼 */
+.reg-barcodeList button {
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  width: auto;
+  color: var(--pass);
+  font: inherit;
+  cursor: pointer;
 }
 .reg-bignum.multi {
   font-size: clamp(1.75rem, 6vw, 3.25rem);

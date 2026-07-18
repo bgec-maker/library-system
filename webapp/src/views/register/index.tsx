@@ -281,11 +281,14 @@ function trayStatusLabel(entry: RegisterQueueEntry): string {
 function QueueTray({
   entries,
   operator,
-  onBulkIssued
+  onBulkIssued,
+  onCopyBarcode
 }: {
   entries: readonly RegisterQueueEntry[];
   operator: string;
   onBulkIssued: (issuedCount: number) => void;
+  /** todo/67 — 등록번호 탭=클립보드 복사(연필 대조·검색 재사용). 토스트는 뷰(shell 보유)가. */
+  onCopyBarcode: (barcode: string) => void;
 }) {
   if (entries.length === 0) return null;
   const newestFirst = [...entries].reverse();
@@ -316,11 +319,28 @@ function QueueTray({
           const barcodes = entry.barcodes ?? [];
           return (
             <div key={entry.requestId} className="reg-result panel">
-              <div className={`reg-bignum${barcodes.length > 1 ? ' multi' : ''}`}>{barcodes[0] ?? '—'}</div>
+              {/* todo/67 — 번호 탭=복사. 큰 숫자 자체가 버튼(44px 훨씬 초과) — 시각은 기존 그대로,
+                  reg-bignum의 버튼 크롬 리셋은 register.css. */}
+              <button
+                type="button"
+                className={`reg-bignum${barcodes.length > 1 ? ' multi' : ''}`}
+                aria-label={t('views.register.barcodeCopyAria', { barcode: barcodes[0] ?? '' })}
+                disabled={!barcodes[0]}
+                onClick={() => barcodes[0] && onCopyBarcode(barcodes[0])}
+              >
+                {barcodes[0] ?? '—'}
+              </button>
               {barcodes.length > 1 && (
                 <div className="reg-barcodeList">
                   {barcodes.slice(1).map((b) => (
-                    <div key={b}>{b}</div>
+                    <button
+                      key={b}
+                      type="button"
+                      aria-label={t('views.register.barcodeCopyAria', { barcode: b })}
+                      onClick={() => onCopyBarcode(b)}
+                    >
+                      {b}
+                    </button>
                   ))}
                 </div>
               )}
@@ -690,6 +710,18 @@ export default function RegisterView({ shell }: ViewProps) {
     recordExtraIssued(issuedCount);
   }, []);
 
+  // todo/67 — 등록번호 탭 복사. 실패(미지원·권한 거부)는 조용히 무시: 탭 복사는 보조 편의라
+  // 오류 토스트로 흐름을 끊을 가치가 없다(연필 대조라는 원 경로가 항상 있다).
+  const handleCopyBarcode = useCallback(
+    (barcode: string) => {
+      void navigator.clipboard
+        ?.writeText(barcode)
+        .then(() => shell.toast(t('views.register.barcodeCopied', { barcode }), 'success'))
+        .catch(() => undefined);
+    },
+    [shell]
+  );
+
   async function handleCopyDiagLog() {
     const text = JSON.stringify(diagLog, null, 2);
     try {
@@ -971,7 +1003,7 @@ export default function RegisterView({ shell }: ViewProps) {
         </section>
       )}
 
-      <QueueTray entries={queueEntries} operator={operator} onBulkIssued={handleBulkIssued} />
+      <QueueTray entries={queueEntries} operator={operator} onBulkIssued={handleBulkIssued} onCopyBarcode={handleCopyBarcode} />
 
       <FailedList entries={failedList} onRetry={retryFailed} />
     </div>

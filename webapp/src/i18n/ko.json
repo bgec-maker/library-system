@@ -206,6 +206,8 @@
       "diagRecentRequests": "최근 API 요청 ({count})",
       "diagCopyButton": "진단 로그 복사",
       "diagEmpty": "아직 기록된 요청이 없습니다.",
+      "barcodeCopied": "등록번호 {barcode}를 복사했습니다.",
+      "barcodeCopyAria": "등록번호 {barcode} 복사",
       "diagCopySuccess": "진단 로그를 클립보드에 복사했습니다.",
       "diagCopyFailure": "클립보드 복사에 실패했습니다.",
       "failedListHeading": "실패 목록 — 재시도 필요",
