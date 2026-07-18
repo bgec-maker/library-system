@@ -35,7 +35,7 @@
 - [x] 28 register-pipeline — 등록 순차 제출 큐 (저장 중에도 다음 스캔)
 - [x] 29 read-cache — 읽기 API 캐시·중복제거 (야간 최적화 배치)
 - [x] 30 perf-audit — 성능 예산 감사 자동화 + 위반 수정
-- [ ] 31 derived-bench — 파생 뷰 O(n²) 감사·실측
+- [x] 31 derived-bench — 파생 뷰 O(n²) 감사·실측
 - [ ] 32 security-pass — 보안 점검 (GAS·Pages 맞춤)
 
 ## waiting/ (사용자만 승격)
