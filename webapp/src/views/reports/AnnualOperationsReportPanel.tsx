@@ -11,7 +11,8 @@ import {
   type AnnualOperationsTopLoan
 } from '../../services/reportData';
 import { BudgetPicture, VizLazyMount } from '../../viz';
-import { intlLocaleTag, t } from '../../i18n';
+import { t } from '../../i18n';
+import { formatKRW } from '../../i18n/format';
 
 // R3 연간 운영 보고서(FEATURES.md, todo/24) — index.tsx가 이미 1191줄이라(과제 노트의 판단
 // 위임) 이 패널만 별도 파일로 뽑았다. 나머지 5종 패널과 같은 온디맨드 패턴(버튼을 눌러야
@@ -24,9 +25,6 @@ import { intlLocaleTag, t } from '../../i18n';
 // "직접 기간 지정"(startDate/endDate) 모드로 전환할 수 있다(docs/ASSUMPTIONS.md todo/24 참고 —
 // 학년도 등 학사력 개념이 서버에 없어 달력 연도를 기본으로 삼았다).
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 function currentYearDefault(): number {
   return new Date().getFullYear();
@@ -225,7 +223,7 @@ export function AnnualOperationsReportPanel({ shell }: AnnualOperationsReportPan
             <h2>{t('views.reports.annualOperations.budgetHeading')}</h2>
             <p className="reports-summary-line">
               {t('views.reports.annualOperations.budgetTotalLine', {
-                amount: formatCurrency(result.data.budget.periodAcquisitionTotal)
+                amount: formatKRW(result.data.budget.periodAcquisitionTotal)
               })}
             </p>
             <Suspense fallback={<div className="reports-viz-loading">{t('common.loading')}</div>}>
@@ -265,7 +263,7 @@ export function AnnualOperationsReportPanel({ shell }: AnnualOperationsReportPan
                 </tr>
                 <tr>
                   <td>{t('views.reports.annualOperations.overdueUnpaidAmount')}</td>
-                  <td className="num">{formatCurrency(result.data.overdueSummary.unpaidFineAmount)}</td>
+                  <td className="num">{formatKRW(result.data.overdueSummary.unpaidFineAmount)}</td>
                 </tr>
               </tbody>
             </table>

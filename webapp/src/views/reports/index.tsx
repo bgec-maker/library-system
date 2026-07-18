@@ -39,7 +39,8 @@ import {
   TurnoverQuadrant,
   VizLazyMount
 } from '../../viz';
-import { intlLocaleTag, t } from '../../i18n';
+import { t } from '../../i18n';
+import { formatKRW } from '../../i18n/format';
 import './reports.css';
 
 // 리포트 허브 — FEATURES.md R1 "종류 선택 → 미리보기 → 인쇄". todo/04가 만든 「조용한 신호」
@@ -291,14 +292,14 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
         header: t('views.reports.unpaidFines.colRemaining'),
         sortable: true,
         numeric: true,
-        render: (row) => formatCurrency(row.remainingAmount)
+        render: (row) => formatKRW(row.remainingAmount)
       },
       {
         key: 'amount',
         header: t('views.reports.unpaidFines.colAmount'),
         sortable: true,
         numeric: true,
-        render: (row) => formatCurrency(row.amount)
+        render: (row) => formatKRW(row.amount)
       },
       { key: 'assessedAt', header: t('views.reports.unpaidFines.colAssessedAt'), sortable: true, mono: true },
       {
@@ -348,7 +349,7 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
             ? t('views.bookDetail.confirmCompensateBody', {
                 member: confirmRow.memberName || confirmRow.memberNo,
                 title: confirmRow.title,
-                amount: formatCurrency(confirmRow.remainingAmount)
+                amount: formatKRW(confirmRow.remainingAmount)
               })
             : ''
         }
@@ -1026,10 +1027,7 @@ function RecallNoticePanel({ shell }: RecallNoticePanelProps) {
 // todo/09 참고) acquisition_source 원문 문자열을 그룹 키로 쓴다 — 화면은 이 그룹이 "기증자
 // 이름"이 아니라 "입수 경로 값"이라는 사실을 disclaimer로 정직하게 밝힌다(임의로 "OOO님께
 // 감사드립니다" 같은 확인되지 않은 인적 문구를 만들지 않는다). 금액은 사전에 문자열로 박아
-// 넣지 않고 Intl.NumberFormat(intlLocaleTag())으로 로케일에 맞춰 표시한다(ADR-023).
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
+// 넣지 않고 i18n/format의 formatKRW(Intl.NumberFormat)로 로케일에 맞춰 표시한다(ADR-023).
 
 const donorGroupColumns: DataTableColumn<DonorThanksGroup>[] = [
   { key: 'sourceLabel', header: t('views.reports.donor.colSource'), sortable: true, mobilePrimary: true },
@@ -1047,7 +1045,7 @@ const donorGroupColumns: DataTableColumn<DonorThanksGroup>[] = [
     sortable: true,
     numeric: true,
     mobileSecondary: true,
-    render: (row) => formatCurrency(row.totalPrice)
+    render: (row) => formatKRW(row.totalPrice)
   }
 ];
 
@@ -1130,7 +1128,7 @@ function DonorThanksPanel({ shell }: DonorThanksPanelProps) {
                     {t('views.reports.donor.groupHeading', {
                       source: group.sourceLabel,
                       count: group.items.length,
-                      total: formatCurrency(group.totalPrice)
+                      total: formatKRW(group.totalPrice)
                     })}
                   </div>
                   <table className="print-table">
@@ -1146,7 +1144,7 @@ function DonorThanksPanel({ shell }: DonorThanksPanelProps) {
                         <tr key={item.copyId}>
                           <td>{item.title}</td>
                           <td className="mono">{item.acquiredAtText}</td>
-                          <td className="num">{formatCurrency(item.price)}</td>
+                          <td className="num">{formatKRW(item.price)}</td>
                         </tr>
                       ))}
                     </tbody>

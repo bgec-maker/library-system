@@ -76,7 +76,7 @@
 - [x] 70 search-filter-chips — 검색 필터 활성 칩 표시
 - [x] 71 tray-desktop-density — 등록 트레이 데스크톱 밀도 점검(현행 유지 판단)
 - [x] 72 dash-deeplinks — 대시보드 카드 딥링크 전수 점검(+모바일 예약 타일 신설)
-- [ ] 73 currency-format — 금액 표기 통일 (Intl KRW)
+- [x] 73 currency-format — 금액 표기 통일(단일 원천화 formatKRW)
 - [ ] 74 date-format-util — 날짜 표기 유틸 통일
 - [ ] 75 codebook-labels — 코드값 라벨 병기 (16_CODEBOOK 미러)
 - [ ] 76 csv-column-set — CSV 내보내기 컬럼 선택

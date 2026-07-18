@@ -20,7 +20,8 @@ import { operatorNoteFor } from '../../services/operatorNote';
 import { useSession } from '../../services/session';
 import { getEffectiveScanRoute, subscribeScan } from '../../services/scanBus';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { intlLocaleTag, t } from '../../i18n';
+import { t } from '../../i18n';
+import { formatKRW } from '../../i18n/format';
 import './book-detail.css';
 
 // 도서 상세 뷰 — todo/11. 28줄 스텁("params를 그대로 보여주기만")을 완전 구현으로 교체한다.
@@ -128,9 +129,6 @@ function opsActionLabel(code: string): string {
 // views/reports/index.tsx의 DonorThanksPanel과 같은 관례(ADR-023 "금액은 사전에 넣지 않고
 // Intl.NumberFormat(locale)") — 각 화면이 이 한 줄짜리 헬퍼를 각자 갖는다(공유 유틸로 뽑을 만큼
 // 무겁지 않다).
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 // 분실 처리 확인 다이얼로그의 대체비 입력값 검증 — markLoanLost_(Code.gs)가 nonNegativeInteger_로
 // 요구하는 것과 같은 조건(0 이상의 유한수, 공란 불가)을 프론트에서 먼저 걸러 확인 버튼을 막는다.
@@ -277,7 +275,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
             ? t('views.bookDetail.markLostDoneWithFine', {
                 barcode: copy.barcode,
                 member: res.data.memberName || res.data.memberNo,
-                amount: formatCurrency(res.data.replacementFineAmount)
+                amount: formatKRW(res.data.replacementFineAmount)
               })
             : t('views.bookDetail.markLostDone', { barcode: copy.barcode }),
           'success'
@@ -702,7 +700,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
             t('views.bookDetail.confirmCompensateBody', {
               member: pendingAction.fine.memberName || pendingAction.fine.memberNo,
               title: pendingAction.fine.title,
-              amount: formatCurrency(pendingAction.fine.remainingAmount)
+              amount: formatKRW(pendingAction.fine.remainingAmount)
             })
           ) : (
             ''

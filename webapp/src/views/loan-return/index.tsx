@@ -11,6 +11,7 @@ import { renewLoan, markLoanLost } from '../../services/loanActionsData';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { intlLocaleTag, t } from '../../i18n';
+import { formatKRW } from '../../i18n/format';
 import './loan-return.css';
 
 // 대출·반납 뷰 — FRONTEND.md "실행 정책": 확인 탭 없이 즉시 실행 + 실행취소 5초.
@@ -128,9 +129,6 @@ function fmtTime(at: number): string {
 
 // views/reports/index.tsx·views/book-detail/index.tsx의 formatCurrency와 같은 한 줄짜리 헬퍼
 // (todo/13 「대신 분실 처리」 완료 토스트의 대체비 표시용).
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
-}
 
 function actionKindLabel(kind: ActionKind): string {
   switch (kind) {
@@ -518,7 +516,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
         res.data.replacementFineAmount > 0
           ? t('views.loanReturn.redirectMarkLostDoneWithFine', {
               title: redirect.title,
-              amount: formatCurrency(res.data.replacementFineAmount)
+              amount: formatKRW(res.data.replacementFineAmount)
             })
           : t('views.loanReturn.redirectMarkLostDone', { title: redirect.title }),
         'success'
