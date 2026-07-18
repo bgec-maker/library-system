@@ -146,6 +146,7 @@
         "restore": "스캐너 창 복원",
         "focus": "스캐너 창으로 이동",
         "receivingTarget": "→ 수신 창: {target}",
+        "closeConfirmTitle": "연속 모드 종료",
         "confirmCloseContinuous": "연속 모드가 켜져 있습니다. 창을 닫으면 카메라가 꺼지고 연속 모드 고정도 해제됩니다. 계속할까요?"
       }
     },

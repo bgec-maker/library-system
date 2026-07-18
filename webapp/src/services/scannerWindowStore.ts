@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
 import { cameraSession } from './cameraSession';
-import { t } from '../i18n';
 
 // ADR-026 「데스크톱 스캐너 = 창」 — shells/desktop/ScannerWindow.tsx(렌더링 전용)과 분리한
 // 상태/트리거 모듈. components/camera/aimRect.ts가 ScanAimFrame.tsx에서 분리된 것과 같은
@@ -35,6 +34,9 @@ export interface ScannerWindowSnapshot {
   open: boolean;
   /** true면 챙(타이틀바 이하)을 숨긴다 — 카메라는 계속 돈다("최소화=유지", ADR-026). */
   minimized: boolean;
+  /** todo/114 — 연속 모드 중 닫기 확인 대기(ConfirmDialog 표시 신호). 구 window.confirm은
+   *  디자인 시스템 밖 네이티브 UI였고 e2e에선 자동 무시돼 시야 밖이었다. */
+  closeConfirmPending: boolean;
   rect: ScannerWindowRect;
 }
 
@@ -91,7 +93,12 @@ function saveRect(rect: ScannerWindowRect): void {
   }
 }
 
-let state: ScannerWindowSnapshot = { open: false, minimized: false, rect: loadRect() };
+let state: ScannerWindowSnapshot = {
+  closeConfirmPending: false,
+  open: false,
+  minimized: false,
+  rect: loadRect(),
+};
 const listeners = new Set<(s: ScannerWindowSnapshot) => void>();
 
 function setState(patch: Partial<ScannerWindowSnapshot>): void {
@@ -150,14 +157,22 @@ export function restoreScannerWindow(): void {
  * 해제한다 — 카메라가 꺼진 채 "연속 모드"만 켜져 있는 건 의미 없는 조합이라 판단했다
  * (docs/ASSUMPTIONS.md "H2" 절 참고).
  */
-export function closeScannerWindow(): void {
-  if (cameraSession.getStatus().continuous) {
-    const confirmed = window.confirm(t('shell.desktop.scannerWindow.confirmCloseContinuous'));
-    if (!confirmed) return;
+export function closeScannerWindow(force = false): void {
+  // todo/114 — 연속 모드면 즉시 닫지 않고 앱 ConfirmDialog로 확인을 구한다(네이티브 confirm
+  // 대체). 최소화 상태였다면 복원해 다이얼로그가 실제로 보이게 한다. S 단축키 토글 경로도
+  // 이 함수를 지나므로 자동으로 같은 확인을 받는다.
+  if (!force && cameraSession.getStatus().continuous) {
+    setState({ open: true, minimized: false, closeConfirmPending: true });
+    return;
   }
   cameraSession.stop();
   cameraSession.setContinuous(false);
-  setState({ open: false, minimized: false });
+  setState({ open: false, minimized: false, closeConfirmPending: false });
+}
+
+/** todo/114 — 닫기 확인 취소(다이얼로그 취소/ESC). */
+export function cancelCloseScannerWindow(): void {
+  setState({ closeConfirmPending: false });
 }
 
 /** 단축키 S — 닫혀 있으면 열고, 열려 있으면(최소화 포함) 닫는다(기존 토글 의미 그대로 계승). */

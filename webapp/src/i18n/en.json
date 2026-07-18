@@ -146,6 +146,7 @@
         "restore": "Restore scanner window",
         "focus": "Go to scanner window",
         "receivingTarget": "→ Receiving window: {target}",
+        "closeConfirmTitle": "Turn off continuous mode",
         "confirmCloseContinuous": "Continuous mode is on. Closing this window turns off the camera and unpins continuous mode. Continue?"
       }
     },

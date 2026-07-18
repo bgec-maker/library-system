@@ -7,8 +7,10 @@ import { onScanFeedback } from '../../services/scanFeedback';
 import { getEffectiveScanRoute, subscribeScanRoute } from '../../services/scanBus';
 import { getViewMeta } from '../../registry';
 import { t } from '../../i18n';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ScanAimFrame } from '../../components/camera/ScanAimFrame';
 import {
+  cancelCloseScannerWindow,
   closeScannerWindow,
   minimizeScannerWindow,
   persistScannerWindowRect,
@@ -230,6 +232,16 @@ export function ScannerWindow() {
         </div>
       </div>
       <div className="window-resize window-resize--se" onPointerDown={onResizePointerDown} />
+      {/* todo/114 — 연속 모드 중 닫기 확인: 네이티브 confirm 대신 앱 ConfirmDialog(포커스 트랩·
+          danger 위계 동일). 확인=강제 닫기, 취소/ESC=대기 해제. */}
+      <ConfirmDialog
+        open={winState.closeConfirmPending}
+        title={t('shell.desktop.scannerWindow.closeConfirmTitle')}
+        message={t('shell.desktop.scannerWindow.confirmCloseContinuous')}
+        confirmLabel={t('common.close')}
+        onConfirm={() => closeScannerWindow(true)}
+        onCancel={cancelCloseScannerWindow}
+      />
     </div>
   );
 }
