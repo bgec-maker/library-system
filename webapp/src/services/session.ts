@@ -37,7 +37,14 @@ export const useSession = create<SessionState>((set) => ({
   setConfig(patch) {
     (Object.keys(patch) as (keyof SessionConfig)[]).forEach((key) => {
       const value = patch[key];
-      if (value !== undefined) localStorage.setItem(STORAGE_KEYS[key], value);
+      if (value !== undefined) {
+        try {
+          localStorage.setItem(STORAGE_KEYS[key], value);
+        } catch {
+          // todo/38: 사생활 모드·쿼터 초과 — 영속만 실패시키고 메모리 상태는 갱신한다
+          // (i18n·useWindowStore·scannerWindowStore의 기존 관례와 동일).
+        }
+      }
     });
     set(patch);
   },

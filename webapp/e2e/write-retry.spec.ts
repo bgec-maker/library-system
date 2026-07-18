@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { MOCK_API_URL, CHECKOUT_BARCODE, CHECKOUT_STUDENT_CODE } from './mockApi';
 
 // todo/37 「쓰기 BUSY_RETRY 자동 흡수」 회귀 스펙 — 대출(checkout)이 서버 락 경합(BUSY_RETRY)을

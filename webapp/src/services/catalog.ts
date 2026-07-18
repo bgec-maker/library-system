@@ -154,6 +154,12 @@ async function backgroundSync(): Promise<void> {
   if (syncInFlight) return syncInFlight;
   const promise = (async () => {
     setState({ syncing: true, error: null });
+    // todo/38: putRows/setCursor(IndexedDB)가 쿼터 초과 등으로 reject되면 이전에는 catch가
+    // 없어 syncing:true로 영구 고착 + 오류 배너도 없었다(catalog·search·inventory가 "동기화
+    // 중"에 멈춘 것처럼 보임). 실패를 화면 오류로 노출하고 syncing은 반드시 해제한다 —
+    // 다음 진입(ensureCatalogSync)이 자연 재시도. 미러는 재동기화로 복구되는 캐시일 뿐이라
+    // (FRONTEND.md) 부분 실패가 데이터 유실이 되진 않는다(커서 미전진 → 같은 청크 재요청).
+    try {
     let hasMore = true;
     let cursor = await getCursor();
     let syncedCount = 0;
@@ -192,7 +198,11 @@ async function backgroundSync(): Promise<void> {
       await setCursor(cursor);
       hasMore = res.data.hasMore;
     }
-    setState({ syncing: false });
+    } catch (err) {
+      setState({ error: String((err as Error)?.message ?? err) });
+    } finally {
+      setState({ syncing: false });
+    }
   })();
   syncInFlight = promise;
   try {

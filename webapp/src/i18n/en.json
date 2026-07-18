@@ -276,7 +276,7 @@
       "baselineCount": "{count} copies in scope this session (available / hold-ready)",
       "progress": "Checked {scanned} / {total}",
       "remaining": "{count} remaining",
-      "scanWriteFailed": "Failed to update last-checked date — {message}",
+      "scanWriteFailed": "Failed to update last-checked date — {message}. Scan this copy again to retry.",
       "resultHeading": "Inventory check result",
       "resultSummary": "Checked {scanned} of {total} · {lost} lost candidates",
       "lostHeading": "Lost candidates",

@@ -92,11 +92,20 @@ export default function InventoryView({ shell }: ViewProps) {
         return next;
       });
 
-      // fire-and-forget — 다음 스캔을 막지 않는다(연속 스캔 세션의 핵심). 실패해도 로컬 진행
-      // 카운트는 그대로 둔다(이 소장본을 "봤다"는 사실 자체는 로컬에서 이미 확정됐다 — 서버
-      // 쓰기 실패는 그 기록이 서버에 반영되지 않았다는 별개 문제라 토스트로만 알린다).
+      // fire-and-forget — 다음 스캔을 막지 않는다(연속 스캔 세션의 핵심). todo/38: 실패 시
+      // 이 바코드를 세트에서 되돌린다 — 이전에는 선등록+중복 가드 때문에 실패한 책을 다시
+      // 찍어도 no-op이라 그 소장본의 서버 점검 기록이 세션 내 복구 불가였다. 진행 카운트도
+      // 함께 되돌아간다: 시트에 없는 걸 "봤다"고 세지 않는다(검증 원칙 「가짜 성공 금지」 —
+      // 구 주석의 "로컬 확정 우선" 트레이드오프를 뒤집는 결정, todo/done/38 참고).
       void inventoryScan(barcode).then((res) => {
-        if (!res.ok) shell.toast(t('views.inventory.scanWriteFailed', { message: res.message }), 'error');
+        if (!res.ok) {
+          setScannedBarcodes((prev) => {
+            const next = new Set(prev);
+            next.delete(barcode);
+            return next;
+          });
+          shell.toast(t('views.inventory.scanWriteFailed', { message: res.message }), 'error');
+        }
       });
     },
     [scannedBarcodes, baselineByBarcode, shell]
