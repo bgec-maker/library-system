@@ -605,6 +605,7 @@
       "enrichHint": "Looks up missing bibliographic details (cover, page count, etc.) via the Aladin API (the max items processed per run follows the server setting).",
       "enrichDone": "Enrichment complete — {enriched} newly enriched · {remaining} still blank",
       "enrichFailed": "Enrichment failed — {message}",
+      "buildLine": "Build {id}",
       "enrichResultSummary": "Blank before: {before} → after: {after} (processed {processed} · cache hits {cacheHit} · failed {failed})"
     }
   },

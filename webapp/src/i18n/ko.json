@@ -605,6 +605,7 @@
       "enrichRun": "서지 보강 실행",
       "enrichDone": "서지 보강 완료 — 신규 보강 {enriched}건 · 남은 빈 항목 {remaining}건",
       "enrichFailed": "서지 보강 실패 — {message}",
+      "buildLine": "빌드 {id}",
       "enrichResultSummary": "실행 전 빈 항목 {before}건 → 실행 후 {after}건 (처리 {processed}건 · 캐시히트 {cacheHit}건 · 실패 {failed}건)"
     }
   },

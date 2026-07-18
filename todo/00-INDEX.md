@@ -48,6 +48,7 @@
 - [x] 41 mobile-e2e — 모바일 셸 스모크 CI 상주
 - [x] 43 ios-tabbar-viewport — 아이폰 하단 탭 배치 수정 (현장 제보 — 큐 순서 앞지름)
 - [x] 44 pwa-launch-viewport — 설치형 PWA 콜드 스타트 탭바 보정 (현장 제보 2)
+- [x] 45 standalone-viewport-hard — 설치형 콜드 스타트 최종 보정(screen 하한)+빌드 표식 (현장 제보 3)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

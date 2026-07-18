@@ -117,3 +117,11 @@
   flex-direction: column;
   gap: 6px;
 }
+
+/* todo/45 — 빌드 표식(운영 확인용, 시각적 존재감 최소) */
+.settings-build {
+  margin-top: var(--sp-6);
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  text-align: center;
+}

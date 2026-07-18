@@ -161,11 +161,38 @@ export default function MobileShell() {
   // 안드로이드 크롬 기본 동작과 같은 계열이라 수용(불편 제보 시 후속 조정, todo/done/44).
   useEffect(() => {
     const root = document.documentElement;
+    // todo/45: 이 버그에선 visualViewport·innerHeight 둘 다 첫 제스처 전까지 낡은 값을 준다
+    // (todo/44의 시간 지연 재측정으로 부족했던 이유 — 현장 스크린샷 2건). standalone에선
+    // 하드웨어 화면 크기(screen.*)가 이 버그의 영향을 받지 않는 유일한 소스이고,
+    // black-translucent 전체화면이라 화면 높이가 곧 진짜 뷰포트다. 입력 포커스 중(키보드)엔
+    // 줄어든 visualViewport가 정답이므로 하한을 적용하지 않는다.
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const apply = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
+      const vv = window.visualViewport?.height ?? window.innerHeight;
+      let h = vv;
+      if (standalone) {
+        const tag = document.activeElement?.tagName ?? '';
+        const editing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+        if (!editing) {
+          // iOS는 screen.width/height를 세로 고정으로 주는 버전이 있어 방향으로 장·단변을 고른다.
+          const longer = Math.max(window.screen.width, window.screen.height);
+          const shorter = Math.min(window.screen.width, window.screen.height);
+          const screenH = window.matchMedia('(orientation: portrait)').matches ? longer : shorter;
+          h = Math.max(vv, screenH);
+        }
+      }
       if (h > 0) root.style.setProperty('--app-vh', `${Math.round(h)}px`);
     };
     apply();
+    // 합성 스크롤 넛지 — WebKit이 첫 제스처까지 미루는 뷰포트 재계산을 앞당긴다(무해: body는
+    // 스크롤 컨테이너가 아니라 시각적 이동 없음).
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 1);
+      window.scrollTo(0, 0);
+      apply();
+    });
     const t1 = setTimeout(apply, 250);
     const t2 = setTimeout(apply, 1000);
     window.visualViewport?.addEventListener('resize', apply);

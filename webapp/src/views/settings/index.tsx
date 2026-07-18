@@ -267,6 +267,9 @@ export default function SettingsView({ shell }: ViewProps) {
           </div>
         </div>
       </section>
+
+      {/* todo/45 — 실기기에서 "지금 어떤 빌드인가"를 즉시 확인하는 운영 표식(배포·캐시 의심 종결용). */}
+      <p className="settings-build mono">{t('views.settings.buildLine', { id: __BUILD_ID__ })}</p>
     </div>
   );
 }
