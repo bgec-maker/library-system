@@ -19,7 +19,8 @@ import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../servic
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { operatorNoteFor } from '../../services/operatorNote';
 import { safeCoverUrl } from '../../services/urlGuard';
-import { intlLocaleTag, t } from '../../i18n';
+import { t } from '../../i18n';
+import { formatTimeHM } from '../../i18n/format';
 import './register.css';
 
 // register.html("스파이크 — 검증된 등록 흐름")을 그대로 흡수: 스캔→조회→확인폼→저장→등록번호
@@ -200,7 +201,7 @@ function DiagnosticsPanel({ log, onCopy }: { log: ApiCallLogEntry[]; onCopy: () 
           {log.map((entry, i) => (
             <li key={`${entry.at}-${i}`} className={`reg-diagRow outcome-${entry.outcome}`}>
               <div className="reg-diagLine1">
-                <span>{new Date(entry.at).toLocaleTimeString(intlLocaleTag(), { hour12: false })}</span>
+                <span>{formatTimeHM(entry.at)}</span>
                 <span>{entry.action}</span>
                 <span className="reg-diagOutcome">{outcomeLabel(entry.outcome)}</span>
                 <span>{entry.durationMs}ms</span>

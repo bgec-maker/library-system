@@ -11,3 +11,10 @@ export function formatKRW(amount: number): string {
     maximumFractionDigits: 0
   }).format(amount);
 }
+
+// todo/74 — 운영 화면 시각 표기 표준: 시:분(2자리·24시간). 초는 소음 — 같은 화면(대시보드
+// 최근 처리)은 이미 시:분이었고 나머지 세 곳만 초까지 찍고 있었다. 인쇄물·서버가 만드는
+// 명시 포맷 문자열(리포트 generatedAt 등)은 이 함수의 대상이 아니다(기존 유지).
+export function formatTimeHM(at: number | string | Date): string {
+  return new Date(at).toLocaleTimeString(intlLocaleTag(), { hour: '2-digit', minute: '2-digit', hour12: false });
+}

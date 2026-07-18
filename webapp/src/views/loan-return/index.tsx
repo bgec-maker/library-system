@@ -10,8 +10,8 @@ import { useSession } from '../../services/session';
 import { renewLoan, markLoanLost } from '../../services/loanActionsData';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { intlLocaleTag, t } from '../../i18n';
-import { formatKRW } from '../../i18n/format';
+import { t } from '../../i18n';
+import { formatKRW, formatTimeHM } from '../../i18n/format';
 import './loan-return.css';
 
 // 대출·반납 뷰 — FRONTEND.md "실행 정책": 확인 탭 없이 즉시 실행 + 실행취소 5초.
@@ -123,8 +123,9 @@ function bumpTodayCount(): number {
 }
 
 // ADR-023: 날짜·숫자는 사전에 넣지 않고 Intl.*(locale)로 로케일만 반영한다.
+// todo/74 — 시각은 표준 유틸(시:분, 초 제거)로 통일.
 function fmtTime(at: number): string {
-  return new Date(at).toLocaleTimeString(intlLocaleTag(), { hour12: false });
+  return formatTimeHM(at);
 }
 
 // views/reports/index.tsx·views/book-detail/index.tsx의 formatCurrency와 같은 한 줄짜리 헬퍼

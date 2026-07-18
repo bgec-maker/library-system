@@ -23,6 +23,7 @@ import { useReadyReservationCount } from '../../services/reservationData';
 import { useManualEntryPendingCount } from '../../services/manualEntryData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import { intlLocaleTag, t } from '../../i18n';
+import { formatTimeHM } from '../../i18n/format';
 import { LoanHeatmap, LoanTimeOfDay, MonthlyLoanCurve, ReservationPressure, ShelfHeatmap, VizLazyMount } from '../../viz';
 import { useWindowStore } from './useWindowStore';
 import './dashboard.css';
@@ -112,7 +113,7 @@ export default function DashboardBaseLayer() {
 
   const dueItems = data?.dueItems ?? [];
   const hasData = data !== null;
-  const refreshedTimeText = refreshedAt ? new Date(refreshedAt).toLocaleTimeString(intlLocaleTag(), { hour12: false }) : '—';
+  const refreshedTimeText = refreshedAt ? formatTimeHM(refreshedAt) : '—';
 
   return (
     <div className="dashboard-base">
@@ -216,7 +217,7 @@ export default function DashboardBaseLayer() {
                 {recentRows.slice(0, 3).map((row) => (
                   <li key={row.logId}>
                     <span className="dash-recent-time mono">
-                      {new Date(row.occurredAt).toLocaleTimeString(intlLocaleTag(), { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {formatTimeHM(row.occurredAt)}
                     </span>
                     <span className="dash-recent-summary">{row.summary}</span>
                   </li>
