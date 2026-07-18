@@ -195,7 +195,29 @@ export function DataTable<T>({
         </div>
       )}
 
-      {loading && !hasRows && <div className="data-table-loading">{t('common.loading')}</div>}
+      {loading && !hasRows && (
+        /* todo/58(인터랙션 표준 — 스켈레톤) — 첫 로딩(캐시 0건)만. 빈 화면+텍스트는 "고장?"으로,
+           형태 있는 자리표시는 "곧 온다"로 읽힌다. 배경 동기화는 기존 행 유지 + toolbarExtra가
+           담당(이 분기 자체가 !hasRows). 펄스는 opacity만(성능 예산). */
+        <div className="data-table-skeleton" aria-busy="true">
+          <span className="sr-only">{t('common.loading')}</span>
+          {platform === 'mobile'
+            ? Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="data-table-skel-card" aria-hidden="true">
+                  <div className="skel-bar skel-w-40" />
+                  <div className="skel-bar skel-w-70" />
+                  <div className="skel-bar skel-w-55" />
+                </div>
+              ))
+            : Array.from({ length: 5 }, (_, i) => (
+                <div key={i} className="data-table-skel-row" aria-hidden="true">
+                  <div className="skel-bar skel-w-25" />
+                  <div className="skel-bar skel-w-40" />
+                  <div className="skel-bar skel-w-15" />
+                </div>
+              ))}
+        </div>
+      )}
 
       {!loading && !hasRows && (
         <div className="data-table-empty">

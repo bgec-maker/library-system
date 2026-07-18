@@ -62,7 +62,7 @@
 - [x] 59 reskin-v2 — 표면 시스템 리스킨+배치 정리 (시안 B+웜 캔버스, 사용자 채택)
 - [x] 56 press-states — 프레스 피드백 통일 (대기업 감각 1)
 - [x] 57 motion-pass — 등장 모션 방향 사전 이행 (대기업 감각 2)
-- [ ] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
+- [x] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

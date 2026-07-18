@@ -45,6 +45,47 @@
   font-size: var(--fs-sm);
 }
 
+/* todo/58 — 첫 로딩 스켈레톤(캐시 0건 전용). 스피너는 "행동 결과 대기"(저장 중)에만 —
+   역할 분리는 인터랙션 표준 「스켈레톤」 절이 법. */
+.data-table-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+.data-table-skel-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.data-table-skel-card {
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skel-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--rule);
+  animation: skel-pulse 1.2s ease-in-out infinite;
+}
+.skel-w-15 { width: 15%; }
+.skel-w-25 { width: 25%; }
+.skel-w-40 { width: 40%; }
+.skel-w-55 { width: 55%; }
+.skel-w-70 { width: 70%; }
+@keyframes skel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel-bar { animation: none; }
+}
+
 .data-table-loading,
 .data-table-empty {
   display: flex;
