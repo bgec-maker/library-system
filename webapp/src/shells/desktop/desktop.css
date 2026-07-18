@@ -405,6 +405,13 @@
   z-index: 700;
 }
 
+/* todo/64(e2e가 적발한 실결함) — 언두바(fixed 하단 전폭)의 우측 버튼 영역이 스캐너 위젯
+   (fixed right/bottom 16, z 700)에 가려 클릭이 위젯으로 새던 문제. 데스크톱에선 언두바를
+   위젯 위층 높이로 올려 두 고정 요소가 겹치지 않게 한다(모바일은 mobile.css가 탭바 위로 이미 조정). */
+.lr-undo-bar {
+  bottom: 72px;
+}
+
 .scanner-dock__dot {
   width: 10px;
   height: 10px;
