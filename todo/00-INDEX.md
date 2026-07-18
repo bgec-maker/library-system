@@ -112,6 +112,7 @@
 - [x] 106 shelf-tile-contrast — 서가 온도 짙은 타일 글자 침몰 (시각 감사 7R)
 - [x] 107 slot-title-clamp — 소장본 슬롯 장문 서명 5줄 팽창 (장문 스트레스 감사)
 - [x] 108 snap-offset — 창 스냅 좌표 이중 오프셋 실결함 (시각 감사 8R)
+- [x] 109 student-desktop-align — 학생 페이지 데스크톱 폭 정렬 (시각 감사 9R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

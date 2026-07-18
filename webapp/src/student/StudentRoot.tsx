@@ -62,22 +62,32 @@ function StudentLocaleToggle() {
       role="group"
       aria-label={t('common.language')}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '8px 16px',
         background: 'var(--panel)',
         borderBottom: '1px solid var(--rule)'
       }}
     >
-      <Globe size={16} aria-hidden style={{ color: 'var(--ink-3)' }} />
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" style={btnStyle(locale === 'ko')} onClick={() => pick('ko')}>
-          KO
-        </button>
-        <button type="button" style={btnStyle(locale === 'en')} onClick={() => pick('en')}>
-          EN
-        </button>
+      {/* todo/109(시각 감사 9R) — 데스크톱 폭에서 토글이 좌측 끝에 표류하던 것: 본문 칼럼
+          (BookPage maxWidth 480 + padding 24)과 같은 컨테이너로 정렬해 위-아래가 한 축을 탄다.
+          모바일(<480px)에서는 종전과 동일하게 보인다. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 24px',
+          maxWidth: 480,
+          margin: '0 auto'
+        }}
+      >
+        <Globe size={16} aria-hidden style={{ color: 'var(--ink-3)' }} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" style={btnStyle(locale === 'ko')} onClick={() => pick('ko')}>
+            KO
+          </button>
+          <button type="button" style={btnStyle(locale === 'en')} onClick={() => pick('en')}>
+            EN
+          </button>
+        </div>
       </div>
     </div>
   );
