@@ -1,6 +1,7 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { useSession, isSessionComplete } from '../services/session';
 import { closeSessionSettings, getSessionSettingsOpen, subscribeSessionSettings } from '../services/sessionSettingsUi';
+import { useFocusTrap } from './useFocusTrap';
 
 // register.html의 "최초 1회 URL·토큰·이름 입력 → localStorage" 설정 화면을 셸 공통으로 계승.
 // session.ts는 저장소만 제공하고 이 화면은 없었다 — 없으면 앱이 아예 동작하지 않는 공백이라 직접 채웠다.
@@ -19,6 +20,11 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
 
   const showOverlay = !complete || manuallyOpened;
 
+  // todo/80 — 포커스 트랩: 부팅 게이트(!complete)는 ESC로 닫을 수 없다(필수 관문 — 닫으면
+  // 빈 앱만 남는다). 설정으로 다시 연 경우(complete)만 ESC=닫기.
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(showOverlay, cardRef, complete ? closeSessionSettings : undefined);
+
   function save() {
     if (!draft.apiUrl || !draft.token || !draft.operator) return;
     session.setConfig(draft);
@@ -30,7 +36,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
       {complete && children}
       {showOverlay && (
         <div className="session-gate-overlay">
-          <div className="session-gate-card panel">
+          <div className="session-gate-card panel" ref={cardRef} role="dialog" aria-modal="true">
             <h1>{complete ? '설정' : '초기 설정'}</h1>
             <p className="session-gate-sub">
               GAS Web App URL·공유 토큰·작업자 이름을 입력하세요. 이 기기에만 저장됩니다(localStorage).

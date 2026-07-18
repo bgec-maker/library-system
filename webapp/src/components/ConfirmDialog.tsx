@@ -1,5 +1,6 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useFocusTrap } from './useFocusTrap';
 import { t } from '../i18n';
 import './ConfirmDialog.css';
 
@@ -43,10 +44,15 @@ export function ConfirmDialog({
   onCancel
 }: ConfirmDialogProps) {
   const titleId = useId();
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  // todo/80 — 포커스 트랩: 첫 포커스는 DOM 첫 버튼(취소) — 위험 동작을 기본 선택하지 않는다
+  // (NN/g 확인창 원칙). ESC=취소(busy 중엔 잠금 — 클릭 차단과 같은 규칙), 닫히면 연 곳으로 복귀.
+  useFocusTrap(open, cardRef, busy ? undefined : onCancel);
   if (!open) return null;
   return (
     <div className="confirm-dialog-overlay" role="presentation" onClick={busy ? undefined : onCancel}>
       <div
+        ref={cardRef}
         className="confirm-dialog-card panel"
         role="alertdialog"
         aria-modal="true"
