@@ -715,7 +715,20 @@
       "enrichDone": "Enrichment complete — {enriched} newly enriched · {remaining} still blank",
       "enrichFailed": "Enrichment failed — {message}",
       "buildLine": "Build {id}",
-      "enrichResultSummary": "Blank before: {before} → after: {after} (processed {processed} · cache hits {cacheHit} · failed {failed})"
+      "enrichResultSummary": "Blank before: {before} → after: {after} (processed {processed} · cache hits {cacheHit} · failed {failed})",
+      "schema": {
+        "title": "Schema check (live sheets vs code)",
+        "badgeOk": "All sheets match",
+        "badgeMismatch": "{count} mismatches",
+        "summaryLine": "As of {at} · {sheets} sheets · code v{code} · schema v{schema}",
+        "colSheet": "Sheet",
+        "colRows": "Data rows",
+        "colStatus": "Verdict",
+        "sheetOk": "Match",
+        "sheetMissing": "Sheet missing",
+        "headerMissing": "Missing headers: {list}",
+        "headerExtra": "Extra columns: {list} (allowed — informational)"
+      }
     }
   },
   "viz": {

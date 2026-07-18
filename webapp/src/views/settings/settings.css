@@ -153,3 +153,29 @@
   font-weight: 700;
   font-size: var(--fs-sm);
 }
+
+/* todo/90 — 스키마 대조(접힘 진단 섹션). summary 한 줄 = 제목 + 판정 배지. */
+.settings-schema summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  list-style-position: outside;
+}
+.settings-schema summary::-webkit-details-marker { display: block; }
+.settings-schema-badge {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: var(--panel);
+}
+.settings-schema-badge.is-ok { background: var(--pass); }
+.settings-schema-badge.is-bad { background: var(--fail); }
+.settings-schema details[open] summary { margin-bottom: 8px; }
+.settings-schema-flag { font-size: var(--fs-sm); }
+.settings-schema-flag.is-ok { color: var(--pass); font-weight: 600; }
+.settings-schema-flag.is-bad { color: var(--fail); font-weight: 700; }
+.settings-schema-flag.is-note { color: var(--ink-2); }

@@ -85,3 +85,16 @@
 4. **명렬표 CSV 일괄 등록**
 5. ~~**한/영 전환** — 사이드바 사용자별 토글 (CODEBOOK label_en 활용)~~ **완료 (todo/22, 2026-07-15)**: `Sidebar.html`에 `I18N`(ko/en) 사전 + 헤더 `KO`/`EN` 토글 + `PropertiesService.getUserProperties()` 기반 사용자별 저장(`getUserLocale_`/`setUserLocale_`/`apiGetUserLocale`/`apiSetUserLocale`, 이 코드베이스 최초의 UserProperties 사용) + 오류 코드→영어 메시지 매핑(76개, 매핑 없으면 서버 한글 폴백) + CODEBOOK `label_en`/CATEGORIES `name_en`을 내려주는 새 함수 `apiGetCodeLabels()`(기존 `getCodes_`/`apiBootstrap`은 무수정 — PATCH_SPEC의 "이미 존재, 추가 작업 없음"은 실제로는 틀렸다, `docs/ASSUMPTIONS.md` "todo/22" 절 참고) + `refreshDashboard_()`가 `writeDashboardToSheet_(sheet, data)`로 추출된 동일 로직을 `01_운영센터`와(존재할 때만) `01_Console_EN`에 이중 기록.
 6. `02_사용법` 시트 학교화 갱신 — **부분 완료**: 수기입력 절차는 README.md "수기입력" 절에 문서화했다(이 저장소의 `도서관_관리_MVP.xlsx`가 이미 20/21 스키마와 어긋난 초기 부트스트랩 템플릿이라 xlsx 내부 `02_사용법` 탭 자체는 이 라운드에서 편집하지 않았다 — 실제 운영 스프레드시트의 `02_사용법` 탭에는 README.md 내용을 사서/관리자가 직접 옮겨 적어야 한다). todo/22에서 영어 언어 안내 섹션도 같은 방식으로 README.md "한/영 전환" 절에 추가했다 — `01_Console_EN` 탭도 같은 제약으로 수기 생성이 필요하다(README.md 참고).
+
+## todo/90 · schemaReport (2026-07-18) — 재배포 필요 🅿
+
+**추가분(기존 함수 무수정)**: doPost 디스패치 1줄 + `apiWebSchemaReport_()` (읽기 전용).
+
+- **무엇**: 실물 스프레드시트와 코드 가정(LIBRARY_MVP.HEADERS 22종 + 22_MANUAL_ENTRY)의 최종
+  대조 리포트 — 시트별 존재 여부·헤더 누락/여분·데이터 행수, 버전 표식(코드/설치/스키마).
+- **안 하는 것**: 어떤 시트도 생성·수정하지 않는다(ensureSchema_ 미호출 — 그 함수는 누락 시트를
+  만들어 버려 진단이 현장을 바꾼다). 셀 본문도 읽지 않는다(헤더 1행 + 행수만).
+- **웹앱**: 설정 화면 하단 접힘 섹션 「스키마 대조」. **재배포 전(UNKNOWN_ACTION)에는 섹션이
+  아예 보이지 않는다** — 배포하면 자동 활성. 프론트가 먼저 나가 있어도 무해.
+- **배포 절차(사용자)**: Apps Script 편집기에서 Code.gs 교체 → 배포 → 배포 관리 → **새 버전** —
+  기존 URL 유지. 새 스코프 없음(기존 Sheets 스코프만 사용)이라 재동의 화면은 뜨지 않는다.

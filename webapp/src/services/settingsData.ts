@@ -129,3 +129,39 @@ export async function runBibliographicEnrichment(): Promise<EnrichBibliographicO
   }
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
+
+export interface SchemaSheetEntry {
+  sheetName: string;
+  present: boolean;
+  rowCount: number;
+  expectedColumnCount: number;
+  actualColumnCount: number;
+  missingHeaders: string[];
+  extraHeaders: string[];
+}
+
+export interface SchemaReport {
+  /** yyyy-MM-dd HH:mm (서버가 formatDateTime_로 이미 포맷) */
+  generatedAtText: string;
+  codeVersion: string;
+  setupVersion: string;
+  schemaVersion: string;
+  sheetCount: number;
+  mismatchCount: number;
+  sheets: SchemaSheetEntry[];
+}
+
+export type SchemaReportOutcome =
+  | { ok: true; data: SchemaReport }
+  | { ok: false; unavailable: true }
+  | { ok: false; unavailable?: false; message: string };
+
+/** 스키마 대조 리포트(todo/90) — 실물 시트 vs 코드 가정의 운영 진단. 배포 여부 자체가 관심사라
+ *  UNKNOWN_ACTION은 샘플 폴백이 아니라 "섹션 미노출" 신호(unavailable)로 구분해 올린다 —
+ *  가짜 대조표는 이 도구의 존재 이유를 무너뜨린다. */
+export async function fetchSchemaReport(): Promise<SchemaReportOutcome> {
+  const res = await cachedApiCall<SchemaReport>('schemaReport', {}, 60000);
+  if (res.ok) return { ok: true, data: res.data };
+  if (res.error.code === 'UNKNOWN_ACTION') return { ok: false, unavailable: true };
+  return { ok: false, message: res.error.message || res.error.code };
+}

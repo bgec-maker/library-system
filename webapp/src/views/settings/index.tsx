@@ -5,6 +5,7 @@ import { getViewMeta } from '../../registry';
 import { DataTable, type DataTableColumn } from '../../components/DataTable';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 import {
+  fetchSchemaReport,
   fetchSettingsOverview,
   runBibliographicEnrichment,
   runIntegrityCheck,
@@ -13,6 +14,7 @@ import {
   type IntegrityCheckResult,
   type IntegrityIssue,
   type PolicyRow,
+  type SchemaReport,
   type SettingsOverview
 } from '../../services/settingsData';
 import { t } from '../../i18n';
@@ -94,6 +96,10 @@ export default function SettingsView({ shell }: ViewProps) {
   const [enrichResult, setEnrichResult] = useState<EnrichBibliographicResult | null>(null);
   const [enriching, setEnriching] = useState(false);
 
+  // todo/90 — 스키마 대조 리포트. null = 미노출(재배포 전 UNKNOWN_ACTION 또는 로딩/실패).
+  // 진단 도구라 샘플 폴백이 없다 — 액션이 실존할 때만 섹션 자체가 나타난다.
+  const [schemaReport, setSchemaReport] = useState<SchemaReport | null>(null);
+
   useEffect(() => {
     shell.setTitle(getViewMeta('settings')?.title ?? t('registry.settings.title'));
   }, [shell]);
@@ -101,6 +107,8 @@ export default function SettingsView({ shell }: ViewProps) {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    // 스키마 대조는 개요와 병렬 — 실패(unavailable 포함)해도 화면 나머지에 영향 없음.
+    const schemaPromise = fetchSchemaReport();
     const outcome = await fetchSettingsOverview();
     setLoading(false);
     if (outcome.ok) {
@@ -109,6 +117,8 @@ export default function SettingsView({ shell }: ViewProps) {
     } else {
       setLoadError(outcome.message);
     }
+    const schemaOutcome = await schemaPromise;
+    setSchemaReport(schemaOutcome.ok ? schemaOutcome.data : null);
   }, []);
 
   useEffect(() => {
@@ -312,6 +322,66 @@ export default function SettingsView({ shell }: ViewProps) {
           ))}
         </ul>
       </section>
+
+      {schemaReport && (
+        /* todo/90 — 실물 시트 vs 코드 가정 대조(운영 진단). 재배포 전(UNKNOWN_ACTION)에는
+           schemaReport가 null이라 이 섹션 자체가 없다 — 배포되면 자동 활성. 기본 접힘:
+           평시엔 요약 한 줄이면 충분하고, SCHEMA_MISMATCH 추적 때만 펼친다. */
+        <section className="panel settings-section settings-schema">
+          <details>
+            <summary>
+              <span className="settings-schema-title">{t('views.settings.schema.title')}</span>
+              <span className={`settings-schema-badge ${schemaReport.mismatchCount > 0 ? 'is-bad' : 'is-ok'}`}>
+                {schemaReport.mismatchCount > 0
+                  ? t('views.settings.schema.badgeMismatch', { count: schemaReport.mismatchCount })
+                  : t('views.settings.schema.badgeOk')}
+              </span>
+            </summary>
+            <p className="settings-hint">
+              {t('views.settings.schema.summaryLine', {
+                at: schemaReport.generatedAtText,
+                sheets: schemaReport.sheetCount,
+                code: schemaReport.codeVersion || '-',
+                schema: schemaReport.schemaVersion || '-'
+              })}
+            </p>
+            <div className="data-table-scroll">
+              <table className="data-table-grid" aria-label={t('views.settings.schema.title')}>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('views.settings.schema.colSheet')}</th>
+                    <th scope="col" className="is-numeric">{t('views.settings.schema.colRows')}</th>
+                    <th scope="col">{t('views.settings.schema.colStatus')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schemaReport.sheets.map((entry) => (
+                    <tr key={entry.sheetName}>
+                      <td className="mono">{entry.sheetName}</td>
+                      <td className="is-numeric">{entry.present ? entry.rowCount : '—'}</td>
+                      <td>
+                        {!entry.present ? (
+                          <span className="settings-schema-flag is-bad">{t('views.settings.schema.sheetMissing')}</span>
+                        ) : entry.missingHeaders.length > 0 ? (
+                          <span className="settings-schema-flag is-bad">
+                            {t('views.settings.schema.headerMissing', { list: entry.missingHeaders.join(', ') })}
+                          </span>
+                        ) : entry.extraHeaders.length > 0 ? (
+                          <span className="settings-schema-flag is-note">
+                            {t('views.settings.schema.headerExtra', { list: entry.extraHeaders.join(', ') })}
+                          </span>
+                        ) : (
+                          <span className="settings-schema-flag is-ok">{t('views.settings.schema.sheetOk')}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      )}
 
       <section className="panel settings-section">
         <h2>{t('views.settings.actionsTitle')}</h2>

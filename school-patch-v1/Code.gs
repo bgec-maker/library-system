@@ -3068,6 +3068,7 @@ function doPost(e) {
       if (action === 'enrichBibliographic') return apiWebEnrichBibliographic_(payload);
       if (action === 'settingsOverview') return apiWebSettingsOverview_(payload);
       if (action === 'runIntegrityCheck') return apiWebIntegrityCheck_(payload);
+      if (action === 'schemaReport') return apiWebSchemaReport_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -4766,6 +4767,60 @@ function apiWebSettingsOverview_(payload) {
   });
 
   return { policies: policies, config: config, triggers: triggers };
+}
+
+// apiWebSchemaReport_ (todo/90) — 실물 시트와 코드 가정(LIBRARY_MVP.HEADERS)의 최종 대조 리포트.
+// 읽기 전용: 각 시트의 존재 여부·헤더 1행·데이터 행수만 읽는다. 셀 데이터 본문은 읽지 않고,
+// 어떤 시트도 만들거나 고치지 않는다(ensureSchema_는 여기서 호출하지 않는다 — 그 함수는 누락
+// 시트를 "생성"하는 부수효과가 있어 진단 도구가 현장을 바꿔 버린다).
+// ensureSchema_와의 판정 차이: ensureSchema_는 누락 헤더에서 fail(가동 차단)하지만, 이 리포트는
+// 차단 대신 전 시트의 상태를 한 번에 보여준다 — "왜 SCHEMA_MISMATCH가 났는가"를 추적하는 용도.
+// 22_MANUAL_ENTRY는 HEADERS 미등재(영구 비보호 설계 — 위 수기입력 절 주석 참고)라 별도 항목으로
+// MANUAL_ENTRY_HEADERS_ 기준 대조를 추가한다.
+function apiWebSchemaReport_(payload) {
+  var ss = getSpreadsheet_();
+
+  function inspectSheet_(sheetName, expectedHeaders) {
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      return {
+        sheetName: sheetName, present: false, rowCount: 0,
+        expectedColumnCount: expectedHeaders.length, actualColumnCount: 0,
+        missingHeaders: expectedHeaders.slice(), extraHeaders: []
+      };
+    }
+    var lastColumn = Math.max(sheet.getLastColumn(), expectedHeaders.length, 1);
+    var actual = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+      .filter(function(value) { return value !== ''; });
+    var missing = expectedHeaders.filter(function(header) { return actual.indexOf(header) === -1; });
+    var extra = actual.filter(function(header) { return expectedHeaders.indexOf(header) === -1; });
+    return {
+      sheetName: sheetName, present: true,
+      rowCount: Math.max(sheet.getLastRow() - 1, 0),
+      expectedColumnCount: expectedHeaders.length, actualColumnCount: actual.length,
+      missingHeaders: missing, extraHeaders: extra
+    };
+  }
+
+  var sheets = Object.keys(LIBRARY_MVP.HEADERS).map(function(sheetName) {
+    return inspectSheet_(sheetName, LIBRARY_MVP.HEADERS[sheetName]);
+  });
+  sheets.push(inspectSheet_(LIBRARY_MVP.SHEETS.MANUAL_ENTRY, MANUAL_ENTRY_HEADERS_));
+
+  var mismatchCount = sheets.filter(function(entry) {
+    return !entry.present || entry.missingHeaders.length > 0;
+  }).length;
+
+  var documentProps = PropertiesService.getDocumentProperties();
+  return {
+    generatedAtText: formatDateTime_(new Date()),
+    codeVersion: LIBRARY_MVP.VERSION,
+    setupVersion: documentProps.getProperty('LIBRARY_MVP_VERSION') || '',
+    schemaVersion: documentProps.getProperty('LIBRARY_SCHEMA_VERSION') || '',
+    sheetCount: sheets.length,
+    mismatchCount: mismatchCount,
+    sheets: sheets
+  };
 }
 
 // --------------------------- 수기입력 (todo/21, 구 PATCH_SPEC P3) ---------------------------

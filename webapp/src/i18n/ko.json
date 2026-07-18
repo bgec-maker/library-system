@@ -715,7 +715,20 @@
       "enrichDone": "서지 보강 완료 — 신규 보강 {enriched}건 · 남은 빈 항목 {remaining}건",
       "enrichFailed": "서지 보강 실패 — {message}",
       "buildLine": "빌드 {id}",
-      "enrichResultSummary": "실행 전 빈 항목 {before}건 → 실행 후 {after}건 (처리 {processed}건 · 캐시히트 {cacheHit}건 · 실패 {failed}건)"
+      "enrichResultSummary": "실행 전 빈 항목 {before}건 → 실행 후 {after}건 (처리 {processed}건 · 캐시히트 {cacheHit}건 · 실패 {failed}건)",
+      "schema": {
+        "title": "스키마 대조 (실물 시트 vs 코드 가정)",
+        "badgeOk": "전 시트 일치",
+        "badgeMismatch": "불일치 {count}건",
+        "summaryLine": "{at} 기준 · 시트 {sheets}종 · 코드 v{code} · 스키마 v{schema}",
+        "colSheet": "시트",
+        "colRows": "데이터 행",
+        "colStatus": "판정",
+        "sheetOk": "일치",
+        "sheetMissing": "시트 없음",
+        "headerMissing": "헤더 누락: {list}",
+        "headerExtra": "여분 열: {list} (허용 — 참고용)"
+      }
     }
   },
   "viz": {
