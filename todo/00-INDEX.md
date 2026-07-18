@@ -81,7 +81,7 @@
 - [x] 75 codebook-labels — 코드값 라벨 병기 (16_CODEBOOK 미러)
 - [x] 76 csv-column-set — CSV 내보내기 컬럼 선택
 - [x] 77 integrity-copy — 무결성 점검 결과 카피 정리
-- [ ] 78 print-v2-audit — 인쇄 v2 정합 감사
+- [x] 78 print-v2-audit — 인쇄 v2 정합 감사(백지 강제 1건 수리)
 - [ ] 79 recall-slip-pages — 회수 쪽지 페이지 나눔 검증
 - [ ] 80 dialog-focus-trap — 다이얼로그 포커스 트랩·ESC
 - [ ] 81 scan-aria-live — 스캔 결과 스크린리더 낭독

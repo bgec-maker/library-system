@@ -33,6 +33,14 @@
     margin: 20mm 14mm 16mm;
   }
 
+  /* todo/78(v2 감사) — 리스킨이 캔버스를 paper(베이지)로 쓰면서, "배경 그래픽 인쇄"를 켠
+     프린터/PDF 내보내기에서 페이지 전체가 베이지로 깔릴 수 있게 됐다. 인쇄 지면의 바탕은
+     항상 백지(잉크 절약 원칙의 전제) — 명시적으로 흰색을 강제한다. */
+  html,
+  body {
+    background: #fff !important;
+  }
+
   body * {
     visibility: hidden;
   }
