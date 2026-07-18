@@ -3,11 +3,22 @@
    env(safe-area-inset-*)을 헤더·탭바·시트에 반영한다 — iOS는 가로 잠금을 무시할 수 있어 좌우도 넣는다. */
 
 .m-shell {
+  /* 폴백: 구형 브라우저는 기존 동작(작은 뷰포트 100%) 유지 */
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--paper);
   color: var(--ink);
+}
+
+/* todo/43(현장 제보 — 아이폰 하단 탭 위 죽은 띠): iOS Safari의 100%는 "주소창이 보이는
+   작은 뷰포트" 높이라, 주소창이 접히면 늘어난 화면과의 차이가 탭바 아래 빈 띠로 노출된다.
+   dvh(동적 뷰포트)는 주소창 상태를 따라가므로 탭바가 항상 바닥(+홈 인디케이터 인셋 패딩,
+   .m-tabbar)에 붙는다. 설치형 PWA·안드로이드 크롬에선 dvh=100%로 무영향. */
+@supports (height: 100dvh) {
+  .m-shell {
+    height: 100dvh;
+  }
 }
 
 .m-shell-content {
