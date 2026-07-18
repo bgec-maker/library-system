@@ -181,10 +181,13 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   snapWindow(id, side) {
-    const availW = Math.max(DOCK_WIDTH + 320, window.innerWidth - DOCK_WIDTH);
+    const availW = Math.max(320, window.innerWidth - DOCK_WIDTH);
     const availH = window.innerHeight;
     const half = Math.floor(availW / 2);
-    const x = DOCK_WIDTH + (side === 'right' ? half : 0);
+    // todo/108 — 창 left는 .desktop-workspace(margin-left: DOCK_WIDTH) **내부** 좌표다.
+    // 구 코드는 화면 좌표 의도로 DOCK_WIDTH를 또 더해 좌스냅 76px 갭·우스냅 76px 화면 밖
+    // (닫기 버튼 소실)이었다 — 워크스페이스 원점 기준으로 좌=0, 우=half.
+    const x = side === 'right' ? half : 0;
     get().resizeWindow(id, { x, y: 0, w: half, h: availH });
     get().focusWindow(id);
     get().persistWindowRect(id);

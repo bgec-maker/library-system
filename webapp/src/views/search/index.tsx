@@ -187,11 +187,12 @@ export default function SearchView({ shell }: ViewProps) {
         key: 'statusCode',
         header: t('views.catalog.col.status'),
         sortable: true,
+        nowrap: true, // todo/108 재캡처가 적발 — 반폭 창에서 "대출가/능" 꺾임(카탈로그와 동일 계약)
         render: (row) => statusLabel(row.statusCode),
         filterValue: (row) => `${row.statusCode} ${statusLabel(row.statusCode)}`,
         csvValue: (row) => statusLabel(row.statusCode)
       },
-      { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true },
+      { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true, nowrap: true },
       {
         key: 'rowActions',
         header: t('views.reservations.col.actions'),
