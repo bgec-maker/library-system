@@ -63,7 +63,7 @@ interface RegisterCopyResult {
 type BookCondition = 'GOOD' | 'FAIR' | 'DAMAGED';
 
 // apiCall()의 payload 파라미터는 Record<string, unknown>이라 인덱스 시그니처가 필요하다
-// (services/offlineQueue.ts의 QueuedRequest.payload와 동일한 관례).
+// (services/registerQueue.ts의 payload 필드와 동일한 관례).
 type RegisterPayload = {
   isbn: string;
   operator: string;

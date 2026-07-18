@@ -33,7 +33,7 @@ webapp/src/
   shells/
     desktop/        WindowManager, Window(타이틀바·리사이즈), Dock, Snap
     mobile/         TabBar, StackNav, BottomSheet
-  services/         camera.ts  scanBus.ts  api.ts  offlineQueue.ts  catalog.ts  session.ts
+  services/         camera.ts  scanBus.ts  api.ts  registerQueue.ts  catalog.ts  session.ts
   registry.ts       ★ 뷰 메타데이터 단일 원천
   boot.tsx          셸 선택 + 스킨 로드
   tokens/           work.css  student.css
@@ -99,13 +99,14 @@ CameraService(싱글턴, 스트림 1개, ref-count)
 
 - **iOS 설치형 상단 safe-area**: `black-translucent` 상태바를 쓰므로 콘텐츠가 노치 밑까지 올라간다 → 모바일 셸 헤더는 반드시 `padding-top: calc(기본 + env(safe-area-inset-top))`. **브라우저 탭에선 재현 안 되고 설치형에서만 드러난다** — 검증은 홈 화면 아이콘으로. iOS는 매니페스트 orientation 잠금을 무시하므로 좌우 inset도 처리
 
-- **iOS 저장소 축출**: 미사용 7일 후 사이트 저장소를 지울 수 있음 → `offlineQueue`는 적재 즉시 전송 시도(장기 보관 금지), 클라이언트에만 존재하는 데이터 금지(진실은 항상 시트). 카탈로그 미러는 지워져도 재동기화로 복구되는 캐시로만 취급
+- **iOS 저장소 축출**: 미사용 7일 후 사이트 저장소를 지울 수 있음 → `registerQueue`는 적재 즉시 전송 시도(장기 보관 금지 — 미전송분·완료 30건만 짧게 영속), 클라이언트에만 존재하는 데이터 금지(진실은 항상 시트). 카탈로그 미러는 지워져도 재동기화로 복구되는 캐시로만 취급
 - **Windows 웹캠**: 고정초점 저가 웹캠은 EAN-13 판독 실패 가능(미실측 리스크) — 실패 시 대안: 폰을 스캐너로 쓰고 데스크톱은 조회·창 작업 전용
 
 ## 서비스 계약
 
 - `api.ts`: doPost JSON, `MOBILE_REG_TOKEN` 방식 토큰(정식 로그인 결정 전까지), requestId=UUID 자동 부여, 30s 타임아웃 후 동일 ID 재시도
-- `offlineQueue.ts`: 실패 요청 IndexedDB 적재 → 온라인 복귀 시 순차 재전송 (서버 멱등이 중복 흡수)
+- `registerQueue.ts`: **등록 쓰기 전담** 순차 큐(todo/28) — localStorage 영속, BUSY_RETRY·네트워크·타임아웃 같은 requestId 백오프 재전송(서버 멱등이 흡수), 새로고침·online 복귀 시 자동 재개. 그 외 쓰기는 `writeRetry.ts`(todo/37)가 블로킹 UX 그대로 짧게 흡수
+- (구 `offlineQueue.ts`는 소비자 0의 죽은 코드로 todo/39에서 제거 — 대출·반납의 **오프라인 적재**는 미구현이며 확정 지연 표시 등 UX 정책이 얽혀 🟡 사용자 결정 대기: `todo/waiting/offline-loans.md`)
 - `catalog.ts`: 카탈로그 미러(IndexedDB) — 검색은 브라우저에서, GAS 0회
 - `session.ts`: role(LIBRARIAN/STATION) — 스테이션은 기기 토큰, 학생 검색 UI 자체를 렌더하지 않음(ADR-011)
 

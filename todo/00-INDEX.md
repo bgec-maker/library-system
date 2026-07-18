@@ -43,7 +43,7 @@
 - [x] 36 ci-verify-gate — CI 검사 단일화(신규 게이트 2종 누락 해소) + VERIFY.md 개정
 - [x] 37 write-retry — 쓰기 BUSY_RETRY 자동 흡수(공유 헬퍼, UX 불변)
 - [x] 38 sync-resilience — catalog 동기화 고착·setConfig 가드·inventory 재스캔 복구
-- [ ] 39 offline-queue-cleanup — 죽은 offlineQueue 정리 + FRONTEND.md 정합
+- [x] 39 offline-queue-cleanup — 죽은 offlineQueue 정리 + FRONTEND.md 정합
 - [ ] 40 hygiene-2 — 오류 표시·useMemo·role/aria 소형 4건
 
 ## waiting/ (사용자만 승격)

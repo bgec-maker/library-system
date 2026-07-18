@@ -17,14 +17,14 @@ import { publishDataChange } from './dataChangeBus';
 // 목록으로 보낸다 — api.ts의 "무한 재시도 금지" 관례는 유지하되, 위 네 코드에 한한 유한
 // 백오프(최대 5회)는 todo/28이 명시적으로 추가한 예외다.
 //
-// FRONTEND.md 플랫폼 주의(iOS 저장소 축출)와의 관계: offlineQueue와 같은 원칙 — 적재 즉시
+// FRONTEND.md 플랫폼 주의(iOS 저장소 축출)와의 관계: 적재 즉시
 // 전송을 시도하고 오래 묵히지 않는다. 진실은 항상 시트. localStorage 영속은 (1) 새로고침
 // 직전에 적재된 미전송분의 유실 방지, (2) 완료 항목의 등록번호를 연필로 옮겨 적기 전에
 // 화면이 닫혀도 다시 볼 수 있게 하는 짧은 완충일 뿐이다(완료분 최근 30건 유지).
 //
-// offlineQueue.ts를 쓰지 않는 이유: 그쪽은 'online' 이벤트에서 flush하는 별도 재전송 주체라,
-// 등록 요청을 양쪽에 두면 같은 requestId가 두 경로로 동시에 나가는 이중 발사가 생긴다(멱등이
-// 흡수는 하지만 BUSY_RETRY 경합을 스스로 만드는 꼴). 등록 쓰기는 이 큐가 전담한다.
+// (구 services/offlineQueue.ts는 todo/39에서 제거 — import 0건의 죽은 코드였고, 존치 시
+// 'online' flush와 이 큐가 같은 requestId를 두 경로로 쏘는 이중 발사 위험만 남긴다. 등록
+// 쓰기는 이 큐가 전담하고, 대출·반납 오프라인 적재는 todo/waiting/offline-loans 게이트.)
 
 export type RegisterQueueAction = 'registerByIsbn' | 'registerTitle';
 
@@ -291,7 +291,7 @@ async function pump(): Promise<void> {
 }
 
 // 온라인 복귀 = 대기 중이던 백오프를 기다릴 이유가 없어진 시점 — 즉시 재개를 시도한다.
-// (offlineQueue의 'online' flush와 대상이 겹치지 않는다 — 등록 요청은 이 큐에만 있다.)
+// (등록 요청의 재전송 주체는 이 큐 하나뿐이다 — 이중 발사 없음, todo/39 참고.)
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     entries.forEach((e) => {
