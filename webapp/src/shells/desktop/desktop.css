@@ -405,10 +405,16 @@
   z-index: 700;
 }
 
-/* todo/64(e2e가 적발한 실결함) — 언두바(fixed 하단 전폭)의 우측 버튼 영역이 스캐너 위젯
-   (fixed right/bottom 16, z 700)에 가려 클릭이 위젯으로 새던 문제. 데스크톱에선 언두바를
-   위젯 위층 높이로 올려 두 고정 요소가 겹치지 않게 한다(모바일은 mobile.css가 탭바 위로 이미 조정). */
-.lr-undo-bar {
+/* todo/91(시각 감사 1R 실결함, todo/64 개정) — 데스크톱 언두바 기하를 셸이 전담한다.
+   ① todo/64의 `.lr-undo-bar { bottom:72px }`(특이성 0,1,0)는 뷰 CSS(lazy 청크 — 캐스케이드
+   후순위)의 bottom:16px에 밀려 무력화돼 있었다(computed 16px 실측) — `.desktop-shell` 스코프
+   (0,2,0)로 로드 순서와 무관하게 이긴다. ② left:16 전폭이 좌측 도크(z 500, 76px)에 깔려
+   "대출 처리됨" 앞글자가 잘리던 문제 — 도크 폭만큼 비켜난다(76은 useWindowStore.DOCK_WIDTH와
+   동일값 계약). 우측 72px 상승은 스캐너 위젯(right/bottom 16, z 700) 회피 — 64의 취지 그대로.
+   undo.spec.ts가 도크·위젯 rect 비교차를 단정하므로 재발 시 게이트가 적발한다. */
+.desktop-shell .lr-undo-bar {
+  left: calc(76px + 16px);
+  right: 16px;
   bottom: 72px;
 }
 
@@ -436,5 +442,7 @@
    미리보기까지 펼쳐졌을 때의 높이를 기준으로 236px였음). */
 .desktop-shell .toast-stack {
   right: 16px;
-  bottom: 60px;
+  /* todo/91 — 스캐너 위젯(≈bottom 16+44) 위이면서 언두바(bottom 72 + 높이 ≈58)도 넘긴다:
+     완료 토스트가 실행취소 버튼(5초 창)을 덮어 누르기를 방해하던 겹침 해소(프로브 캡처 실측). */
+  bottom: 142px;
 }

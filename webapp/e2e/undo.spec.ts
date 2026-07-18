@@ -40,6 +40,25 @@ test('대출 → 실행취소(5초 창) → 반대 트랜잭션(return) 완료·
   await expect(undoBar.getByRole('button', { name: /실행취소/ })).toHaveCount(1);
   await expect(undoBar.locator('button')).toHaveCount(1);
 
+  // todo/91 기하 계약 — 언두바는 좌측 도크·우하단 스캐너 위젯(z 상위 fixed 둘)과 겹치면 안 된다.
+  // todo/64의 bottom:72 픽스가 뷰 CSS 캐스케이드에 밀려 조용히 무력화됐던 회귀(computed 16px
+  // 실측)의 재발 방지: dispatchEvent로 클릭하는 이 스펙은 겹침을 못 느끼므로 rect로 직접 단정한다.
+  const geom = await page.evaluate(() => {
+    const rect = (sel: string) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    return { bar: rect('.lr-undo-bar'), dock: rect('.dock'), widget: rect('.scanner-dock') };
+  });
+  expect(geom.bar).not.toBeNull();
+  expect(geom.dock).not.toBeNull();
+  // ① 도크 비교차: 바의 왼쪽 끝이 도크 오른쪽 끝 이후에서 시작(문구 앞글자 깔림 방지)
+  expect(geom.bar!.left).toBeGreaterThanOrEqual(geom.dock!.right);
+  // ② 스캐너 위젯 비교차(위젯은 우하단 fixed): 바의 아래끝이 위젯 위끝보다 위
+  if (geom.widget) expect(geom.bar!.bottom).toBeLessThanOrEqual(geom.widget.top + 1);
+
   // dispatchEvent: 카운트다운(1s 틱) 재렌더로 Playwright 좌표 클릭이 안정성/적중에 흔들린다 —
   // 사람에겐 문제없는 클릭이므로 DOM 이벤트로 직접 발화. 아래 결과 3종 단정이 "옳은 대상을
   // 눌렀는지"를 증명하므로 가짜 통과를 만들 수 없다.
