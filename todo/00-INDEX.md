@@ -92,7 +92,7 @@
 - [x] 86 update-banner — 새 버전 감지 배너
 - [x] 87 skeleton-desktop-rows — 스켈레톤 데스크톱 표형 정합
 - [x] 88 i18n-en-pass — 영어 카피 품질 패스
-- [ ] 89 handoff-refresh — HANDOFF·문서 최신화
+- [x] 89 handoff-refresh — HANDOFF·문서 최신화
 - [ ] 90 schema-report-prep — 🅿 schemaReport 백엔드 준비 (배포는 사용자)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
