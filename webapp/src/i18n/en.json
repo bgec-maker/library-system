@@ -273,6 +273,8 @@
       "queryPlaceholder": "Search by title, author, or barcode — Korean initials work too (e.g. ㅊㅅㅈ)",
       "choseongHint": "You can search with Korean initial consonants alone — e.g. \"ㅊㅅㅈ\" matches 채식주의자",
       "filterAll": "All",
+      "activeFiltersLabel": "Active filters",
+      "filterChipRemove": "Remove {label} filter",
       "resetFilters": "Reset filters",
       "refineSearchPlaceholder": "Search within displayed results",
       "empty": "No matching results — try a different search term.",

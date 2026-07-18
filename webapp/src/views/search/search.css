@@ -70,3 +70,30 @@
   color: var(--ink-3);
   white-space: nowrap;
 }
+
+/* todo/70 — 활성 필터 칩(톤 배경, v2 표면 규칙). 터치 환경에선 44px 확보. */
+.search-active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.search-chip {
+  width: auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--deep-tint);
+  color: var(--deep);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.search-chip span {
+  margin-left: 2px;
+  font-weight: 400;
+}
+@media (pointer: coarse) {
+  .search-chip {
+    min-height: 44px;
+  }
+}

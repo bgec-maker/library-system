@@ -296,6 +296,43 @@ export default function SearchView({ shell }: ViewProps) {
           )}
         </div>
 
+        {/* todo/70 — 활성 필터 칩: 접힌 셀렉트 상태를 항상 보이게. "결과가 이상하게 적은" 순간의
+            원인(걸려 있는 필터)이 한 줄로 드러나고, X 한 번으로 개별 해제. */}
+        {(statusFilter || classificationFilter || shelfFilter) && (
+          <div className="search-active-chips" role="group" aria-label={t('views.search.activeFiltersLabel')}>
+            {statusFilter && (
+              <button
+                type="button"
+                className="search-chip"
+                aria-label={t('views.search.filterChipRemove', { label: `${t('views.catalog.col.status')} ${statusLabel(statusFilter)}` })}
+                onClick={() => setStatusFilter('')}
+              >
+                {t('views.catalog.col.status')}: {statusLabel(statusFilter)} <span aria-hidden>×</span>
+              </button>
+            )}
+            {classificationFilter && (
+              <button
+                type="button"
+                className="search-chip"
+                aria-label={t('views.search.filterChipRemove', { label: `${t('views.catalog.col.classification')} ${classificationFilter}` })}
+                onClick={() => setClassificationFilter('')}
+              >
+                {t('views.catalog.col.classification')}: {classificationFilter} <span aria-hidden>×</span>
+              </button>
+            )}
+            {shelfFilter && (
+              <button
+                type="button"
+                className="search-chip"
+                aria-label={t('views.search.filterChipRemove', { label: `${t('views.catalog.col.shelf')} ${shelfFilter}` })}
+                onClick={() => setShelfFilter('')}
+              >
+                {t('views.catalog.col.shelf')}: {shelfFilter} <span aria-hidden>×</span>
+              </button>
+            )}
+          </div>
+        )}
+
         <p className="search-hint">{t('views.search.choseongHint')}</p>
       </div>
 
