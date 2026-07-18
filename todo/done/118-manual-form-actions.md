@@ -11,3 +11,14 @@
 — ISBN 폼의 서명 필수도 동일 적용. e2e: 빈 저장→서명 입력 포커스·aria-invalid 단정.
 
 완료 조건: 재캡처(모바일 액션 블록), 전 게이트, e2e.
+
+---
+
+## 이행 노트 (완료)
+
+- 두 등록 폼 공통 .reg-formActions 블록: 저장 전폭 프라이머리 → 취소 고스트 전폭(셀렉트·버튼
+  인라인 한 줄 흐름 제거). 무ISBN 취소 라벨 → 「취소」(common.cancel), 스캔 경로는 기존 문구 유지.
+- 필수 미충족 시 markInvalid: 해당 입력 포커스 + scrollIntoView(center) + aria-invalid +
+  --fail 테두리(입력 시 해제) — 무ISBN 서명/저자 + ISBN 폼 서명 3곳.
+- e2e(register-pipeline 4번째): 빈 저장→서명 포커스·aria-invalid → 입력 시 해제 → 저자 지목,
+  취소 라벨 단정. 모바일 재캡처(/tmp/vis/118-after·invalid.png). 전 게이트 · 15 e2e 통과.

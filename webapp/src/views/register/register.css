@@ -488,3 +488,19 @@
 .reg-trayMeta summary:focus-visible {
   outline: 2px solid var(--brass);
 }
+
+/* todo/118 — 등록 폼 액션 블록(사용자 실기기 제보): 셀렉트·버튼이 인라인으로 한 줄에 흘러
+   저장(프라이머리)이 가장 작아지던 위계 역전 해소 — 저장 전폭 → 취소 고스트 전폭. */
+.reg-formActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.reg-formActions button {
+  width: 100%;
+}
+/* todo/118 — 필수 미충족 입력 표시(포커스·스크롤과 세트, aria-invalid 짝) */
+.reg-confirmForm .is-invalid {
+  border-color: var(--fail);
+}

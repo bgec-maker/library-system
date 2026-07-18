@@ -121,7 +121,7 @@
 - [x] 115 inventory-scan-e2e — 점검 스캔 집계 e2e 공백 + 목 Luhn 위반 (시각 감사 14R)
 - [x] 116 inventory-isbn-hint — 점검 중 ISBN 오스캔 침묵 (시각 감사 14R 후속)
 - [x] 117 settings-name-collision — 「설정」 이름 충돌 해소 (시각 감사 15R)
-- [ ] 118 manual-form-actions — 등록 폼 액션 위계·취소 문구·오류 포커스 (사용자 제보)
+- [x] 118 manual-form-actions — 등록 폼 액션 위계·취소 문구·오류 포커스 (사용자 제보)
 - [ ] 119 manual-form-fields — 무ISBN 폼 필드 구성 점검 (사용자 제보)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 

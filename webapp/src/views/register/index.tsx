@@ -528,6 +528,18 @@ export default function RegisterView({ shell }: ViewProps) {
 
   // 무ISBN 수동 등록(todo/16) — 위 lookup/form(ISBN 흐름 전용)과 분리된 자체 상태.
   const [manualForm, setManualForm] = useState<ManualFormState>(EMPTY_MANUAL_FORM);
+  // todo/118 — 필수 미충족 시 배너만으로는 긴 폼(모바일)에서 화면 밖 무반응처럼 보인다(사용자
+  // 실기기 제보): 해당 입력을 포커스+중앙 스크롤+aria-invalid로 직접 가리킨다. 입력 시 해제.
+  const [invalidField, setInvalidField] = useState<'mTitle' | 'mAuthors' | 'title' | null>(null);
+  const manualTitleRef = useRef<HTMLInputElement | null>(null);
+  const manualAuthorsRef = useRef<HTMLInputElement | null>(null);
+  const isbnTitleRef = useRef<HTMLInputElement | null>(null);
+
+  const markInvalid = useCallback((field: 'mTitle' | 'mAuthors' | 'title', ref: React.RefObject<HTMLInputElement | null>) => {
+    setInvalidField(field);
+    ref.current?.focus();
+    ref.current?.scrollIntoView({ block: 'center' });
+  }, []);
 
   const [errorBanner, setErrorBanner] = useState('');
   const [todayCount, setTodayCount] = useState<number>(readTodayCount);
@@ -609,6 +621,7 @@ export default function RegisterView({ shell }: ViewProps) {
     const title = form.title.trim();
     if (!title) {
       setErrorBanner(t('views.register.errorTitleRequired'));
+      markInvalid('title', isbnTitleRef); // todo/118
       return;
     }
     if (!operator) {
@@ -638,7 +651,7 @@ export default function RegisterView({ shell }: ViewProps) {
     setDupVisible(false);
     setForm(EMPTY_FORM);
     setScreen('scan');
-  }, [lookup, form, operator]);
+  }, [lookup, form, operator, markInvalid]);
 
   // 무ISBN 수동 등록(todo/16) 저장 — 사이드바 titleForm과 같은 서버 로직(registerTitle_)을
   // 그대로 쓰되, 이 폼은 서명·저자만 필수(handleSave의 title-only 필수 검증과 다르다 — ISBN
@@ -648,10 +661,12 @@ export default function RegisterView({ shell }: ViewProps) {
     const authors = manualForm.authors.trim();
     if (!title) {
       setErrorBanner(t('views.register.errorTitleRequired'));
+      markInvalid('mTitle', manualTitleRef);
       return;
     }
     if (!authors) {
       setErrorBanner(t('views.register.errorAuthorsRequired'));
+      markInvalid('mAuthors', manualAuthorsRef);
       return;
     }
     if (!operator) {
@@ -677,7 +692,7 @@ export default function RegisterView({ shell }: ViewProps) {
     setErrorBanner('');
     setManualForm(EMPTY_MANUAL_FORM);
     setScreen('scan');
-  }, [manualForm, operator]);
+  }, [manualForm, operator, markInvalid]);
 
   const retryFailed = useCallback((entry: RegisterFailedEntry) => {
     // 재시도는 항상 같은 requestId — 서버 멱등(requestId)이 중복 저장을 흡수한다.
@@ -824,15 +839,27 @@ export default function RegisterView({ shell }: ViewProps) {
             <label htmlFor="regMTitle">{t('views.register.labelTitle')}</label>
             <input
               id="regMTitle"
+              ref={manualTitleRef}
+              aria-invalid={invalidField === 'mTitle' || undefined}
+              className={invalidField === 'mTitle' ? 'is-invalid' : undefined}
               value={manualForm.title}
-              onChange={(e) => setManualForm((f) => ({ ...f, title: e.target.value }))}
+              onChange={(e) => {
+                if (invalidField === 'mTitle') setInvalidField(null);
+                setManualForm((f) => ({ ...f, title: e.target.value }));
+              }}
             />
 
             <label htmlFor="regMAuthors">{t('views.register.labelAuthorsRequired')}</label>
             <input
               id="regMAuthors"
+              ref={manualAuthorsRef}
+              aria-invalid={invalidField === 'mAuthors' || undefined}
+              className={invalidField === 'mAuthors' ? 'is-invalid' : undefined}
               value={manualForm.authors}
-              onChange={(e) => setManualForm((f) => ({ ...f, authors: e.target.value }))}
+              onChange={(e) => {
+                if (invalidField === 'mAuthors') setInvalidField(null);
+                setManualForm((f) => ({ ...f, authors: e.target.value }));
+              }}
             />
 
             <label htmlFor="regMSubtitle">{t('views.register.labelSubtitle')}</label>
@@ -887,12 +914,17 @@ export default function RegisterView({ shell }: ViewProps) {
               <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
             </select>
 
-            <button type="button" onClick={handleManualSave}>
-              {t('common.save')}
-            </button>
-            <button type="button" className="ghost" onClick={handleManualCancel}>
-              {t('views.register.cancelAndRescan')}
-            </button>
+            {/* todo/118 — 액션 블록: 저장 전폭 프라이머리 → 취소 고스트(위계 복원 — 사용자
+                실기기 제보: 셀렉트·버튼이 한 줄에 흘러 저장이 가장 작았다). 이 폼은 스캔 없이
+                들어오므로 취소 문구도 「취소」(스캔 경로 문구 공유 오류 해소). */}
+            <div className="reg-formActions">
+              <button type="button" onClick={handleManualSave}>
+                {t('common.save')}
+              </button>
+              <button type="button" className="ghost" onClick={handleManualCancel}>
+                {t('common.cancel')}
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -934,7 +966,17 @@ export default function RegisterView({ shell }: ViewProps) {
               </div>
 
               <label htmlFor="regTitle">{t('views.register.labelTitle')}</label>
-              <input id="regTitle" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+              <input
+                id="regTitle"
+                ref={isbnTitleRef}
+                aria-invalid={invalidField === 'title' || undefined}
+                className={invalidField === 'title' ? 'is-invalid' : undefined}
+                value={form.title}
+                onChange={(e) => {
+                  if (invalidField === 'title') setInvalidField(null);
+                  setForm((f) => ({ ...f, title: e.target.value }));
+                }}
+              />
 
               <label htmlFor="regSubtitle">{t('views.register.labelSubtitle')}</label>
               <input id="regSubtitle" value={form.subtitle} onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))} />
@@ -997,12 +1039,16 @@ export default function RegisterView({ shell }: ViewProps) {
                 <option value="DAMAGED">{t('views.register.conditionDamaged')}</option>
               </select>
 
-              <button type="button" onClick={handleSave}>
-                {t('common.save')}
-              </button>
-              <button type="button" className="ghost" onClick={handleCancel}>
-                {t('views.register.cancelAndRescan')}
-              </button>
+              {/* todo/118 — 액션 블록(무ISBN 폼과 동일 위계). 이 폼은 스캔 경로라 취소
+                  문구는 「취소하고 다시 스캔」 유지. */}
+              <div className="reg-formActions">
+                <button type="button" onClick={handleSave}>
+                  {t('common.save')}
+                </button>
+                <button type="button" className="ghost" onClick={handleCancel}>
+                  {t('views.register.cancelAndRescan')}
+                </button>
+              </div>
             </div>
           )}
         </section>
