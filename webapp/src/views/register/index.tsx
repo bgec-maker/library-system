@@ -238,7 +238,10 @@ const FAIL_REASON_LABELS: Record<string, () => string> = {
   DUPLICATE_REQUEST: () => t('views.register.failReasonDuplicate')
 };
 
-function failReasonLabel(reason: string): string {
+function failReasonLabel(reason: string, lastErrorCode?: string): string {
+  // todo/110 — 코드 우선: 큐의 reason은 메시지 원문(예: "Failed to fetch")이라 머리 파싱이
+  // 빗나가 영어가 그대로 노출됐다(시각 감사 실측). lastErrorCode(todo/60부터 보존)가 정답 키.
+  if (lastErrorCode && FAIL_REASON_LABELS[lastErrorCode]) return FAIL_REASON_LABELS[lastErrorCode]();
   const head = reason.split(':')[0]?.trim();
   const hit = head ? FAIL_REASON_LABELS[head] : undefined;
   return hit ? hit() : reason;
@@ -251,8 +254,8 @@ function FailedList({ entries, onRetry }: { entries: RegisterFailedEntry[]; onRe
       <h2>{t('views.register.failedListHeading')}</h2>
       {entries.map((entry) => (
         <div className="reg-failRow" key={entry.requestId}>
-          <span>
-            {entry.title || entry.isbn} — {failReasonLabel(entry.reason)}
+          <span title={entry.reason}>
+            {entry.title || entry.isbn} — {failReasonLabel(entry.reason, entry.lastErrorCode)}
           </span>
           <button type="button" onClick={() => onRetry(entry)}>
             {t('common.retry')}
