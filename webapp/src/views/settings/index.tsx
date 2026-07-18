@@ -231,7 +231,8 @@ export default function SettingsView({ shell }: ViewProps) {
             <span className={`settings-issue-severity${INTEGRITY_HIGH.has(row.code) ? ' is-high' : ''}`}>
               {INTEGRITY_HIGH.has(row.code) ? t('views.settings.issueSeverityHigh') : t('views.settings.issueSeverityWarn')}
             </span>
-            {issueLabel(row.code)}
+            {/* todo/111 — 라벨을 요소로 감싸 nowrap 대상이 되게(텍스트 노드는 CSS가 못 잡는다) */}
+            <span>{issueLabel(row.code)}</span>
           </span>
         )
       },

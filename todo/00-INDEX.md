@@ -114,6 +114,7 @@
 - [x] 108 snap-offset — 창 스냅 좌표 이중 오프셋 실결함 (시각 감사 8R)
 - [x] 109 student-desktop-align — 학생 페이지 데스크톱 폭 정렬 (시각 감사 9R)
 - [x] 110 fail-reason-code-first — 실패 사유 영어 원문 노출 (시각 감사 10R)
+- [x] 111 issue-code-cell-wrap — 무결성 코드 칸 라벨 세로 낱자 붕괴 (시각 감사 11R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

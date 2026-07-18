@@ -128,9 +128,17 @@
 
 /* todo/77 — 무결성 문제 라벨(심각도 뱃지 + 사람 말 제목)·권장 조치·0건 안심 문구 */
 .settings-issue-label {
+  /* todo/111 — 배지+라벨 인라인 한 줄은 좁은 칸에서 라벨이 한 글자씩 세로로 무너졌다(실측).
+     배지 위·라벨 아래 세로 스택 + 라벨 통짜(nowrap)로 칸 폭과 무관하게 붕괴 불가 구조. */
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.settings-issue-label > :last-child {
+  white-space: nowrap;
+  word-break: keep-all;
+  font-weight: 600;
 }
 .settings-issue-severity {
   flex: none;
