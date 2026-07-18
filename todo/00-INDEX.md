@@ -105,6 +105,7 @@
 - [x] 99 table-action-nowrap — 표 셀 행동 버튼 세로 낱자 꺾임 (시각 감사 4R)
 - [x] 100 detail-mountedref-strictmode — 도서 상세 StrictMode 영구 로딩 실결함 (시각 감사 5R)
 - [x] 101 e2e-report-mock-types — e2e 리포트 목의 형 무차별 응답 교정 (시각 감사 6R)
+- [x] 102 report-name-date-nowrap — 리포트 표 이름·날짜 꺾임 (시각 감사 6R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

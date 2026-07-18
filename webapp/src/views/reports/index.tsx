@@ -282,6 +282,7 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
         key: 'memberName',
         header: t('views.reports.unpaidFines.colMember'),
         sortable: true,
+        nowrap: true, // todo/102 — 이름 통짜
         render: (row) => row.memberName || row.memberNo,
         mobilePrimary: true
       },
@@ -487,9 +488,10 @@ const homeroomLoanStatusColumns: DataTableColumn<HomeroomLoanStatusRow>[] = [
 ];
 
 const homeroomOverdueColumns: DataTableColumn<HomeroomOverdueRow>[] = [
-  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, mobilePrimary: true },
+  // todo/102 — 이름·날짜는 통짜("박지/호"·"2026-06-/20" 꺾임 실측 방지, todo/95 계약).
+  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, nowrap: true, mobilePrimary: true },
   { key: 'title', header: t('views.reports.homeroom.colBookTitle'), sortable: true, mobileSecondary: true },
-  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true },
+  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true, nowrap: true },
   {
     key: 'overdueDays',
     header: t('views.reports.homeroom.colOverdueDays'),
@@ -923,9 +925,10 @@ const recallNoticeColumns: DataTableColumn<RecallNoticeFlatRow>[] = [
   { key: 'grade', header: t('views.reports.homeroom.gradeLabel'), sortable: true, numeric: true },
   { key: 'classNo', header: t('views.reports.homeroom.classNoLabel'), sortable: true, numeric: true },
   { key: 'studentNo', header: t('views.reports.homeroom.colSeat'), sortable: true, numeric: true, mono: true },
-  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, mobilePrimary: true },
+  // todo/102 — 이름·날짜는 통짜("박지/호"·"2026-06-/20" 꺾임 실측 방지, todo/95 계약).
+  { key: 'name', header: t('views.reports.homeroom.colName'), sortable: true, nowrap: true, mobilePrimary: true },
   { key: 'title', header: t('views.reports.homeroom.colBookTitle'), sortable: true, mobileSecondary: true },
-  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true },
+  { key: 'dueAtText', header: t('views.reports.homeroom.colDueDate'), sortable: true, mono: true, nowrap: true },
   {
     key: 'overdueDays',
     header: t('views.reports.homeroom.colOverdueDays'),
