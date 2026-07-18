@@ -849,6 +849,13 @@ export default function RegisterView({ shell }: ViewProps) {
               }}
             />
 
+            <label htmlFor="regMSubtitle">{t('views.register.labelSubtitle')}</label>
+            <input
+              id="regMSubtitle"
+              value={manualForm.subtitle}
+              onChange={(e) => setManualForm((f) => ({ ...f, subtitle: e.target.value }))}
+            />
+
             <label htmlFor="regMAuthors">{t('views.register.labelAuthorsRequired')}</label>
             <input
               id="regMAuthors"
@@ -860,13 +867,6 @@ export default function RegisterView({ shell }: ViewProps) {
                 if (invalidField === 'mAuthors') setInvalidField(null);
                 setManualForm((f) => ({ ...f, authors: e.target.value }));
               }}
-            />
-
-            <label htmlFor="regMSubtitle">{t('views.register.labelSubtitle')}</label>
-            <input
-              id="regMSubtitle"
-              value={manualForm.subtitle}
-              onChange={(e) => setManualForm((f) => ({ ...f, subtitle: e.target.value }))}
             />
 
             <div className="reg-row2">
@@ -892,6 +892,7 @@ export default function RegisterView({ shell }: ViewProps) {
             <label htmlFor="regMCategory">{t('views.register.labelCategoryCodes')}</label>
             <input
               id="regMCategory"
+              placeholder={t('views.register.categoryPlaceholder')}
               value={manualForm.categoryCodes}
               onChange={(e) => setManualForm((f) => ({ ...f, categoryCodes: e.target.value }))}
             />

@@ -290,6 +290,7 @@
       "manualFormHeading": "Register a title without ISBN",
       "labelAuthorsRequired": "Authors * (comma-separated)",
       "labelCategoryCodes": "Category codes (comma-separated, optional)",
+      "categoryPlaceholder": "e.g. 800, 813",
       "labelDescription": "Description",
       "bulkHeading": "Issue additional copies",
       "bulkCountLabel": "How many more of this book? (1–50)",

@@ -290,6 +290,7 @@
       "manualFormHeading": "ISBN 없이 서지 등록",
       "labelAuthorsRequired": "저자 * (쉼표로 구분)",
       "labelCategoryCodes": "분류 코드 (쉼표로 구분, 선택)",
+      "categoryPlaceholder": "예: 800, 813",
       "labelDescription": "설명",
       "bulkHeading": "복본 추가 발급",
       "bulkCountLabel": "이 책 몇 권 더? (1~50)",

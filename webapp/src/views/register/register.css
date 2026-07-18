@@ -504,3 +504,10 @@
 .reg-confirmForm .is-invalid {
   border-color: var(--fail);
 }
+
+/* todo/119 — 단일 열 입력·설명은 전폭(모바일 폼 관례 — 기본 auto 폭이 어중간하게 떠 보였다).
+   reg-row2(2열)는 flex:1이 이미 폭을 관리하므로 영향 없음(width:100%는 칸 안에서도 무해). */
+.reg-confirmForm input,
+.reg-confirmForm textarea {
+  width: 100%;
+}
