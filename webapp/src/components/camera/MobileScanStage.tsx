@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Flashlight, FlashlightOff, Pin, PinOff, X } from 'lucide-react';
 import { cameraService, type CameraStatus } from '../../services/camera';
 import { cameraSession, type CameraSessionStatus } from '../../services/cameraSession';
@@ -160,7 +161,11 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
   const remainingSec = session.idleDeadlineAt !== null ? Math.max(0, Math.ceil((session.idleDeadlineAt - now) / 1000)) : null;
   const showCountdown = remainingSec !== null && remainingSec <= COUNTDOWN_VISIBLE_SEC;
 
-  return (
+  // todo/46(현장 제보 4): 이 무대는 fixed 풀스크린 오버레이인데, 뷰 트리(.m-shell-main —
+  // -webkit-overflow-scrolling:touch 스크롤 컨테이너) 안에 마운트되면 iOS WebKit이 fixed를
+  // 컨테이너에 가둬 헤더 아래에서 시작하고 탭바가 컨트롤을 덮는다. body 포털로 마운트해
+  // 어떤 조상 스택/스크롤 컨텍스트에도 갇히지 않게 한다(React 트리·구독은 그대로).
+  return createPortal(
     <div className="scan-stage" ref={containerRef}>
       <video ref={attachVideoRef} className="scan-stage__video" autoPlay muted playsInline />
 
@@ -218,6 +223,7 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
           <X size={22} aria-hidden />
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

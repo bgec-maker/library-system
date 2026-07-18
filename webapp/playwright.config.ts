@@ -19,6 +19,11 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   use: {
+    // todo/46 — 카메라 UI 스펙용 가짜 미디어 장치(권한 프롬프트 없음 + 합성 스트림).
+    // 실제 카메라·디코더 동작과 무관하게 "무대가 뜨는가/어디에 뜨는가"만 검증한다.
+    launchOptions: {
+      args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream']
+    },
     baseURL: 'http://localhost:5173/library-system/app/',
     trace: 'retain-on-failure',
     // i18n/index.ts의 감지 순서(localStorage → navigator.language → 'ko') — Playwright
