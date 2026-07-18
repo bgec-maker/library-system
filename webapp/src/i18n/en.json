@@ -71,7 +71,7 @@
       "donorThanks": "Donor thank-you letters"
     },
     "overdueTop": {
-      "title": "Top overdue",
+      "title": "Longest overdue",
       "empty": "No overdue or due-today items.",
       "overdueDays": "{days}d overdue",
       "dueTodayLabel": "Due today"
@@ -79,7 +79,7 @@
     "recentOps": {
       "title": "Recent activity",
       "hint": "See recent checkouts and returns in the Recent Activity view.",
-      "openButton": "Open recent activity"
+      "openButton": "Open Recent Activity"
     },
     "readyPickup": {
       "title": "Ready for pickup",
@@ -87,7 +87,7 @@
     },
     "manualEntryPending": {
       "label": "{count} manual entries pending",
-      "hint": "Loan/return rows hand-typed into 22_MANUAL_ENTRY while GAS was down, not yet absorbed"
+      "hint": "Checkout/return rows hand-typed into 22_MANUAL_ENTRY during a GAS outage, not yet absorbed"
     },
     "lastBackup": {
       "label": "Last backup",
@@ -108,14 +108,14 @@
     "start": "Start camera",
     "stop": "Stop camera",
     "continuousMode": "Continuous mode",
-    "continuousModeHint": "Keeps running without the idle auto-stop — for busy periods like lunch rush.",
+    "continuousModeHint": "Keeps running without the idle auto-stop — for busy periods like the lunch rush.",
     "idleWarning": "Scanner turns off in 10 seconds.",
     "offHint": "The camera only turns on when you need it.",
     "stage": {
       "scanningTo": "Scanning → {target}",
       "autoStopIn": "Auto-stop in {seconds}s",
       "torch": "Flashlight",
-      "missHint": "Not scanning? Bring the barcode closer and add light",
+      "missHint": "Not scanning? Move the barcode closer and into brighter light",
       "announceBook": "Barcode {barcode} recognized",
       "announceStudent": "Student card recognized",
       "announceIsbn": "ISBN {isbn} recognized"
@@ -169,7 +169,7 @@
       "pageSizeLabel": "Rows per page",
       "prevPage": "Previous page",
       "nextPage": "Next page",
-      "pageStatus": "Page {page} of {totalPages} ({total} total)"
+      "pageStatus": "Page {page} of {totalPages} ({total} items)"
     },
     "viewErrorBoundary": {
       "message": "This screen ran into an error.",
@@ -179,7 +179,7 @@
   },
   "views": {
     "loanReturn": {
-      "hint": "Scan a book to automatically checkout or return it",
+      "hint": "Scan a book — checkout or return is detected automatically",
       "modeCheckout": "Checkout",
       "modeReturn": "Return",
       "modeStatus": "Status lookup",
@@ -192,7 +192,7 @@
       "returnDone": "Returned — {title}",
       "returnDoneWithMember": "Returned — {title} ({member})",
       "cannotCheckout": "This book can't be checked out — {title} ({status})",
-      "isbnHint": "ISBN scans are handled in the Register view.",
+      "isbnHint": "ISBN scans are handled in the Register Book view.",
       "manualUnknownFormat": "Unrecognized format (7-digit copy barcode or S:studentCode).",
       "undoDone": "Undo complete",
       "undoFailed": "Undo failed — {message}",
@@ -243,8 +243,8 @@
       "diagCopyFailure": "Failed to copy to clipboard.",
       "failedListHeading": "Failed — needs retry",
       "failReasonNetwork": "Couldn't reach the server — check the network and retry",
-      "failReasonTimeout": "Stopped after waiting too long — retrying picks up safely",
-      "failReasonBusy": "The server stayed busy — retry in a moment",
+      "failReasonTimeout": "Timed out waiting for the server — it's safe to retry",
+      "failReasonBusy": "The server was busy — try again in a moment",
       "failReasonDuplicate": "This request was already received — retry to confirm the result",
       "scanHint": "Once the camera is on, scan an ISBN (EAN-13) barcode.",
       "manualEntryButton": "Manual entry",
@@ -253,7 +253,7 @@
       "lookupInProgress": "Looking up bibliographic data…",
       "dupBannerTitle": "This book is already in the catalog: {title}",
       "dupBannerQuestion": "Add as another copy?",
-      "addAsDuplicate": "Add as copy",
+      "addAsDuplicate": "Add a copy",
       "editAndRegister": "Edit details and register",
       "labelTitle": "Title *",
       "labelSubtitle": "Subtitle",
@@ -278,10 +278,10 @@
       "trayQueued": "Waiting",
       "trayRetryWait": "Retrying soon (attempt {attempt} failed)",
       "trayMetaSummary": "Reference IDs (title · request)",
-      "trayIdempotentNote": "An earlier attempt already completed this request — check Recent Ops for the barcode.",
+      "trayIdempotentNote": "An earlier attempt already completed this request — check Recent Activity for the barcode.",
       "errorLookupFailed": "Lookup failed",
       "errorInvalidIsbn": "Not a valid ISBN-13 (13 digits starting with 978/979, including check digit).",
-      "errorSaveFailed": "Save failed — {reason} (try again or retry from the failed list)",
+      "errorSaveFailed": "Save failed — {reason} (retry now or from the failed list)",
       "errorTitleRequired": "Title is required.",
       "errorAuthorsRequired": "Authors are required.",
       "errorNoOperator": "No operator info — enter your login details in Settings.",
@@ -297,7 +297,7 @@
       "bulkPartialError": "Stopped after {done}/{total} — {reason}",
       "bulkRetryRemaining": "Retry remaining {remaining}",
       "bulkIssuedHeading": "Issued barcodes ({count})",
-      "bulkPencilHint": "Copy each number onto its book in pencil"
+      "bulkPencilHint": "Write each number inside its book in pencil"
     },
     "search": {
       "queryPlaceholder": "Search by title, author, or barcode — Korean initials work too (e.g. ㅊㅅㅈ)",
@@ -353,7 +353,7 @@
       "syncing": "Syncing… {count}/{total}"
     },
     "bookDetail": {
-      "invalidQuery": "No book to show — pick one from the catalog or open a registration number link.",
+      "invalidQuery": "No book to show — pick one from the catalog or open a barcode link.",
       "sectionCopies": "Copies",
       "sectionReservations": "Reservations",
       "sectionHistory": "Recent history",
@@ -419,7 +419,7 @@
     "recentOps": {
       "refresh": "Refresh",
       "empty": "No recent activity.",
-      "emptyAction": "Open Checkout·Return",
+      "emptyAction": "Open Checkout / Return",
       "searchPlaceholder": "Search by action, summary, or staff",
       "col": {
         "occurredAt": "Time",
@@ -502,7 +502,7 @@
       },
       "recall": {
         "title": "Recall notices",
-        "subtitle": "Groups all currently overdue loans by homeroom class into perforated slips for printing.",
+        "subtitle": "Groups all currently overdue loans by homeroom class and prints them as cut-apart slips.",
         "asOfDateLine": "{count} overdue as of {date}",
         "classHeading": "Grade {grade}, Class {classNo} · {count}",
         "overdueLine": "Due {date} · {days}d overdue",
@@ -584,7 +584,7 @@
       "actionArrival": "Check out",
       "cancelDone": "Cancelled the reservation for {title}.",
       "cancelFailed": "Failed to cancel reservation — {message}",
-      "arrivalHint": "In Checkout/Return, scan barcode {barcode} · member {member}."
+      "arrivalHint": "In Checkout / Return, scan barcode {barcode} for {member}."
     },
     "settings": {
       "readonlyNote": "This screen is view-only. To change a value, edit the sheet named in each section title directly in the spreadsheet. The default loan policy can also be changed from the spreadsheet sidebar's \"Admin\" tab (\"Change default loan policy\").",
@@ -645,8 +645,8 @@
       "triggerInstalled": "Installed",
       "triggerNotInstalled": "Not installed",
       "triggerName": {
-        "dailyLibraryMaintenance": "Daily maintenance (04:00 daily)",
-        "dailyVizBatch": "Viz cache batch (05:00 daily)"
+        "dailyLibraryMaintenance": "Daily maintenance (04:00)",
+        "dailyVizBatch": "Viz cache batch (05:00)"
       },
       "actionsTitle": "Actions",
       "integrityTitle": "Integrity check",
@@ -694,7 +694,7 @@
         },
         "COPY_STATUS_MISMATCH": {
           "label": "Loan status mismatch",
-          "hint": "Loan records disagree with the copy status — scan the book in Checkout/Return."
+          "hint": "Loan records disagree with the copy status — scan the book in Checkout / Return."
         },
         "READY_STATUS_MISMATCH": {
           "label": "Hold status mismatch",
@@ -711,7 +711,7 @@
       },
       "enrichTitle": "Bibliographic enrichment",
       "enrichRun": "Run enrichment",
-      "enrichHint": "Looks up missing bibliographic details (cover, page count, etc.) via the Aladin API (the max items processed per run follows the server setting).",
+      "enrichHint": "Looks up missing bibliographic details (cover, page count, etc.) via the Aladin API — items per run are capped by the server setting.",
       "enrichDone": "Enrichment complete — {enriched} newly enriched · {remaining} still blank",
       "enrichFailed": "Enrichment failed — {message}",
       "buildLine": "Build {id}",
@@ -777,7 +777,7 @@
     },
     "loanTimeOfDay": {
       "title": "Daily wave",
-      "subtitle": "Loans by hour of day over the last 90 days — the lunch peak, a basis for station and helper staffing",
+      "subtitle": "Loans by hour of day over the last 90 days — the lunch peak, and when the desk needs helpers",
       "hourSuffix": ":00",
       "legendPeak": "Busiest hour",
       "colHour": "Hour",
@@ -806,7 +806,7 @@
       "legendHigh": "High",
       "colClass": "Class",
       "colStudentCount": "Enrolled",
-      "colNoLoanCount": "No-loan count",
+      "colNoLoanCount": "No loans",
       "colParticipationRatio": "Participation",
       "tableCaption": "Loan participation by class",
       "empty": "No classes to show."
@@ -821,7 +821,7 @@
     },
     "shelfHeatmap": {
       "title": "Shelf temperature",
-      "subtitle": "Average loans per copy by shelf — a basis for reshelving, finding dead zones",
+      "subtitle": "Average loans per copy by shelf — grounds for reshelving and finding dead zones",
       "legendLow": "Cold",
       "legendHigh": "Hot",
       "colShelf": "Shelf",
@@ -835,7 +835,7 @@
     },
     "collectionAge": {
       "title": "Collection age",
-      "subtitle": "Status breakdown by acquisition year — the scale of aged and uninspected stock",
+      "subtitle": "Status breakdown by acquisition year — how much aged, unchecked stock we hold",
       "status": {
         "AVAILABLE": "Available",
         "ON_LOAN": "On loan",
@@ -849,7 +849,7 @@
       "tableCaption": "Status breakdown by acquisition year",
       "empty": "No collection data to show.",
       "actionButton": "Open dead-stock / purchase report",
-      "staleLine": "{count} circulating copies among these haven't been inventory-checked in {days}+ days",
+      "staleLine": "Of these, {count} circulating copies haven't been inventory-checked in {days}+ days",
       "skippedLine": "Excludes {count} copies with no acquisition date"
     },
     "gradeReadingGap": {
@@ -870,7 +870,7 @@
       "colTotal": "Total",
       "tableCaption": "Acquisition cost by year and source",
       "empty": "No budget data to show.",
-      "skippedLine": "Excludes {source} copies with no acquisition source and {date} with no acquisition date"
+      "skippedLine": "Excludes {source} copies with no acquisition source and {date} copies with no acquisition date"
     }
   },
   "student": {
