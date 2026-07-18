@@ -168,12 +168,12 @@ export async function installApiMock(page: Page): Promise<void> {
         return;
       }
       case 'report': {
-        // todo/101 — 이 목은 type을 인식한다: noLoanFinder만 실데이터 모양으로 응답하고,
-        // 나머지 type(homeroom·weeding·recall·donor·annualOperations)은 UNKNOWN_ACTION을
+        // todo/101 — 이 목은 type을 인식한다: 'no-loan-finder'(와이어 표기는 케밥 — 아래
+        // 후속 수정 참고)만 실데이터 모양으로 응답하고, 나머지 type은 UNKNOWN_ACTION을
         // 돌려줘 각 패널이 자기 샘플 목(src/mocks/reports.ts)으로 폴백해 렌더되게 한다.
         // (교정 전엔 type 무관하게 미대출 모양만 줘서 담임 리포트 미리보기가 오류 경계로
         // 떨어졌다 — 시각 감사 3R 증빙. 실환경 계약(UNKNOWN_ACTION→샘플)과도 이쪽이 일치.)
-        if (payload.type !== 'noLoanFinder') {
+        if (payload.type !== 'no-loan-finder') {
           await route.fulfill(jsonResponse(fail('UNKNOWN_ACTION', `e2e mock: report type "${String(payload.type ?? '(none)')}" not stubbed`)));
           return;
         }
