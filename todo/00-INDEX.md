@@ -56,6 +56,12 @@
 - [x] 50 dock-redesign — 좌측 도크 그룹·호버 라벨·활성 표시
 - [x] 51 dock-visual — 도크 시각 완성도(글리프 상태·브랜드 마크·로케일 경량화)
 - [x] 52 mobile-polish — 모바일 전면 점검 이행(카메라 variant·카드 밀도·내부어 카피)
+- [x] 53 tab-badge — 등록 탭 실패 배지 + 실패 사유 사람 말로 (레퍼런스 점검 2-1)
+- [x] 54 empty-pathways — 빈 상태 다음 행동 버튼 (레퍼런스 점검 2-2)
+- [x] 55 touch-target-pass — 터치 타깃 44px 전수 보정 (레퍼런스 점검 2-3)
+- [ ] 56 press-states — 프레스 피드백 통일 (대기업 감각 1)
+- [ ] 57 motion-pass — 등장 모션 방향 사전 이행 (대기업 감각 2)
+- [ ] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
