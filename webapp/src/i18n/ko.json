@@ -515,12 +515,12 @@
         "colAmount": "부과액",
         "colAssessedAt": "부과일시",
         "empty": "미변상 항목이 없습니다."
+      },
+      "vizInsights": {
+        "cardLabel": "장서 시각화",
+        "title": "장서 시각화",
+        "subtitle": "장서 vs 대출 트리맵 · 회전율 사분면 — todo/06"
       }
-    },
-    "vizInsights": {
-      "cardLabel": "장서 시각화",
-      "title": "장서 시각화",
-      "subtitle": "장서 vs 대출 트리맵 · 회전율 사분면 — todo/06"
     },
     "reservations": {
       "refresh": "새로고침",

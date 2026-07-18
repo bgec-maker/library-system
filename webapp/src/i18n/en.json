@@ -515,12 +515,12 @@
         "colAmount": "Assessed amount",
         "colAssessedAt": "Assessed",
         "empty": "No unpaid replacement fines."
+      },
+      "vizInsights": {
+        "cardLabel": "Collection insights",
+        "title": "Collection insights",
+        "subtitle": "Collection vs. loans treemap · turnover quadrant — todo/06"
       }
-    },
-    "vizInsights": {
-      "cardLabel": "Collection insights",
-      "title": "Collection insights",
-      "subtitle": "Collection vs. loans treemap · turnover quadrant — todo/06"
     },
     "reservations": {
       "refresh": "Refresh",
