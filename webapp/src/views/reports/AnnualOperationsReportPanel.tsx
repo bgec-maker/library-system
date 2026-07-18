@@ -98,6 +98,7 @@ export function AnnualOperationsReportPanel({ shell }: AnnualOperationsReportPan
               <input
                 id="annual-ops-year"
                 type="number"
+                inputMode="numeric"
                 min={2000}
                 max={2100}
                 value={year}

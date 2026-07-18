@@ -8,3 +8,12 @@
 첫 빈 필드 autoFocus. smoke 게이트 스텝에 Enter 제출 단정 추가.
 
 완료 조건: e2e, 전 게이트.
+
+---
+
+## 이행 노트 (완료)
+
+- Enter 제출(세 입력 공통, canSave 단일 판정) + enterKeyHint="go" + 초기 설정 모드 첫 필드
+  autoFocus + 라벨 필수 표시 * 3개.
+- smoke 게이트 스텝을 Enter 제출로 교체(버튼 활성 확인은 유지) — 폼 표준 상주 단정.
+- 전 게이트 · 15 e2e 통과.

@@ -38,11 +38,18 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   useFocusTrap(showOverlay, cardRef, complete ? closeSessionSettings : undefined);
 
   const urlInvalid = draft.apiUrl.length > 0 && !isLikelyWebAppUrl(draft.apiUrl);
+  const canSave = isLikelyWebAppUrl(draft.apiUrl) && Boolean(draft.token) && Boolean(draft.operator);
 
   function save() {
-    if (!isLikelyWebAppUrl(draft.apiUrl) || !draft.token || !draft.operator) return;
+    if (!canSave) return;
     session.setConfig(draft);
     closeSessionSettings();
+  }
+
+  // todo/120 — 폼 표준: 어느 입력에서든 Enter로 제출(데스크톱에서 마지막 필드 후 마우스 강제
+  // 이동 제거). 미충족 상태의 Enter는 조용히 무시(버튼 비활성과 같은 판정 — canSave 단일 원천).
+  function onEnterSubmit(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') save();
   }
 
   return (
@@ -57,7 +64,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
             <p className="session-gate-sub">
               GAS Web App URL·공유 토큰·작업자 이름을 입력하세요. 이 기기에만 저장됩니다(localStorage).
             </p>
-            <label htmlFor="sg-url">GAS Web App URL</label>
+            <label htmlFor="sg-url">GAS Web App URL *</label>
             <input
               id="sg-url"
               type="url"
@@ -65,6 +72,9 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
               placeholder="https://script.google.com/macros/s/.../exec"
               aria-invalid={urlInvalid || undefined}
               aria-describedby={urlInvalid ? 'sg-url-hint' : undefined}
+              enterKeyHint="go"
+              autoFocus={!complete && !draft.apiUrl}
+              onKeyDown={onEnterSubmit}
               onChange={(e) => setDraft((d) => ({ ...d, apiUrl: e.target.value }))}
             />
             {urlInvalid && (
@@ -72,23 +82,27 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
                 https://로 시작하는 웹앱 URL이어야 해요 — 예: https://script.google.com/macros/s/…/exec
               </p>
             )}
-            <label htmlFor="sg-token">공유 토큰</label>
+            <label htmlFor="sg-token">공유 토큰 *</label>
             <input
               id="sg-token"
               type="text"
               value={draft.token}
               placeholder="사서 선생님께 받은 공유 토큰"
+              enterKeyHint="go"
+              onKeyDown={onEnterSubmit}
               onChange={(e) => setDraft((d) => ({ ...d, token: e.target.value }))}
             />
-            <label htmlFor="sg-operator">작업자 이름</label>
+            <label htmlFor="sg-operator">작업자 이름 *</label>
             <input
               id="sg-operator"
               type="text"
               value={draft.operator}
               placeholder="예: 홍길동"
+              enterKeyHint="go"
+              onKeyDown={onEnterSubmit}
               onChange={(e) => setDraft((d) => ({ ...d, operator: e.target.value }))}
             />
-            <button type="button" onClick={save} disabled={!isLikelyWebAppUrl(draft.apiUrl) || !draft.token || !draft.operator}>
+            <button type="button" onClick={save} disabled={!canSave}>
               {complete ? '저장' : '저장하고 시작'}
             </button>
             {complete && (

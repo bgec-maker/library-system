@@ -30,7 +30,8 @@ test('세션게이트 → 대출·반납 → 등록 → catalog 정렬 → 언�
 
     const saveBtn = page.getByRole('button', { name: '저장하고 시작' });
     await expect(saveBtn).toBeEnabled();
-    await saveBtn.click();
+    // todo/120 — 폼 표준: 마지막 필드에서 Enter로도 제출된다(버튼과 같은 canSave 판정).
+    await page.locator('#sg-operator').press('Enter');
 
     await expect(page.locator('.session-gate-overlay')).toHaveCount(0);
     await expect(page.locator('.dock')).toBeVisible();

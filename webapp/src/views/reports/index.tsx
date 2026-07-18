@@ -556,6 +556,7 @@ function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomRe
             <input
               id="homeroom-grade"
               type="number"
+              inputMode="numeric"
               min={1}
               value={grade}
               onChange={(e) => setGrade(Number(e.target.value) || 0)}
@@ -566,6 +567,7 @@ function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomRe
             <input
               id="homeroom-class"
               type="number"
+              inputMode="numeric"
               min={1}
               value={classNo}
               onChange={(e) => setClassNo(Number(e.target.value) || 0)}
