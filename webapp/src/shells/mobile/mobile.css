@@ -3,8 +3,9 @@
    env(safe-area-inset-*)을 헤더·탭바·시트에 반영한다 — iOS는 가로 잠금을 무시할 수 있어 좌우도 넣는다. */
 
 .m-shell {
-  /* 폴백: 구형 브라우저는 기존 동작(작은 뷰포트 100%) 유지 */
-  height: 100%;
+  /* todo/44: --app-vh는 MobileShell이 visualViewport 실측으로 주입(설치형 PWA 콜드 스타트
+     보정). JS가 아직/못 돌았으면 100% → 아래 @supports의 dvh 폴백 순. */
+  height: var(--app-vh, 100%);
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -17,7 +18,7 @@
    .m-tabbar)에 붙는다. 설치형 PWA·안드로이드 크롬에선 dvh=100%로 무영향. */
 @supports (height: 100dvh) {
   .m-shell {
-    height: 100dvh;
+    height: var(--app-vh, 100dvh);
   }
 }
 

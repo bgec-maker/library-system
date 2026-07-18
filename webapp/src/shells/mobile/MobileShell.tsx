@@ -151,6 +151,36 @@ export default function MobileShell() {
   // 언어 토글이 눌리면 이 컴포넌트가 재렌더되고, 활성 탭 뷰·StackNav도 함께 재렌더돼 t()를
   // 다시 평가한다(DesktopShell.tsx의 동일 패턴 참고).
   useLocale();
+
+  // todo/44(현장 제보 2 — 설치형 PWA 콜드 스타트에서 탭바 아래 죽은 띠): iOS standalone은
+  // 첫 레이아웃을 낡은 뷰포트 높이로 잡고 정정 resize를 첫 상호작용 전까지 안 쏘는 경우가
+  // 있다 — dvh(todo/43)도 그 낡은 값 기준이라 CSS만으론 못 잡는다. visualViewport 실측을
+  // --app-vh로 주입하고(mobile.css .m-shell이 소비), 상호작용 없이도 수렴하도록 초기 두 번
+  // 재측정한다. 여기는 셸 계층이라 window 사용이 허용된다(제1원칙 — 뷰만 금지).
+  // 부작용 검토: 키보드가 열리면 visualViewport가 줄어 탭바가 키보드 위로 따라온다 —
+  // 안드로이드 크롬 기본 동작과 같은 계열이라 수용(불편 제보 시 후속 조정, todo/done/44).
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      if (h > 0) root.style.setProperty('--app-vh', `${Math.round(h)}px`);
+    };
+    apply();
+    const t1 = setTimeout(apply, 250);
+    const t2 = setTimeout(apply, 1000);
+    window.visualViewport?.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', apply);
+    window.addEventListener('pageshow', apply);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.visualViewport?.removeEventListener('resize', apply);
+      window.removeEventListener('orientationchange', apply);
+      window.removeEventListener('pageshow', apply);
+      root.style.removeProperty('--app-vh');
+    };
+  }, []);
+
   const role = useSession((s) => s.role);
   const tabs = useMemo(() => mobileTabViews(role), [role]);
   const moreList = useMemo(() => moreMenuViews(role), [role]);
