@@ -522,7 +522,34 @@ export default function BookDetailView({ shell, params }: ViewProps) {
 
       {!hasQuery && <div className="panel bd-empty">{t('views.bookDetail.invalidQuery')}</div>}
 
-      {hasQuery && loading && !detail && <div className="bd-loading">{t('common.loading')}</div>}
+      {hasQuery && loading && !detail && (
+        /* todo/94(시각 감사 1R) — 첫 로딩 텍스트 한 줄 → 도착할 화면의 골격(인터랙션 표준
+           「스켈레톤」): 표지 상자(실제 CoverThumb 치수 120×168) + 제목/저자 막대 + 섹션 스텁.
+           재조회(detail 보유)에는 미적용 — 이 분기 자체가 !detail. 펄스는 opacity만(성능 예산). */
+        <div className="bd-skeleton" aria-busy="true">
+          <span className="sr-only">{t('common.loading')}</span>
+          <section className="panel bd-bib" aria-hidden="true">
+            <div className="bd-skel-cover" />
+            <div className="bd-bib-fields">
+              <div className="skel-bar bd-skel-title" />
+              <div className="skel-bar skel-w-40" />
+              <div className="bd-skel-meta">
+                <div className="skel-bar skel-w-70" />
+                <div className="skel-bar skel-w-55" />
+                <div className="skel-bar skel-w-70" />
+                <div className="skel-bar skel-w-55" />
+              </div>
+            </div>
+          </section>
+          {[0, 1].map((i) => (
+            <section key={i} className="panel bd-skel-section" aria-hidden="true">
+              <div className="skel-bar skel-w-40" />
+              <div className="skel-bar skel-w-70" />
+              <div className="skel-bar skel-w-55" />
+            </section>
+          ))}
+        </div>
+      )}
 
       {hasQuery && error && (
         <div className="bd-error" role="alert">

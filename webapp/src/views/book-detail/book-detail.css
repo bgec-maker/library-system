@@ -9,8 +9,7 @@
   overflow-y: auto;
 }
 
-.bd-empty,
-.bd-loading {
+.bd-empty {
   padding: 16px;
   color: var(--ink-2);
 }
@@ -183,4 +182,39 @@
 }
 .bd-confirm-form input {
   width: 100%;
+}
+
+/* todo/94 — 첫 로딩 스켈레톤. skel-bar/skel-w-* 프리미티브는 DataTable.css(이 뷰가 정적
+   임포트하는 DataTable에 동봉)의 것을 재사용한다 — 펄스·reduced-motion 규칙도 그쪽 한 곳. */
+.bd-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bd-skel-cover {
+  width: 120px; /* 실제 CoverThumb(도서 상세) 치수와 동일 — 도착 시 레이아웃 점프 없음 */
+  height: 168px;
+  flex: none;
+  border-radius: var(--radius);
+  background: var(--rule);
+  animation: skel-pulse 1.2s ease-in-out infinite;
+}
+.bd-skel-title {
+  height: 20px;
+  width: 60%;
+}
+.bd-skel-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+  max-width: 420px;
+}
+.bd-skel-section .skel-bar + .skel-bar {
+  margin-top: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bd-skel-cover {
+    animation: none;
+  }
 }
