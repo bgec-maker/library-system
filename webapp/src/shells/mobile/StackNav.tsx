@@ -77,20 +77,19 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
     ref,
     () => ({
       push(viewId, params = {}) {
-        setStack((prev) => {
-          const meta = getViewMeta(viewId);
-          const next: StackEntry[] = [
-            ...prev,
-            {
-              key: `${viewId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              viewId,
-              params,
-              title: meta?.title ?? viewId
-            }
-          ];
-          window.history.pushState({ __mstackDepth: next.length } satisfies HistoryState, '');
-          return next;
-        });
+        // todo/66(e2e가 적발) — pushState를 setState 업데이터 **밖**에서 호출한다. 업데이터는
+        // React가 재실행할 수 있는 순수 함수여야 하는데(StrictMode dev는 실제로 2회 호출),
+        // 안에 두면 같은 화면이 히스토리에 두 번 적재돼 뒤로가기가 한 번 씹힌다. 깊이는
+        // 리렌더 타이밍과 무관하게 정확해야 하므로 stackRef(렌더마다 동기화) 기준으로 계산.
+        const meta = getViewMeta(viewId);
+        const entry: StackEntry = {
+          key: `${viewId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          viewId,
+          params,
+          title: meta?.title ?? viewId
+        };
+        window.history.pushState({ __mstackDepth: stackRef.current.length + 1 } satisfies HistoryState, '');
+        setStack((prev) => [...prev, entry]);
       },
       pop() {
         if (stackRef.current.length === 0) return;
