@@ -113,6 +113,13 @@
     page-break-inside: avoid;
     break-inside: avoid;
   }
+  /* todo/79(e2e가 적발) — 학생 칸에도 avoid: 연체가 많은 반은 열이 한 페이지를 넘을 수 있고,
+     그때 브라우저는 반 묶음의 avoid를 포기하고 안에서 쪼갠다 — 최종 방어선은 칸 단위여야
+     이름·서명·반납일이 서로 다른 장으로 흩어지지 않는다. */
+  .print-recall-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 
   .print-preview-frame {
     width: auto;
