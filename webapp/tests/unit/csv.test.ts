@@ -33,3 +33,17 @@ const valueOf = (r: Row, c: DataTableColumn<Row>) => (r as unknown as Record<str
   assert(txt.includes('"정상 서명, 쉼표"'), '쉼표 인용 규칙 유지');
   console.log('csv ALL PASS');
 })();
+
+// todo/76 — 전체 컬럼 내보내기도 같은 defuse 경로를 지나는지: 표시 컬럼엔 없는 필드(note)에
+// 수식 시작 값을 넣고 전체 컬럼 정의로 내보냈을 때 무력화되는지 단정.
+{
+  const fullCols = [
+    { key: 'barcode', header: 'barcode' },
+    { key: 'note', header: 'note' }
+  ] as import('../../src/components/DataTable/types').DataTableColumn<{ barcode: string; note: string }>[];
+  const rows = [{ barcode: '0001230', note: '=HYPERLINK("https://evil")' }];
+  const blob = toCsvBlob(fullCols, rows, (row, col) => String((row as Record<string, unknown>)[col.key] ?? ''));
+  const text = await blob.text();
+  assert(text.includes(`'=HYPERLINK`), '전체 컬럼 경로에서도 수식 셀 무력화');
+}
+console.log('csv(todo/76) full-column defuse PASS');

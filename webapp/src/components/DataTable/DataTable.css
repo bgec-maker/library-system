@@ -305,3 +305,10 @@
 .data-table-grid td.is-nowrap {
   white-space: nowrap;
 }
+
+/* todo/76 — CSV 범위 셀렉트: 툴바 컨트롤 크기에 맞춤(전역 select 폭 100% 방지). */
+.data-table-csv-scope {
+  width: auto;
+  font-size: var(--fs-sm);
+  padding: 8px 10px;
+}

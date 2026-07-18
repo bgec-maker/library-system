@@ -317,6 +317,27 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
     []
   );
 
+  // todo/76 — 전체 컬럼 CSV(백업 충실도: 원값·시트 컬럼명).
+  const csvFullColumns = useMemo<DataTableColumn<UnpaidFineRow>[]>(
+    () => [
+      { key: 'fineId', header: 'fine_id' },
+      { key: 'memberId', header: 'member_id' },
+      { key: 'memberNo', header: 'member_no' },
+      { key: 'memberName', header: 'member_name' },
+      { key: 'loanId', header: 'loan_id' },
+      { key: 'copyId', header: 'copy_id' },
+      { key: 'barcode', header: 'barcode' },
+      { key: 'titleId', header: 'title_id' },
+      { key: 'title', header: 'title' },
+      { key: 'amount', header: 'amount' },
+      { key: 'paidAmount', header: 'paid_amount' },
+      { key: 'remainingAmount', header: 'remaining_amount' },
+      { key: 'statusCode', header: 'status_code' },
+      { key: 'assessedAt', header: 'assessed_at' }
+    ],
+    []
+  );
+
   return (
     <div>
       <div className="no-print">
@@ -330,6 +351,7 @@ function UnpaidFinesPanel({ shell }: UnpaidFinesPanelProps) {
       </div>
 
       <DataTable<UnpaidFineRow>
+        csvFullColumns={csvFullColumns}
         columns={columns}
         rows={rows}
         rowKey={(row) => row.fineId}

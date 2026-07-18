@@ -181,6 +181,26 @@ export default function ReservationsView({ shell, params }: ViewProps) {
 
   const toolbarExtra = sample ? <SampleDataBadge /> : null;
 
+  // todo/76 — 전체 컬럼 CSV(백업 충실도: 원값·시트 컬럼명). 표시 컬럼 내보내기와 구분.
+  const csvFullColumns = useMemo<DataTableColumn<ReservationRow>[]>(
+    () => [
+      { key: 'reservationId', header: 'reservation_id' },
+      { key: 'titleId', header: 'title_id' },
+      { key: 'title', header: 'title' },
+      { key: 'memberId', header: 'member_id' },
+      { key: 'memberNo', header: 'member_no' },
+      { key: 'memberName', header: 'member_name' },
+      { key: 'statusCode', header: 'status_code' },
+      { key: 'queueSeq', header: 'queue_seq' },
+      { key: 'assignedCopyId', header: 'assigned_copy_id' },
+      { key: 'assignedBarcode', header: 'assigned_barcode' },
+      { key: 'requestedAt', header: 'requested_at' },
+      { key: 'readyAt', header: 'ready_at' },
+      { key: 'pickupExpiresAt', header: 'pickup_expires_at' }
+    ],
+    []
+  );
+
   return (
     <div className="rsv-view">
       <div className="rsv-toolbar">
@@ -202,6 +222,7 @@ export default function ReservationsView({ shell, params }: ViewProps) {
 
       <DataTable<ReservationRow>
         columns={columns}
+        csvFullColumns={csvFullColumns}
         rows={filteredRows}
         rowKey={(row) => row.reservationId}
         platform={shell.platform}

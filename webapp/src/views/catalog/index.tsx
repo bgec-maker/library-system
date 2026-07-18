@@ -61,6 +61,27 @@ export default function CatalogView({ shell }: ViewProps) {
     []
   );
 
+  // todo/76 — 전체 컬럼 CSV(백업·엑셀 후처리): 미러의 모든 필드를 원값 그대로(코드 포함 —
+  // 백업 충실도가 목적, 라벨 변환은 표시 컬럼 내보내기가 담당). 헤더는 시트 컬럼명(스네이크)
+  // 그대로 — 13~21번 시트와의 대조가 쉬워진다.
+  const csvFullColumns = useMemo<DataTableColumn<CatalogCopyRow>[]>(
+    () => [
+      { key: 'copyId', header: 'copy_id' },
+      { key: 'barcode', header: 'barcode' },
+      { key: 'titleId', header: 'title_id' },
+      { key: 'title', header: 'title' },
+      { key: 'authors', header: 'authors' },
+      { key: 'classification', header: 'classification_no' },
+      { key: 'statusCode', header: 'status_code' },
+      { key: 'loanCount', header: 'loan_count' },
+      { key: 'lastLoanAt', header: 'last_loan_at' },
+      { key: 'shelfCode', header: 'shelf_code' },
+      { key: 'acquiredAt', header: 'acquired_at' },
+      { key: 'updatedAt', header: 'updated_at' }
+    ],
+    []
+  );
+
   const toolbarExtra = (state.sample || state.syncing) && (
     <span className="catalog-sync-badge">
       {state.sample && <SampleDataBadge />}
@@ -76,6 +97,7 @@ export default function CatalogView({ shell }: ViewProps) {
     <div className="catalog-view">
       <DataTable<CatalogCopyRow>
         columns={columns}
+        csvFullColumns={csvFullColumns}
         rows={state.rows}
         rowKey={(row) => row.copyId}
         onRowClick={(row) => shell.open('book-detail', { titleId: row.titleId, barcode: row.barcode })}

@@ -74,6 +74,10 @@ export interface DataTableProps<T> {
    *  라벨은 호출측이 t()로 번역해 넘긴다(이 컴포넌트는 도메인 무지 원칙 유지). 행동이
    *  자연스러운 화면에만 달 것 — "행동 없음이 정상"인 목록(미변상 등)엔 달지 않는다. */
   emptyAction?: { label: string; onClick: () => void };
+  /** todo/76 — CSV 전체 컬럼 정의(백업·엑셀 후처리용). 주어지면 내보내기 옆에 범위 셀렉트
+   *  (표시 컬럼/전체 컬럼)가 생긴다. 전체 컬럼도 같은 toCsvBlob 경로 — 수식 방어(defuse)가
+   *  모든 셀에 동일 적용된다. 호출측이 원값(코드) 충실도를 결정한다. */
+  csvFullColumns?: DataTableColumn<T>[];
   csvFileName?: string;
   defaultSort?: SortState;
   pageSizeOptions?: number[];
@@ -96,6 +100,7 @@ export function DataTable<T>({
   error = null,
   emptyHint,
   emptyAction,
+  csvFullColumns,
   csvFileName = 'export.csv',
   defaultSort,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
@@ -109,6 +114,8 @@ export function DataTable<T>({
   const [sort, setSort] = useState<SortState | null>(defaultSort ?? null);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [page, setPage] = useState(1);
+  // todo/76 — CSV 범위(표시/전체). csvFullColumns 없는 표에선 UI 자체가 안 뜬다.
+  const [csvScope, setCsvScope] = useState<'visible' | 'full'>('visible');
 
   const filterColumns = useMemo(() => columns.filter((c) => c.filterValue !== false), [columns]);
 
@@ -160,7 +167,8 @@ export function DataTable<T>({
   function handleExportCsv() {
     // "currently loaded (not just currently-visible-page) dataset" — 현재 필터·정렬이 적용된
     // 전체(sortedRows)를 내보낸다. 현재 페이지 몫(pageRows)이 아니다.
-    const blob = toCsvBlob(columns, sortedRows, csvValueOf);
+    const exportColumns = csvScope === 'full' && csvFullColumns ? csvFullColumns : columns;
+    const blob = toCsvBlob(exportColumns, sortedRows, csvValueOf);
     downloadBlob(blob, csvFileName);
   }
 
@@ -183,6 +191,17 @@ export function DataTable<T>({
         />
         <div className="data-table-toolbar-actions">
           {toolbarExtra}
+          {csvFullColumns && (
+            <select
+              className="data-table-csv-scope"
+              aria-label={t('components.dataTable.csvScopeLabel')}
+              value={csvScope}
+              onChange={(e) => setCsvScope(e.target.value === 'full' ? 'full' : 'visible')}
+            >
+              <option value="visible">{t('components.dataTable.csvScopeVisible')}</option>
+              <option value="full">{t('components.dataTable.csvScopeFull')}</option>
+            </select>
+          )}
           <button type="button" className="ghost data-table-csv-btn" onClick={handleExportCsv} disabled={sortedRows.length === 0}>
             <Download size={16} aria-hidden /> {t('components.dataTable.exportCsv')}
           </button>

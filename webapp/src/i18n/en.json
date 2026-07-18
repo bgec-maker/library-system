@@ -133,6 +133,9 @@
     "dataTable": {
       "searchPlaceholder": "Search…",
       "exportCsv": "Export CSV",
+      "csvScopeLabel": "Export scope",
+      "csvScopeVisible": "Visible columns",
+      "csvScopeFull": "All columns",
       "emptyDefault": "Nothing to show.",
       "noMatch": "No rows match your search.",
       "errorPrefix": "Couldn't load — {message}",
