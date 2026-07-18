@@ -78,7 +78,15 @@ export default function ShelfHeatmap({ onNavigate }: ShelfHeatmapProps) {
                 viewBox={`0 0 ${TILE_W} ${TILE_H}`}
                 role="img"
                 aria-hidden="true"
-                className={tile.isDead ? 'viz-shelf-tile viz-shelf-tile--dead' : 'viz-shelf-tile'}
+                className={[
+                  'viz-shelf-tile',
+                  tile.isDead ? 'viz-shelf-tile--dead' : '',
+                  // todo/106 — 짙은 단(seq-4/5)은 텍스트 밝게 반전, 중간 단(seq-3)은 보조값을
+                  // --ink로 진하게(둘 다 어두운 글자 침몰/저대비 방지 — 데이터가 배경을 정하는 화면).
+                  tile.level >= 3 ? 'viz-shelf-tile--deep' : tile.level === 2 ? 'viz-shelf-tile--mid' : ''
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 <rect x={1} y={1} width={TILE_W - 2} height={TILE_H - 2} rx={4} fill={`var(--viz-seq-${tile.level + 1})`}>
                   <title>

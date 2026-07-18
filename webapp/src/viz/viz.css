@@ -304,6 +304,17 @@
   fill: var(--ink-2);
   text-anchor: middle;
 }
+/* todo/106 — 짙은 타일(seq-4/5)에서 텍스트 반전: 데이터가 배경을 정하는 화면이라 정적 대비
+   게이트(check-contrast) 사각 — 컴포넌트가 레벨로 직접 분기한다. */
+.viz-shelf-tile--deep .viz-shelf-tile-code {
+  fill: var(--panel);
+}
+.viz-shelf-tile--deep .viz-shelf-tile-avg {
+  fill: var(--paper);
+}
+.viz-shelf-tile--mid .viz-shelf-tile-avg {
+  fill: var(--ink); /* seq-3 위 --ink-2는 2.6:1 — 본문 잉크로 5.4:1 확보 */
+}
 
 /* ── #5 장서 나이 — 연도별 적층 바 ────────────────────────────────────────── */
 .viz-stack-bar-rect {
