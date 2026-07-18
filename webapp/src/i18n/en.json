@@ -239,6 +239,7 @@
       "trayClearDone": "Clear completed",
       "trayQueued": "Waiting",
       "trayRetryWait": "Retrying soon (attempt {attempt} failed)",
+      "trayMetaSummary": "Reference IDs (title · request)",
       "trayIdempotentNote": "An earlier attempt already completed this request — check Recent Ops for the barcode.",
       "errorLookupFailed": "Lookup failed",
       "errorInvalidIsbn": "Not a valid ISBN-13 (13 digits starting with 978/979, including check digit).",
@@ -781,7 +782,8 @@
         "onLoan": "Another student is reading this now",
         "unavailable": "Not available to borrow right now"
       },
-      "borrowButton": "Borrow this book",
+      "borrowPreHint": "Student sign-in is coming soon — bring the book to the librarian to borrow it.",
+        "borrowButton": "Borrow this book",
       "loginGateMessage": "Coming soon — ask your librarian to check it out",
       "ratingHeading": "Rating",
       "ratingPlaceholder": "Available after logging in",

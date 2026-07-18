@@ -315,10 +315,15 @@ function QueueTray({
                 {t('views.register.pencilHint')}
               </div>
               {entry.idempotentReplay && <div className="reg-trayIdempotent">{t('views.register.trayIdempotentNote')}</div>}
-              <div className="reg-resultMeta mono">
-                {entry.titleId && <div>{t('views.register.titleIdLine', { id: entry.titleId })}</div>}
-                <div>{t('views.register.requestIdLine', { id: entry.requestId })}</div>
-              </div>
+              {/* todo/48(디자인 연구 P2-2): 서지·요청 ID는 문제 추적 때만 필요한 운영 정보 —
+                  평시엔 접어서 등록번호·서명이라는 핵심만 남긴다. */}
+              <details className="reg-trayMeta">
+                <summary>{t('views.register.trayMetaSummary')}</summary>
+                <div className="reg-resultMeta mono">
+                  {entry.titleId && <div>{t('views.register.titleIdLine', { id: entry.titleId })}</div>}
+                  <div>{t('views.register.requestIdLine', { id: entry.requestId })}</div>
+                </div>
+              </details>
               {entry.titleId && (
                 <details className="reg-trayBulk">
                   <summary>{t('views.register.bulkHeading')}</summary>

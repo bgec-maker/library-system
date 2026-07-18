@@ -412,3 +412,18 @@
   color: var(--fail);
   word-break: break-all;
 }
+
+/* todo/48(P2-2) — 완료 카드의 대조 정보 접기 */
+.reg-trayMeta {
+  width: 100%;
+  text-align: center;
+}
+.reg-trayMeta summary {
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  padding: var(--sp-1) 0;
+}
+.reg-trayMeta summary:focus-visible {
+  outline: 2px solid var(--brass);
+}

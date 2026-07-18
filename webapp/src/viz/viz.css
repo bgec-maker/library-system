@@ -143,6 +143,11 @@
   fill: var(--ink);
   pointer-events: none;
 }
+.viz-treemap-label.is-deep,
+.viz-treemap-label-dim.is-deep {
+  /* todo/48 — 진한 극단 셀(div-1·div-5) 위 라벨 반전. */
+  fill: var(--paper);
+}
 .viz-treemap-label-dim {
   font-size: 12px;
   fill: var(--ink-2);

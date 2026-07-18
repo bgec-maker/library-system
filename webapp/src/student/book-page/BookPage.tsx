@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, ImageOff, Lock, MessageCircle, Star } from 'lucide-react';
+import { BookOpen, Lock, MessageCircle, Star } from 'lucide-react';
 import { t } from '../../i18n';
 import { fetchPublicBookData, type PublicBookAvailability, type PublicBookData } from '../../services/publicBookData';
 import { safeCoverUrl } from '../../services/urlGuard';
@@ -112,13 +112,17 @@ export default function BookPage({ barcode }: BookPageProps) {
               background: 'var(--panel)',
               border: '1px solid var(--rule)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'var(--ink-3)',
               flexShrink: 0
             }}
           >
-            <ImageOff size={24} aria-hidden />
+            {/* todo/48(디자인 연구 P2-4): 깨진 이미지 아이콘(ImageOff)은 오류처럼 읽힌다 —
+                책 아이콘 + 안내 문구로 "표지가 없는 정상 상태"임을 말한다. */}
+            <BookOpen size={28} aria-hidden />
+            <span style={{ fontSize: 'var(--fs-xs)', marginTop: 6 }}>{t('student.bookPage.coverMissing')}</span>
           </div>
         )}
 
@@ -192,6 +196,14 @@ export default function BookPage({ barcode }: BookPageProps) {
       >
         {t('student.bookPage.borrowButton')}
       </button>
+
+      {/* todo/48(P2-4): 로그인 전에는 CTA의 결과를 누르기 전에 예고 — 눌렀다 실망하는 흐름을
+          줄인다. 로그인 도입 시 이 안내는 자연 제거 대상. */}
+      {!gateOpen && (
+        <p style={{ margin: '8px 0 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 'var(--fs-xs)' }}>
+          {t('student.bookPage.borrowPreHint')}
+        </p>
+      )}
 
       {gateOpen && (
         <div

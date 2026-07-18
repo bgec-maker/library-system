@@ -82,7 +82,12 @@ function TreemapSvg({
   );
   return (
     <svg width="100%" viewBox={`0 0 ${TREEMAP_W} ${TREEMAP_H}`} role="img" aria-hidden="true">
-      {rects.map((r) => (
+      {rects.map((r) => {
+        const level = divLevelByCode[r.categoryCode] ?? 2;
+        // todo/48(디자인 연구 P2-3): 발산 램프 극단(0=진한 fail, 4=진한 pass) 위에서는
+        // 잉크색 라벨의 명도 대비가 부족하다 — 밝은 라벨(paper)로 반전.
+        const deep = level === 0 || level === 4;
+        return (
         <g key={r.categoryCode}>
           <rect
             className="viz-treemap-rect"
@@ -96,17 +101,18 @@ function TreemapSvg({
           </rect>
           {/* todo/34: 12px 라벨에 맞춰 표시 임계 42→52 (10px 기준 42와 같은 글자수 여유) */}
           {r.w > 52 && r.h > 16 && (
-            <text x={r.x + 4} y={r.y + 12} className="viz-treemap-label">
+            <text x={r.x + 4} y={r.y + 12} className={'viz-treemap-label' + (deep ? ' is-deep' : '')}>
               {r.categoryLabel}
             </text>
           )}
           {r.w > 52 && r.h > 30 && (
-            <text x={r.x + 4} y={r.y + 24} className="viz-treemap-label-dim">
+            <text x={r.x + 4} y={r.y + 24} className={'viz-treemap-label-dim' + (deep ? ' is-deep' : '')}>
               {r[valueKey]}
             </text>
           )}
         </g>
-      ))}
+        );
+      })}
     </svg>
   );
 }

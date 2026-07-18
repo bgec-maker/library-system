@@ -239,6 +239,7 @@
       "trayClearDone": "완료 항목 지우기",
       "trayQueued": "대기 중",
       "trayRetryWait": "재시도 대기 ({attempt}차 시도 실패)",
+      "trayMetaSummary": "대조 정보 (서지·요청 ID)",
       "trayIdempotentNote": "이전 시도가 이미 완료된 요청입니다 — 등록번호는 「최근 처리」에서 확인하세요.",
       "errorLookupFailed": "조회 실패",
       "errorInvalidIsbn": "올바른 ISBN-13이 아닙니다 (978/979로 시작하는 13자리, 체크숫자 포함).",
@@ -781,7 +782,8 @@
         "onLoan": "지금은 다른 학생이 읽고 있어요",
         "unavailable": "지금은 빌릴 수 없어요"
       },
-      "borrowButton": "이 책 빌리기",
+      "borrowPreHint": "아직 학생 로그인 준비 중이에요 — 빌리려면 사서 선생님께 가져가 주세요.",
+        "borrowButton": "이 책 빌리기",
       "loginGateMessage": "준비 중 — 사서 선생님께 대출하세요",
       "ratingHeading": "별점",
       "ratingPlaceholder": "로그인 후 이용 가능",

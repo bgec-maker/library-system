@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertTriangle,
@@ -18,6 +18,7 @@ import {
   Users
 } from 'lucide-react';
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
+import { fetchRecentOps, type RecentOpRow } from '../../services/recentOpsData';
 import { useReadyReservationCount } from '../../services/reservationData';
 import { useManualEntryPendingCount } from '../../services/manualEntryData';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
@@ -62,6 +63,22 @@ const QUIET_SIGNALS: QuietSignalItem[] = [
 
 export default function DashboardBaseLayer() {
   const { data, sample, loading, error, refreshedAt } = useDashboardData();
+
+  // todo/48(P2-1) — 「최근 처리」 카드 내용: 대시보드 갱신 주기(refreshedAt)에 올라타 재조회.
+  // fetchRecentOps는 readCache(15s TTL·쓰기 신호 무효화) 경유라 추가 호출 비용이 거의 없다.
+  const [recentRows, setRecentRows] = useState<RecentOpRow[]>([]);
+  const [recentSample, setRecentSample] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRecentOps(5).then((outcome) => {
+      if (cancelled || !outcome.ok) return;
+      setRecentRows(outcome.rows);
+      setRecentSample(outcome.sample);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshedAt]);
   const openWindow = useWindowStore((s) => s.openWindow);
   // 「예약 도착」 카드(todo/12) — 기존 "예약대기" KPI(dashboard.kpi.activeReservations)는
   // getDashboardData_() stats.activeReservations 그대로라 WAITING+READY 합산값이다(수정 금지
@@ -186,9 +203,28 @@ export default function DashboardBaseLayer() {
         </section>
 
         <section className="dash-panel panel">
-          <h2>{t('dashboard.recentOps.title')}</h2>
+          <h2>
+            {t('dashboard.recentOps.title')}
+            {recentSample && <SampleDataBadge />}
+          </h2>
           <div className="dash-recent-body">
-            <p className="dash-empty">{t('dashboard.recentOps.hint')}</p>
+            {/* todo/48(디자인 연구 P2-1): 유일하게 내용 없던 카드 — 최근 3건을 직접 보여준다.
+                recentOps 읽기는 readCache(15s) 경유라 추가 비용이 거의 없고, 갱신 신호에도
+                올라탄다. 폴백(빈 목록·미배포)은 기존 안내문 유지. */}
+            {recentRows.length > 0 ? (
+              <ul className="dash-recent-list">
+                {recentRows.slice(0, 3).map((row) => (
+                  <li key={row.logId}>
+                    <span className="dash-recent-time mono">
+                      {new Date(row.occurredAt).toLocaleTimeString(intlLocaleTag(), { hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </span>
+                    <span className="dash-recent-summary">{row.summary}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="dash-empty">{t('dashboard.recentOps.hint')}</p>
+            )}
             <button type="button" className="ghost" onClick={() => openWindow('recent-ops')}>
               {t('dashboard.recentOps.openButton')}
             </button>
