@@ -1,4 +1,4 @@
-import { Settings, SquareDashed } from 'lucide-react';
+import { Library, Settings, SquareDashed } from 'lucide-react';
 import { viewsForRole } from '../../registry';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
 import { setLocale, t, useLocale, type Locale } from '../../i18n';
@@ -53,6 +53,10 @@ export function Dock() {
 
   return (
     <nav className="dock" style={{ width: DOCK_WIDTH }} aria-label={t('common.appLauncher')}>
+      {/* todo/51 — 브랜드 마크: 위계의 시작점(장식, 비인터랙티브). 라벨은 기존 systemBrand 키. */}
+      <div className="dock-brand" title={t('print.systemBrand')}>
+        <Library size={26} aria-hidden />
+      </div>
       <div className="dock-apps">
         {[workViews, manageViews].map((group, gi) => (
           <div key={gi} className={`dock-group${gi > 0 ? ' dock-group--rest' : ''}`}>

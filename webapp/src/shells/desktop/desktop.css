@@ -22,13 +22,26 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 14px 0;
+  padding: 14px 0 12px;
   background: var(--deep);
   box-shadow: var(--shadow-window);
   z-index: 500;
+}
+
+/* todo/51 — 브랜드 마크: brass 글리프 하나로 위계 시작. 아래 앱 그룹과 헤어라인 분리. */
+.dock-brand {
+  width: 48px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brass);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding-bottom: 8px;
+  box-sizing: content-box;
+  flex-shrink: 0;
 }
 
 .dock-apps {
@@ -59,27 +72,35 @@
   overflow-y: auto;
 }
 
+/* todo/51 — 글리프에 상태를, 박스는 호버에만: 항시 박스 격자가 만들던 "사다리" 무게 제거. */
 .dock-icon {
   width: 48px;
   height: 48px;
   border-radius: var(--radius);
   border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-icon {
+    transition: none;
+  }
 }
 
 .dock-icon:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
 }
 
 .dock-icon.is-open {
-  background: var(--brass);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--brass);
 }
 /* todo/50 — 열린 창 표시 강화: 색(brass)에 더해 좌측 활성 바(위치 단서 — 색약 대비). */
 .dock-icon.is-open::before {
@@ -153,28 +174,32 @@
 .dock-locale {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   flex-shrink: 0;
+  margin-top: auto; /* todo/51: space-between 대신 — 하단 클러스터(언어·설정)를 바닥으로 */
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 8px;
 }
 
+/* todo/51 — 언어는 "도구 버튼"이 아니라 상태 표시에 가깝게: 박스 제거, mono 텍스트 토글. */
 .dock-locale-btn {
   width: 48px;
-  height: 22px;
+  height: 24px;
   border-radius: var(--radius);
   border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
-  font: 700 var(--fs-xs) var(--sans);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font: 700 var(--fs-xs) var(--mono);
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
 
 .dock-locale-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .dock-locale-btn.is-active {
-  background: var(--brass);
-  color: #fff;
+  color: var(--brass);
 }
 
 /* ── 창 ───────────────────────────────────────────────────────────── */
