@@ -103,6 +103,12 @@ label {
 .session-gate-card h1 { font-size: var(--fs-xl); margin-bottom: 6px; }
 .session-gate-sub { color: var(--ink-2); font-size: var(--fs-sm); margin-bottom: 6px; }
 .session-gate-card input { width: 100%; margin-bottom: 4px; }
+/* todo/112 — URL 오형식 힌트(조용한 인라인, 배너 아님 — 타이핑 중 위협적이지 않게) */
+.session-gate-hint {
+  color: var(--fail);
+  font-size: var(--fs-xs);
+  margin: 2px 0 4px;
+}
 .session-gate-card button { width: 100%; margin-top: 10px; }
 
 /* 기본 토스트 위치 — 셸별 오버라이드: 데스크톱=스캐너 도크 위(desktop.css),
