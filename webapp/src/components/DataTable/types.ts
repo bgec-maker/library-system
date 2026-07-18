@@ -23,6 +23,9 @@ export interface DataTableColumn<T> {
   numeric?: boolean;
   /** 등록번호·바코드 등 --mono 서체 대상(DESIGN.md "테이블" 절). */
   mono?: boolean;
+  /** 상태·날짜처럼 중간에서 꺾이면 안 되는 짧은 값(todo/47 — 「대출가/능」「2026-06-/01」 방지).
+   *  긴 텍스트 열(서명 등)엔 쓰지 말 것 — 표가 옆으로 터진다. */
+  nowrap?: boolean;
   /** 모바일 카드 변환 시 제목 자리(열 중 최대 1개). */
   mobilePrimary?: boolean;
   /** 모바일 카드 변환 시 부제 자리(열 중 최대 1개). */

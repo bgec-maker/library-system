@@ -40,7 +40,7 @@ export default function CatalogView({ shell }: ViewProps) {
 
   const columns = useMemo<DataTableColumn<CatalogCopyRow>[]>(
     () => [
-      { key: 'barcode', header: t('views.catalog.col.barcode'), sortable: true, mono: true, mobilePrimary: true },
+      { key: 'barcode', header: t('views.catalog.col.barcode'), sortable: true, mono: true, nowrap: true, mobilePrimary: true },
       { key: 'title', header: t('views.catalog.col.title'), sortable: true, mobileSecondary: true },
       { key: 'authors', header: t('views.catalog.col.authors'), sortable: true },
       { key: 'classification', header: t('views.catalog.col.classification'), sortable: true },
@@ -50,12 +50,13 @@ export default function CatalogView({ shell }: ViewProps) {
         sortable: true,
         render: (row) => statusLabel(row.statusCode),
         filterValue: (row) => `${row.statusCode} ${statusLabel(row.statusCode)}`,
-        csvValue: (row) => statusLabel(row.statusCode)
+        csvValue: (row) => statusLabel(row.statusCode),
+        nowrap: true
       },
       { key: 'loanCount', header: t('views.catalog.col.loanCount'), sortable: true, numeric: true },
-      { key: 'lastLoanAt', header: t('views.catalog.col.lastLoanAt'), sortable: true, mono: true },
-      { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true },
-      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true }
+      { key: 'lastLoanAt', header: t('views.catalog.col.lastLoanAt'), sortable: true, mono: true, nowrap: true },
+      { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true, nowrap: true },
+      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true, nowrap: true }
     ],
     []
   );

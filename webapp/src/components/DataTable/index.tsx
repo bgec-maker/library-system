@@ -248,7 +248,12 @@ export function DataTable<T>({
                     }
                   >
                     {columns.map((col) => (
-                      <td key={col.key} className={[col.numeric ? 'is-numeric' : '', col.mono ? 'mono' : ''].filter(Boolean).join(' ')}>
+                      <td
+                        key={col.key}
+                        className={[col.numeric ? 'is-numeric' : '', col.mono ? 'mono' : '', col.nowrap ? 'is-nowrap' : '']
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
                         {cellDisplay(row, col)}
                       </td>
                     ))}

@@ -28,6 +28,16 @@
   --fs-xl: 20px;
   --fs-2xl: 26px;
 
+  /* 간격 스케일(DESIGN.md 「토큰 — 간격(추가)」) — todo/47: 문서엔 있었으나 실제 정의가
+     없어서 var(--sp-*) 참조가 조용히 무효였다(H1 주석의 지적을 여기서 해소). 두 스킨 동일값
+     — 간격은 표면(work/student)과 무관한 구조 값이다. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
   --radius: 6px;
   --shadow-window: 0 8px 28px rgba(22, 24, 29, 0.28);
 

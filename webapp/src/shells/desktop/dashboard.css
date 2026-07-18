@@ -6,7 +6,9 @@
   inset: 0;
   z-index: 0; /* 창(.window)은 z:2 이상 — 항상 이 레이어 위에 뜬다(useWindowStore.ts zCounter). */
   overflow: auto;
-  padding: 24px 28px 32px;
+  /* todo/47(디자인 연구 P1-3): 하단 여백을 스캐너 도크 위젯(우하단 fixed, ~72px) 높이만큼
+     확보 — 스크롤 끝에서 마지막 행 차트가 위젯에 가려지지 않게. */
+  padding: 24px 28px 104px;
   background: var(--paper);
 }
 

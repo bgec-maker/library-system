@@ -219,3 +219,8 @@
   color: var(--ink-2);
   white-space: nowrap;
 }
+
+/* todo/47 — 상태·날짜 등 짧은 값의 어중간한 줄바꿈 방지(디자인 연구 P1-1) */
+.data-table-grid td.is-nowrap {
+  white-space: nowrap;
+}
