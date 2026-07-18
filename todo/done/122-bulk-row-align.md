@@ -6,3 +6,11 @@
 할 일: 버튼을 입력 기준선에 정렬(align-self:flex-end), 높이는 입력과 동일하게. 재캡처.
 
 완료 조건: 재캡처, 전 게이트.
+
+---
+
+## 이행 노트 (완료)
+
+- .reg-bulkPanel .reg-row2 > button: align-self flex-end + flex 0 0 auto + min-width 96 —
+  버튼이 라벨 높이까지 늘어나던 것 해소, 입력 기준선과 정렬(재캡처 /tmp/vis/122-crop2.png).
+- 전 게이트 · 15 e2e 통과.

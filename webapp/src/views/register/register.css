@@ -511,3 +511,11 @@
 .reg-confirmForm textarea {
   width: 100%;
 }
+
+/* todo/122 — 복본 추가 발급 줄: 버튼이 reg-row2 flex 자식이라 라벨 높이까지 세로로 늘어나
+   입력과 기준선이 어긋났다 — 아래끝 정렬 + 입력과 같은 높이로 고정. */
+.reg-bulkPanel .reg-row2 > button {
+  align-self: flex-end;
+  flex: 0 0 auto;
+  min-width: 96px;
+}
