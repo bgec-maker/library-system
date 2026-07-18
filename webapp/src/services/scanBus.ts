@@ -54,6 +54,14 @@ export function parseScan(raw: string): ScanTarget {
 type ScanListener = (event: ScanEvent) => void;
 const listeners = new Set<ScanListener>();
 
+// todo/65 — e2e 전용 스캔 주입 통로(DEV 한정). Playwright의 가짜 카메라 장치는 합성 패턴만
+// 그려서 디코드 가능한 바코드/QR을 만들 수 없다 — 스캔이 필수인 흐름(예약 확정 등)을 e2e가
+// 검증하려면 publishScan을 밖에서 부를 손잡이가 필요하다. e2e 스위트는 vite dev로 돌므로
+// (playwright.config 주석) DEV 가드만으로 프로덕션 번들에서 완전히 제거된다(트리쉐이킹).
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { __e2eScan?: (raw: string) => ScanEvent }).__e2eScan = (raw: string) => publishScan(raw);
+}
+
 export function publishScan(raw: string): ScanEvent {
   const event: ScanEvent = { target: parseScan(raw), raw, at: Date.now() };
   listeners.forEach((fn) => fn(event));

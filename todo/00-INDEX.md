@@ -68,7 +68,7 @@
 - [x] 62 dock-badge-parity — 데스크톱 도크 등록 아이콘 실패 배지 (53 패리티)
 - [x] 63 scan-route-tests — 스캔 라우팅 단위 테스트
 - [x] 64 undo-e2e — 언두바 회귀 e2e
-- [ ] 65 reservation-e2e — 예약 흐름 e2e
+- [x] 65 reservation-e2e — 예약 흐름 e2e
 - [ ] 66 backtrap-e2e — 모바일 뒤로가기 트랩·스택 e2e
 - [ ] 67 barcode-copy — 완료 카드 등록번호 탭 복사
 - [ ] 68 scan-miss-hint — 스캔 미인식 힌트 (still-searching)
