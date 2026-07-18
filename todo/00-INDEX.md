@@ -37,6 +37,8 @@
 - [x] 30 perf-audit — 성능 예산 감사 자동화 + 위반 수정
 - [x] 31 derived-bench — 파생 뷰 O(n²) 감사·실측
 - [x] 32 security-pass — 보안 점검 (GAS·Pages 맞춤)
+- [x] 33 e2e-pipeline — 등록 파이프라인 회귀 스펙 CI 상주
+- [ ] 34 viz-label-audit — viz 라벨 렌더 크기 실측 감사
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
