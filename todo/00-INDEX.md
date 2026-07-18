@@ -120,6 +120,7 @@
 - [x] 114 scanner-close-confirm — 연속 모드 종료 확인이 OS 네이티브 (시각 감사 13R)
 - [x] 115 inventory-scan-e2e — 점검 스캔 집계 e2e 공백 + 목 Luhn 위반 (시각 감사 14R)
 - [x] 116 inventory-isbn-hint — 점검 중 ISBN 오스캔 침묵 (시각 감사 14R 후속)
+- [x] 117 settings-name-collision — 「설정」 이름 충돌 해소 (시각 감사 15R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

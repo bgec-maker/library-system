@@ -51,7 +51,9 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
       {showOverlay && (
         <div className="session-gate-overlay">
           <div className="session-gate-card panel" ref={cardRef} role="dialog" aria-modal="true">
-            <h1>{complete ? '설정' : '초기 설정'}</h1>
+            {/* todo/117 — 재열람 제목을 기어 라벨(연결 설정)과 동기화: 레지스트리 「설정」
+                뷰(정책·무결성)와 이름이 충돌하던 것 해소. */}
+            <h1>{complete ? '연결 설정' : '초기 설정'}</h1>
             <p className="session-gate-sub">
               GAS Web App URL·공유 토큰·작업자 이름을 입력하세요. 이 기기에만 저장됩니다(localStorage).
             </p>
