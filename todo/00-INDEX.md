@@ -40,6 +40,11 @@
 - [x] 33 e2e-pipeline — 등록 파이프라인 회귀 스펙 CI 상주
 - [x] 34 viz-label-audit — viz 라벨 렌더 크기 실측 감사
 - [x] 35 i18n-key-check — t() 키 실존 검증 (34 실측 중 발견한 vizInsights 키 불일치)
+- [ ] 36 ci-verify-gate — CI 검사 단일화(신규 게이트 2종 누락 해소) + VERIFY.md 개정
+- [ ] 37 write-retry — 쓰기 BUSY_RETRY 자동 흡수(공유 헬퍼, UX 불변)
+- [ ] 38 sync-resilience — catalog 동기화 고착·setConfig 가드·inventory 재스캔 복구
+- [ ] 39 offline-queue-cleanup — 죽은 offlineQueue 정리 + FRONTEND.md 정합
+- [ ] 40 hygiene-2 — 오류 표시·useMemo·role/aria 소형 4건
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
