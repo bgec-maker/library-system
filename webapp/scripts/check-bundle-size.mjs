@@ -10,7 +10,7 @@
 //   student = 같은 공용 청크 + StudentRoot.tsx 청크 그래프(#/b/... 라우트, 셸 코드 미로딩).
 //
 // npm run build 뒤에 실행한다(빌드 산출물 dist/가 있어야 함). `npm run size`.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 
@@ -109,6 +109,41 @@ try {
   printBreakdown('work · desktop 셸', desktopResult);
   printBreakdown('work · mobile 셸', mobileResult);
   printBreakdown('student (#/b/...)', studentResult);
+
+  // todo/83 — 직전 기록(size-baseline.json, 커밋 포함) 대비 증감: 회귀가 "어느 청크에서 왔는지"
+  // 즉시 보이게 한다. 정보성 출력(예산 초과만 실패) — 기준 갱신은 의도적으로만:
+  //   npm run size -- --update-baseline
+  const BASELINE_PATH = join(ROOT, 'scripts', 'size-baseline.json');
+  const chunkSizes = {};
+  for (const r of [desktopResult, mobileResult, studentResult]) {
+    for (const b of r.breakdown) chunkSizes[b.key] = b.size;
+  }
+  const snapshot = { work: workBytes, student: studentResult.total, chunks: chunkSizes };
+  if (existsSync(BASELINE_PATH)) {
+    const base = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
+    const d = (cur, prev) => {
+      const diff = cur - (prev ?? 0);
+      return `${diff >= 0 ? '+' : ''}${(diff / 1024).toFixed(1)}KB`;
+    };
+    console.log('\n--- 직전 기록 대비 (scripts/size-baseline.json) ---');
+    console.log(`work    ${fmtKb(workBytes)} (${d(workBytes, base.work)})`);
+    console.log(`student ${fmtKb(studentResult.total)} (${d(studentResult.total, base.student)})`);
+    const movers = [];
+    const keys = new Set([...Object.keys(chunkSizes), ...Object.keys(base.chunks ?? {})]);
+    for (const k of keys) {
+      const diff = (chunkSizes[k] ?? 0) - (base.chunks?.[k] ?? 0);
+      if (Math.abs(diff) >= 1024) movers.push({ k, diff });
+    }
+    movers.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    for (const m of movers.slice(0, 5)) {
+      console.log(`  ${(m.diff >= 0 ? '+' : '') + (m.diff / 1024).toFixed(1)}KB  ${m.k}${m.diff > 0 && !(m.k in (base.chunks ?? {})) ? ' (신규)' : ''}`);
+    }
+    if (movers.length === 0) console.log('  ±1KB 이상 움직인 청크 없음');
+  }
+  if (process.argv.includes('--update-baseline')) {
+    writeFileSync(BASELINE_PATH, JSON.stringify(snapshot, null, 2) + '\n');
+    console.log(`\n기준 갱신: ${BASELINE_PATH}`);
+  }
 
   console.log('\n--- 요약 (todo/07 「번들 예산 실측 기록」이 참조하는 숫자) ---');
   console.log(`work    (${workLabel} 기준, 더 큰 쪽 채택) : ${fmtKb(workBytes)} / 예산 ${fmtKb(BUDGET_BYTES.work)}`);

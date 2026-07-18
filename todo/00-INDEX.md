@@ -86,7 +86,7 @@
 - [x] 80 dialog-focus-trap — 다이얼로그 포커스 트랩·ESC
 - [x] 81 scan-aria-live — 스캔 결과 스크린리더 낭독
 - [x] 82 contrast-gate — 색 대비 검사 게이트(11건 적발·토큰 5종 보정)
-- [ ] 83 bundle-report — 번들 리포트 세분화
+- [x] 83 bundle-report — 번들 리포트 세분화(기준 대비 증감)
 - [ ] 84 icon-import-audit — lucide 임포트 감사 스크립트
 - [ ] 85 cover-fallback — 표지 이미지 폴백 전수
 - [ ] 86 update-banner — 새 버전 감지 배너

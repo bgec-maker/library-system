@@ -1,0 +1,23 @@
+{
+  "work": 77255,
+  "student": 55361,
+  "chunks": {
+    "index.html": 50496,
+    "_cameraSession-KDXqfpur.js": 10558,
+    "src/shells/desktop/DesktopShell.tsx": 7827,
+    "_index-B0R4Grde.js": 1610,
+    "_ScanAimFrame-z8wFEeZx.js": 1491,
+    "_recentOpsData-B_CvTUXd.js": 1302,
+    "_reservationData-osgtWwOr.js": 1170,
+    "_SampleDataBadge-BivfOG7U.js": 1123,
+    "_readCache-D9XXohD5.js": 397,
+    "_refresh-cw-Dk1cS51z.js": 367,
+    "_book-marked-BUUMT6cT.js": 349,
+    "_writeRetry-6E3yXgBv.js": 308,
+    "_format-C4dsAl2_.js": 257,
+    "src/shells/mobile/MobileShell.tsx": 3556,
+    "_chevron-left-vMsGWsX5.js": 288,
+    "src/student/StudentRoot.tsx": 3260,
+    "_urlGuard-Bpa6MnR5.js": 133
+  }
+}
