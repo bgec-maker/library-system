@@ -30,7 +30,8 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     icon: ArrowLeftRight,
     roles: ['LIBRARIAN', 'STATION'],
     scan: 'focus',
-    desktop: { min: [420, 620], single: true },
+    // todo/49(디자인 연구 P3-1): 기본 크기=min이므로 콘텐츠 실측에 맞춰 620→520(하단 여백 절반 제거).
+    desktop: { min: [420, 520], single: true },
     mobile: { tab: 0 }
   },
   {

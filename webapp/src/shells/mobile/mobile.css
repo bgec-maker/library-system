@@ -373,10 +373,16 @@
     calc(16px + env(safe-area-inset-left, 0px));
 }
 
-/* ── 토스트 위치(모바일) — 탭바(52px)+safe-area 위 12px ───────────────── */
+/* ── 하단 오버레이 층 배치(todo/49 — 디자인 연구 P3-3) ─────────────────
+   탭바(52px+inset)는 항상 노출 → 그 위 실행취소 바(+12px, 행동 버튼이라 엄지에 가깝게)
+   → 그 위 토스트(+84px, 정보성). 뷰(.lr-undo-bar) 클래스를 셸 CSS가 참조하는 건 의도된
+   예외다 — 화면 위 고정 오버레이들의 "층"은 탭바 높이를 아는 셸의 관심사다. */
+.m-shell .lr-undo-bar {
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 12px);
+}
 .m-shell .toast-stack {
   left: 12px;
   right: 12px;
-  bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 84px);
   align-items: center;
 }

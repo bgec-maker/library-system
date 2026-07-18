@@ -39,6 +39,18 @@
   color: var(--ink-2);
   font-size: var(--fs-sm);
 }
+/* todo/49(디자인 연구 P3-2) — 헤더 우측 과밀 완화: 상태성 텍스트(작업자·갱신 시각)는
+   음량을 낮추고, 경고성(수기입력 미처리)만 칩 형태로 남겨 시각 위계를 분리한다. */
+.dash-header-meta > span:not(.dash-manual-entry-pending) {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+.dash-manual-entry-pending {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
 
 /* 수기입력 미처리(todo/21) — 헤더 메타 줄의 작은 텍스트 하나, 새 카드 없이. */
 .dash-manual-entry-pending {
