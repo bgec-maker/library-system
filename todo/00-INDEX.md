@@ -64,7 +64,7 @@
 - [x] 57 motion-pass — 등장 모션 방향 사전 이행 (대기업 감각 2)
 - [x] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
 - [x] 60 auto-resume-busy — BUSY류 등록 실패 부팅 자동 재개 (사용자 승인·실사례)
-- [ ] 61 queue-unit-tests — registerQueue 단위 테스트 상주화
+- [x] 61 queue-unit-tests — registerQueue 단위 테스트 상주화
 - [ ] 62 dock-badge-parity — 데스크톱 도크 등록 아이콘 실패 배지 (53 패리티)
 - [ ] 63 scan-route-tests — 스캔 라우팅 단위 테스트
 - [ ] 64 undo-e2e — 언두바 회귀 e2e

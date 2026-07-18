@@ -90,6 +90,13 @@ const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = [2000, 4000, 8000, 15000];
 const RETRYABLE_CODES = new Set(['BUSY_RETRY', 'NETWORK_ERROR', 'CLIENT_TIMEOUT', 'DUPLICATE_REQUEST']);
 
+// todo/61 — 단위 테스트 전용 타이밍 주입. 실백오프(2~15s)를 기다리면 단위 스위트가 분 단위로
+// 늘어진다(writeRetry.test의 10s 상한 정당화 원칙). 프로덕션 코드 경로는 backoffMs만 읽는다.
+let backoffMs: readonly number[] = BACKOFF_MS;
+export function __setBackoffForTest(ms: readonly number[]): void {
+  backoffMs = ms.length ? ms : BACKOFF_MS;
+}
+
 function todayKey(): string {
   return `lib.register.today.${new Date().toISOString().slice(0, 10)}`;
 }
@@ -286,7 +293,7 @@ async function pump(): Promise<void> {
       entry.lastErrorCode = res.error.code;
       if (RETRYABLE_CODES.has(res.error.code) && entry.attempts < MAX_ATTEMPTS) {
         entry.status = 'retryWait';
-        entry.nextRetryAt = Date.now() + BACKOFF_MS[Math.min(entry.attempts - 1, BACKOFF_MS.length - 1)];
+        entry.nextRetryAt = Date.now() + backoffMs[Math.min(entry.attempts - 1, backoffMs.length - 1)];
         notify();
         scheduleWake();
         // 순서 보장: 뒤 항목을 앞지르지 않고 펌프를 내려놓는다 — 깨우기 타이머가 재개한다.
@@ -311,7 +318,9 @@ async function pump(): Promise<void> {
 // 서버가 영구히 아픈 경우 무한 되살림을 막고 실패 목록(+탭 배지)으로 수렴시킨다.
 const AUTO_RESUME_MAX = 3;
 
-function resumeRetryableFailuresAtBoot_(): void {
+/** 부팅 훅(todo/60) — 재시도형 실패만 같은 requestId로 재큐. 반환값은 재개 건수(테스트 계측용).
+ *  export인 이유(todo/61): 단위 테스트가 node(window 없음)에서 부팅 블록을 우회해 직접 부른다. */
+export function resumeRetryableFailures(): number {
   const failed = readFailedList();
   const toResume = failed.filter(
     (f) =>
@@ -320,7 +329,7 @@ function resumeRetryableFailuresAtBoot_(): void {
       (f.autoResumes ?? 0) < AUTO_RESUME_MAX &&
       !entries.some((e) => e.requestId === f.requestId && e.status !== 'done')
   );
-  if (toResume.length === 0) return;
+  if (toResume.length === 0) return 0;
   toResume.forEach((f) => {
     entries.push({
       requestId: f.requestId,
@@ -338,6 +347,10 @@ function resumeRetryableFailuresAtBoot_(): void {
   writeFailedList(failed.filter((f) => !toResume.some((r) => r.requestId === f.requestId)));
   persist();
   notify();
+  // 재개의 계약은 "다시 줄 세우기"가 아니라 "다시 보내기"다 — 펌프 기동까지가 이 함수 책임.
+  // (부팅 블록의 void pump()와 겹쳐도 pumping 가드가 이중 기동을 막는다.)
+  void pump();
+  return toResume.length;
 }
 
 if (typeof window !== 'undefined') {
@@ -347,7 +360,7 @@ if (typeof window !== 'undefined') {
     });
     void pump();
   });
-  resumeRetryableFailuresAtBoot_();
+  resumeRetryableFailures();
   // 새로고침 복원분(미전송 잔여) 또는 방금 자동 재개분이 있으면 부팅 직후 재개한다.
   if (entries.some((e) => e.status !== 'done')) void pump();
 }
