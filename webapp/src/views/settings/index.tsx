@@ -160,7 +160,8 @@ export default function SettingsView({ shell }: ViewProps) {
 
   const policyColumns = useMemo<DataTableColumn<PolicyRow>[]>(
     () => [
-      { key: 'policyId', header: t('views.settings.policyCol.policyId'), sortable: true, mono: true, mobilePrimary: true },
+      // todo/95 — 토큰값 nowrap 계약(todo/47): "POL-/0001" 하이픈 꺾임 실측 방지.
+      { key: 'policyId', header: t('views.settings.policyCol.policyId'), sortable: true, mono: true, nowrap: true, mobilePrimary: true },
       {
         key: 'memberTypeCode',
         header: t('views.settings.policyCol.memberType'),
@@ -186,8 +187,8 @@ export default function SettingsView({ shell }: ViewProps) {
       { key: 'maxReservations', header: t('views.settings.policyCol.maxReservations'), sortable: true, numeric: true },
       { key: 'holdDays', header: t('views.settings.policyCol.holdDays'), sortable: true, numeric: true },
       { key: 'overdueFeePerDay', header: t('views.settings.policyCol.overdueFee'), sortable: true, numeric: true },
-      { key: 'activeFromText', header: t('views.settings.policyCol.activeFrom'), sortable: true, mono: true },
-      { key: 'activeToText', header: t('views.settings.policyCol.activeTo'), sortable: true, mono: true },
+      { key: 'activeFromText', header: t('views.settings.policyCol.activeFrom'), sortable: true, mono: true, nowrap: true },
+      { key: 'activeToText', header: t('views.settings.policyCol.activeTo'), sortable: true, mono: true, nowrap: true },
       {
         key: 'statusCode',
         header: t('views.settings.policyCol.status'),
@@ -196,7 +197,7 @@ export default function SettingsView({ shell }: ViewProps) {
         csvValue: (row) => policyStatusLabel(row.statusCode),
         filterValue: (row) => `${row.statusCode} ${policyStatusLabel(row.statusCode)}`
       },
-      { key: 'updatedAtText', header: t('views.settings.policyCol.updatedAt'), sortable: true, mono: true },
+      { key: 'updatedAtText', header: t('views.settings.policyCol.updatedAt'), sortable: true, mono: true, nowrap: true },
       { key: 'updatedBy', header: t('views.settings.policyCol.updatedBy'), sortable: true }
     ],
     []
@@ -208,7 +209,7 @@ export default function SettingsView({ shell }: ViewProps) {
       { key: 'settingValue', header: t('views.settings.configCol.value'), sortable: true, mono: true, mobileSecondary: true },
       { key: 'valueType', header: t('views.settings.configCol.valueType'), sortable: true },
       { key: 'description', header: t('views.settings.configCol.description'), sortable: true },
-      { key: 'updatedAtText', header: t('views.settings.configCol.updatedAt'), sortable: true, mono: true },
+      { key: 'updatedAtText', header: t('views.settings.configCol.updatedAt'), sortable: true, mono: true, nowrap: true },
       { key: 'updatedBy', header: t('views.settings.configCol.updatedBy'), sortable: true }
     ],
     []

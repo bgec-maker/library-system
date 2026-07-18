@@ -420,7 +420,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
         render: (row) => (row.onLoan ? row.dueAt : t('common.none'))
       },
       { key: 'shelfCode', header: t('views.catalog.col.shelf'), sortable: true },
-      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true },
+      { key: 'acquiredAt', header: t('views.catalog.col.acquiredAt'), sortable: true, mono: true, nowrap: true },
       // todo/13 — 「연장」「분실 처리」는 대출 중인 소장본 행에서만, 「변상 완료」는 분실 상태이면서
       // 미변상(REPLACEMENT) 건이 남아 있는 행에서만 보여준다(죽은 버튼을 만들지 않는다 —
       // docs/ASSUMPTIONS.md todo/11 「조작 버튼」 절과 같은 원칙). 셋 다 확인 다이얼로그를 거친다 —
@@ -488,7 +488,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
 
   const opsColumns = useMemo<DataTableColumn<RecentOpRow>[]>(
     () => [
-      { key: 'occurredAt', header: t('views.recentOps.col.occurredAt'), sortable: true, mono: true, mobilePrimary: true },
+      { key: 'occurredAt', header: t('views.recentOps.col.occurredAt'), sortable: true, mono: true, nowrap: true, mobilePrimary: true },
       {
         key: 'actionCode',
         header: t('views.recentOps.col.action'),

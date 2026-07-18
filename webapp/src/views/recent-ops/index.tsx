@@ -81,7 +81,8 @@ export default function RecentOpsView({ shell }: ViewProps) {
   // todo/40: 동급 뷰(catalog·search) 관례 정렬 — 매 렌더 새 배열이 DataTable의 filterColumns
   // 메모를 무효화하지 않게 한다(deps []도 관례 동일: 로케일 전환은 창 재마운트 경로).
   const columns = useMemo<DataTableColumn<RecentOpRow>[]>(() => [
-    { key: 'occurredAt', header: t('views.recentOps.col.occurredAt'), sortable: true, mono: true, mobilePrimary: true },
+    // todo/95 — "2026-/07-18/16:20" 3줄 꺾임 실측 방지(nowrap 계약).
+    { key: 'occurredAt', header: t('views.recentOps.col.occurredAt'), sortable: true, mono: true, nowrap: true, mobilePrimary: true },
     {
       key: 'actionCode',
       header: t('views.recentOps.col.action'),
@@ -92,7 +93,7 @@ export default function RecentOpsView({ shell }: ViewProps) {
     },
     { key: 'summary', header: t('views.recentOps.col.summary'), sortable: true },
     { key: 'entityType', header: t('views.recentOps.col.entityType'), sortable: true },
-    { key: 'entityId', header: t('views.recentOps.col.entityId'), sortable: true, mono: true },
+    { key: 'entityId', header: t('views.recentOps.col.entityId'), sortable: true, mono: true, nowrap: true },
     { key: 'actorId', header: t('views.recentOps.col.actor'), sortable: true, mono: true }
   ], []);
 
