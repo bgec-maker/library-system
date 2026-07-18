@@ -563,6 +563,26 @@
       "policiesTitle": "Loan policies (13_POLICIES)",
       "policiesEmpty": "No policies registered.",
       "policiesSearchPlaceholder": "Search policies…",
+      "codebook": {
+        "memberType": {
+          "GENERAL": "General",
+          "CHILD": "Child",
+          "STAFF": "Staff",
+          "STUDENT": "Student",
+          "TEACHER": "Teacher"
+        },
+        "materialType": {
+          "BOOK": "Book",
+          "REFERENCE": "Reference (in-library)",
+          "AV": "Audio-visual",
+          "SET": "Series set",
+          "TEACHER_ONLY": "Teacher only"
+        },
+        "status": {
+          "ACTIVE": "Active",
+          "INACTIVE": "Inactive"
+        }
+      },
       "policyCol": {
         "policyId": "Policy ID",
         "memberType": "Member type",

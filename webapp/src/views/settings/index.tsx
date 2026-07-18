@@ -33,6 +33,34 @@ import './settings.css';
 
 const issueKey = (issue: IntegrityIssue, index: number) => `${issue.sheet}-${issue.row}-${issue.code}-${index}`;
 
+// todo/75 — 16_CODEBOOK 시드 라벨 미러(라벨(코드) 병기, 미지 코드는 원값). 명시 Record이라
+// 키 실존 게이트가 리터럴 호출 전수를 검증한다(동적 키 금지 관례 — register의 FAIL_REASON_LABELS와 동형).
+const MEMBER_TYPE_LABELS: Record<string, () => string> = {
+  GENERAL: () => t('views.settings.codebook.memberType.GENERAL'),
+  CHILD: () => t('views.settings.codebook.memberType.CHILD'),
+  STAFF: () => t('views.settings.codebook.memberType.STAFF'),
+  STUDENT: () => t('views.settings.codebook.memberType.STUDENT'),
+  TEACHER: () => t('views.settings.codebook.memberType.TEACHER')
+};
+const MATERIAL_TYPE_LABELS: Record<string, () => string> = {
+  BOOK: () => t('views.settings.codebook.materialType.BOOK'),
+  REFERENCE: () => t('views.settings.codebook.materialType.REFERENCE'),
+  AV: () => t('views.settings.codebook.materialType.AV'),
+  SET: () => t('views.settings.codebook.materialType.SET'),
+  TEACHER_ONLY: () => t('views.settings.codebook.materialType.TEACHER_ONLY')
+};
+const POLICY_STATUS_LABELS: Record<string, () => string> = {
+  ACTIVE: () => t('views.settings.codebook.status.ACTIVE'),
+  INACTIVE: () => t('views.settings.codebook.status.INACTIVE')
+};
+
+function withCode(label: (() => string) | undefined, code: string): string {
+  return label ? `${label()} (${code})` : code;
+}
+const memberTypeLabel = (code: string) => withCode(MEMBER_TYPE_LABELS[code], code);
+const materialTypeLabel = (code: string) => withCode(MATERIAL_TYPE_LABELS[code], code);
+const policyStatusLabel = (code: string) => withCode(POLICY_STATUS_LABELS[code], code);
+
 export default function SettingsView({ shell }: ViewProps) {
   const [overview, setOverview] = useState<SettingsOverview | null>(null);
   const [sample, setSample] = useState(false);
@@ -103,8 +131,24 @@ export default function SettingsView({ shell }: ViewProps) {
   const policyColumns = useMemo<DataTableColumn<PolicyRow>[]>(
     () => [
       { key: 'policyId', header: t('views.settings.policyCol.policyId'), sortable: true, mono: true, mobilePrimary: true },
-      { key: 'memberTypeCode', header: t('views.settings.policyCol.memberType'), sortable: true, mobileSecondary: true },
-      { key: 'materialTypeCode', header: t('views.settings.policyCol.materialType'), sortable: true },
+      {
+        key: 'memberTypeCode',
+        header: t('views.settings.policyCol.memberType'),
+        sortable: true,
+        mobileSecondary: true,
+        // todo/75 — 코드 원값 단독은 내부어 금지 위반. 대조 화면이라 라벨(코드) 병기.
+        render: (row) => memberTypeLabel(row.memberTypeCode),
+        csvValue: (row) => memberTypeLabel(row.memberTypeCode),
+        filterValue: (row) => `${row.memberTypeCode} ${memberTypeLabel(row.memberTypeCode)}`
+      },
+      {
+        key: 'materialTypeCode',
+        header: t('views.settings.policyCol.materialType'),
+        sortable: true,
+        render: (row) => materialTypeLabel(row.materialTypeCode),
+        csvValue: (row) => materialTypeLabel(row.materialTypeCode),
+        filterValue: (row) => `${row.materialTypeCode} ${materialTypeLabel(row.materialTypeCode)}`
+      },
       { key: 'loanDays', header: t('views.settings.policyCol.loanDays'), sortable: true, numeric: true },
       { key: 'maxOpenLoans', header: t('views.settings.policyCol.maxOpenLoans'), sortable: true, numeric: true },
       { key: 'maxRenewals', header: t('views.settings.policyCol.maxRenewals'), sortable: true, numeric: true },
@@ -114,7 +158,14 @@ export default function SettingsView({ shell }: ViewProps) {
       { key: 'overdueFeePerDay', header: t('views.settings.policyCol.overdueFee'), sortable: true, numeric: true },
       { key: 'activeFromText', header: t('views.settings.policyCol.activeFrom'), sortable: true, mono: true },
       { key: 'activeToText', header: t('views.settings.policyCol.activeTo'), sortable: true, mono: true },
-      { key: 'statusCode', header: t('views.settings.policyCol.status'), sortable: true },
+      {
+        key: 'statusCode',
+        header: t('views.settings.policyCol.status'),
+        sortable: true,
+        render: (row) => policyStatusLabel(row.statusCode),
+        csvValue: (row) => policyStatusLabel(row.statusCode),
+        filterValue: (row) => `${row.statusCode} ${policyStatusLabel(row.statusCode)}`
+      },
       { key: 'updatedAtText', header: t('views.settings.policyCol.updatedAt'), sortable: true, mono: true },
       { key: 'updatedBy', header: t('views.settings.policyCol.updatedBy'), sortable: true }
     ],

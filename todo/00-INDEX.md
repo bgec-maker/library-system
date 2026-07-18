@@ -78,7 +78,7 @@
 - [x] 72 dash-deeplinks — 대시보드 카드 딥링크 전수 점검(+모바일 예약 타일 신설)
 - [x] 73 currency-format — 금액 표기 통일(단일 원천화 formatKRW)
 - [x] 74 date-format-util — 날짜 표기 유틸 통일(formatTimeHM·초 제거)
-- [ ] 75 codebook-labels — 코드값 라벨 병기 (16_CODEBOOK 미러)
+- [x] 75 codebook-labels — 코드값 라벨 병기 (16_CODEBOOK 미러)
 - [ ] 76 csv-column-set — CSV 내보내기 컬럼 선택
 - [ ] 77 integrity-copy — 무결성 점검 결과 카피 정리
 - [ ] 78 print-v2-audit — 인쇄 v2 정합 감사

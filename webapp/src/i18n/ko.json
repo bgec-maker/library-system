@@ -563,6 +563,26 @@
       "policiesTitle": "대출 정책 (13_POLICIES)",
       "policiesEmpty": "등록된 정책이 없습니다.",
       "policiesSearchPlaceholder": "정책 검색…",
+      "codebook": {
+        "memberType": {
+          "GENERAL": "일반",
+          "CHILD": "어린이",
+          "STAFF": "교직원",
+          "STUDENT": "학생",
+          "TEACHER": "교사"
+        },
+        "materialType": {
+          "BOOK": "도서",
+          "REFERENCE": "참고도서(관내열람)",
+          "AV": "시청각자료",
+          "SET": "전집",
+          "TEACHER_ONLY": "교사용"
+        },
+        "status": {
+          "ACTIVE": "활성",
+          "INACTIVE": "비활성"
+        }
+      },
       "policyCol": {
         "policyId": "정책 ID",
         "memberType": "회원 유형",
