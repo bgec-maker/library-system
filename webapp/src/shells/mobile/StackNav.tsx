@@ -1,4 +1,4 @@
-import { Suspense, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Suspense, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import type { ShellContext, ViewId } from '../../types';
 import { getViewMeta } from '../../registry';
@@ -42,12 +42,40 @@ function readDepth(state: unknown): number {
   return typeof s?.__mstackDepth === 'number' ? s.__mstackDepth : 0;
 }
 
+// todo/69 — pop 역재생 길이(57 방향 사전: 나가기는 들어온 방향 역재생, 더 짧게).
+const LEAVE_MS = 120;
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ onOpen, toast, onDepthChange }, ref) {
   const [stack, setStack] = useState<StackEntry[]>([]);
   const stackRef = useRef<StackEntry[]>(stack);
   stackRef.current = stack;
   const depthCbRef = useRef(onDepthChange);
   depthCbRef.current = onDepthChange;
+  // todo/69 — 나가기 상태기계: popstate가 오면 슬라이스를 LEAVE_MS 지연하고 그동안 최상단에
+  // is-leaving(우측 슬라이드 아웃 + 포인터 차단)을 입힌다. 연속 pop은 목표 깊이만 갱신(재생은
+  // 마지막 한 번), reduced-motion은 이 기계 전체를 건너뛴다(즉시 슬라이스 — 기존 동작).
+  const [leaving, setLeaving] = useState(false);
+  const [entered, setEntered] = useState<'push' | 'pop'>('push');
+  const pendingDepthRef = useRef<number | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushLeave = useCallback(() => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    if (pendingDepthRef.current !== null) {
+      const target = pendingDepthRef.current;
+      pendingDepthRef.current = null;
+      setLeaving(false);
+      setEntered('pop');
+      setStack((prev) => (prev.length > target ? prev.slice(0, target) : prev));
+    }
+  }, []);
 
   // 루트 sentinel: 마운트 시 depth-0 히스토리 엔트리를 하나 더 쌓아, "이 세션에서 처음 누르는
   // 뒤로가기"가 앱 바깥(진짜 이전 페이지/PWA 종료)으로 새지 않고 우리 popstate 핸들러로 먼저 들어오게 한다.
@@ -58,7 +86,18 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
   useEffect(() => {
     function handlePopState(e: PopStateEvent) {
       const targetDepth = readDepth(e.state);
-      setStack((prev) => (prev.length > targetDepth ? prev.slice(0, targetDepth) : prev));
+      if (stackRef.current.length > targetDepth) {
+        if (prefersReducedMotion()) {
+          setEntered('pop');
+          setStack((prev) => (prev.length > targetDepth ? prev.slice(0, targetDepth) : prev));
+        } else {
+          // todo/69 — 역재생: 목표 깊이만 기록하고 슬라이스는 LEAVE_MS 뒤에(연속 pop이면 갱신).
+          pendingDepthRef.current = targetDepth;
+          setLeaving(true);
+          if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+          leaveTimerRef.current = setTimeout(flushLeave, LEAVE_MS);
+        }
+      }
       if (targetDepth === 0) {
         // 루트까지 왔다 — 여기서 한 번 더 뒤로가면 앱을 벗어난다. sentinel을 즉시 재적재해
         // "탭 유지 · 앱 종료 아님"을 만족시킨다(값을 소비만 하고 화면은 그대로).
@@ -67,7 +106,7 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
     }
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [flushLeave]);
 
   useEffect(() => {
     depthCbRef.current?.(stack.length, stack.length ? stack[stack.length - 1].viewId : null);
@@ -77,6 +116,9 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
     ref,
     () => ({
       push(viewId, params = {}) {
+        // todo/69 — 나가기 재생 중 push가 오면(120ms 레이스) 지연된 슬라이스를 즉시 확정해
+        // 깊이 계산이 어긋나지 않게 한다.
+        flushLeave();
         // todo/66(e2e가 적발) — pushState를 setState 업데이터 **밖**에서 호출한다. 업데이터는
         // React가 재실행할 수 있는 순수 함수여야 하는데(StrictMode dev는 실제로 2회 호출),
         // 안에 두면 같은 화면이 히스토리에 두 번 적재돼 뒤로가기가 한 번 씹힌다. 깊이는
@@ -89,6 +131,7 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
           title: meta?.title ?? viewId
         };
         window.history.pushState({ __mstackDepth: stackRef.current.length + 1 } satisfies HistoryState, '');
+        setEntered('push');
         setStack((prev) => [...prev, entry]);
       },
       pop() {
@@ -100,7 +143,7 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
         window.history.go(-stackRef.current.length);
       }
     }),
-    []
+    [flushLeave]
   );
 
   if (stack.length === 0) return null;
@@ -130,7 +173,13 @@ const StackNav = forwardRef<StackNavHandle, StackNavProps>(function StackNav({ o
   };
 
   return (
-    <div className="m-stack-overlay" role="dialog" aria-modal="true">
+    /* todo/69 — is-leaving: 우측 슬라이드 아웃 + 포인터 차단(mobile.css). no-enter: pop으로
+       드러난 아래층이 입장 모션(우→좌)을 다시 재생하면 "앞으로 가는" 착시가 나므로 억제. */
+    <div
+      className={`m-stack-overlay${leaving ? ' is-leaving' : ''}${entered === 'pop' ? ' no-enter' : ''}`}
+      role="dialog"
+      aria-modal="true"
+    >
       <header className="m-stack-header">
         <button type="button" className="m-stack-back" onClick={() => window.history.back()} aria-label={t('common.back')}>
           <ChevronLeft size={24} aria-hidden />

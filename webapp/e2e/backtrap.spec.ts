@@ -49,6 +49,17 @@ test('스택 push/pop · 루트 뒤로가기 트랩 · 탭 전환 reset', async 
   await page.goBack();
   await expect(page.locator('.m-stack-overlay')).toHaveCount(0);
 
+  // ③-b (todo/69) — 나가기 재생(120ms) 중 즉시 push하는 레이스: flushLeave가 지연 슬라이스를
+  //      확정하고 새 push가 올바른 깊이로 쌓여야 한다(꼬이면 제목·깊이가 어긋난다).
+  await page.locator('.m-more-item', { hasText: '장서 대장' }).click();
+  await expect(page.locator('.m-stack-title')).toHaveText('장서 대장');
+  await page.goBack();
+  await page.locator('.m-more-item', { hasText: '리포트' }).click();
+  await expect(page.locator('.m-stack-title')).toHaveText('리포트');
+  await expect(page.locator('.m-stack-overlay')).toHaveCount(1);
+  await page.goBack();
+  await expect(page.locator('.m-stack-overlay')).toHaveCount(0);
+
   // ④ push 상태에서 탭 전환 — 스택이 즉시 reset되고, 이후 back도 앱을 벗어나지 않는다
   await page.locator('.m-more-item', { hasText: '리포트' }).click();
   await expect(page.locator('.m-stack-title')).toHaveText('리포트');
