@@ -110,6 +110,7 @@
 - [x] 104 budget-stream-labels — 예산 그림 우측 라벨 잘림 (사용자 캡처 확인)
 - [x] 105 srtable-scroll-inflation — sr 표가 스크롤 영역 8배 부풀림 (시각 감사 7R 실결함)
 - [x] 106 shelf-tile-contrast — 서가 온도 짙은 타일 글자 침몰 (시각 감사 7R)
+- [x] 107 slot-title-clamp — 소장본 슬롯 장문 서명 5줄 팽창 (장문 스트레스 감사)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

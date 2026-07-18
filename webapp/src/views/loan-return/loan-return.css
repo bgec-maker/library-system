@@ -67,6 +67,13 @@
 .lr-slot-sub {
   font-size: var(--fs-xs);
   color: var(--ink-2);
+  /* todo/107 — 장문 서명(전집명 등)이 슬롯을 5줄로 부풀리던 것: 3줄 클램프. 실물 대조엔
+     3줄이면 충분하고 전체 서명은 완료 토스트·최근 처리에 남는다. 미지원 브라우저는 자연
+     개행 그대로(점진적 저하 — 깨짐 아님). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .lr-slot-label {
   font-size: var(--fs-xs);
