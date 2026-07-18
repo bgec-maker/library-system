@@ -116,6 +116,22 @@
 .dock-icon {
   position: relative;
 }
+/* todo/62 — 등록 실패 배지(모바일 .m-tab-badge와 같은 문법): --fail 재사용, 12px 하한 준수.
+   네이비 도크 위에서 경계가 뭉개지지 않게 도크색 링(border)으로 분리 — 그림자 겹 규칙 무관. */
+.dock-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 2px solid var(--deep);
+  background: var(--fail);
+  color: var(--panel);
+  font: 700 12px/14px var(--sans);
+  text-align: center;
+}
 
 /* todo/50 — 그룹 구분선: 업무(상단 4) / 관리 / (하단 시스템은 기존 언어·설정 영역) */
 .dock-group {

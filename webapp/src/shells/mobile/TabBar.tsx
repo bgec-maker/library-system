@@ -1,7 +1,6 @@
-import { useSyncExternalStore } from 'react';
 import { Ellipsis } from 'lucide-react';
 import type { ViewId, ViewMeta } from '../../types';
-import { onRegisterQueueChange, readFailedList } from '../../services/registerQueue';
+import { useRegisterFailedCount } from '../useRegisterFailedCount';
 import { t } from '../../i18n';
 
 const TAB_ICON_SIZE = 20;
@@ -23,13 +22,8 @@ function labelFor(meta: ViewMeta): string {
   return meta.id === 'loan-return' ? t('shell.mobile.scanTabLabel') : meta.title;
 }
 
-/** todo/53(레퍼런스 점검 2-1, HIG Badging) — 등록 파이프라인의 백그라운드 실패는 등록 화면에 들어가야만
- *  보였다. registerQueue는 뷰가 닫혀도 도는 모듈 싱글턴이므로, 탭바가 직접 실패 건수를 구독해
- *  "그 섹션에 확인할 게 있다"를 iOS 관례(빨간 배지)로 알린다. 성공/대기는 배지 없음 — 배지는
- *  개입이 필요한 신호에만 쓴다(HIG: 남용 시 무감각해짐). */
-function useRegisterFailedCount(): number {
-  return useSyncExternalStore(onRegisterQueueChange, () => readFailedList().length);
-}
+// todo/53(HIG Badging) — 실패 건수 구독은 todo/62에서 셸 공용 훅(../useRegisterFailedCount)으로
+// 승격: 같은 신호를 데스크톱 도크도 표시한다. 배지는 개입 필요 신호에만(인터랙션 표준).
 
 /** 하단 탭바 — 터치 타깃 44px 이상(.m-tab min-height 52px, mobile.css). */
 export default function TabBar({ tabs, activeId, onSelect }: TabBarProps) {

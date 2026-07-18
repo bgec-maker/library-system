@@ -2,6 +2,7 @@ import { Library, Settings, SquareDashed } from 'lucide-react';
 import { viewsForRole } from '../../registry';
 import { openSessionSettings } from '../../services/sessionSettingsUi';
 import { setLocale, t, useLocale, type Locale } from '../../i18n';
+import { useRegisterFailedCount } from '../useRegisterFailedCount';
 import { DOCK_WIDTH, useWindowStore } from './useWindowStore';
 
 const DOCK_ICON_SIZE = 24;
@@ -41,6 +42,10 @@ export function Dock() {
   const windows = useWindowStore((s) => s.windows);
   const openWindow = useWindowStore((s) => s.openWindow);
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
+  // todo/62 — 모바일 탭 배지(53)의 데스크톱 패리티: 같은 신호(등록 실패)는 두 셸에서 같게.
+  // i18n 키는 53의 것을 재사용(shell.mobile.* 네임스페이스지만 문구는 셸 무관 — 키 이동은
+  // 이득 대비 게이트 리스크만 있어 보류).
+  const failedCount = useRegisterFailedCount();
 
   const views = viewsForRole('LIBRARIAN');
   const minimized = windows.filter((w) => w.minimized);
@@ -63,6 +68,7 @@ export function Dock() {
             {group.map((v) => {
               const isOpen = windows.some((w) => w.viewId === v.id && !w.minimized);
               const Icon = v.icon;
+              const badge = v.id === 'register' && failedCount > 0 ? (failedCount > 9 ? '9+' : String(failedCount)) : null;
               return (
                 <button
                   key={v.id}
@@ -72,6 +78,12 @@ export function Dock() {
                   onClick={() => openWindow(v.id)}
                 >
                   <Icon size={DOCK_ICON_SIZE} aria-hidden />
+                  {badge && (
+                    <span className="dock-badge" aria-hidden="true">
+                      {badge}
+                    </span>
+                  )}
+                  {badge && <span className="sr-only">{t('shell.mobile.registerFailedBadge', { count: String(failedCount) })}</span>}
                   {/* todo/50: 호버 라벨 플라이아웃 — title 툴팁의 지연 없이 즉시 학습.
                       포인터 없는 기기에선 CSS가 아예 렌더 억제(@media hover). */}
                   <span className="dock-flyout" aria-hidden="true">
