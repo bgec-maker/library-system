@@ -71,7 +71,7 @@
 - [x] 65 reservation-e2e — 예약 흐름 e2e
 - [x] 66 backtrap-e2e — 모바일 뒤로가기 트랩·스택 e2e
 - [x] 67 barcode-copy — 완료 카드 등록번호 탭 복사
-- [ ] 68 scan-miss-hint — 스캔 미인식 힌트 (still-searching)
+- [x] 68 scan-miss-hint — 스캔 미인식 힌트 (still-searching)
 - [ ] 69 stack-pop-reverse — 스택 pop 역재생 모션 (57 보류분)
 - [ ] 70 search-filter-chips — 검색 필터 활성 칩 표시
 - [ ] 71 tray-desktop-density — 등록 트레이 데스크톱 밀도 점검

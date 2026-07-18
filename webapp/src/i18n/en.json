@@ -94,7 +94,8 @@
     "stage": {
       "scanningTo": "Scanning → {target}",
       "autoStopIn": "Auto-stop in {seconds}s",
-      "torch": "Flashlight"
+      "torch": "Flashlight",
+      "missHint": "Not scanning? Bring the barcode closer and add light"
     }
   },
   "shell": {

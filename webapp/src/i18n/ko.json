@@ -94,7 +94,8 @@
     "stage": {
       "scanningTo": "스캔 중 → {target}",
       "autoStopIn": "{seconds}초 후 자동 종료",
-      "torch": "손전등"
+      "torch": "손전등",
+      "missHint": "인식이 안 되면 — 바코드를 조준 칸에 더 가까이, 조명은 밝게"
     }
   },
   "shell": {

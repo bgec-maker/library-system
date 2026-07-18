@@ -99,3 +99,20 @@
   text-align: center;
   word-break: break-all;
 }
+
+/* todo/68 — 미인식 힌트(still-searching): 인식 배지와 같은 자리 문법, 판정색 대신 무채 오버레이. */
+.scan-stage__missHint {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  transform: translate(-50%, 0);
+  z-index: 2;
+  max-width: 86%;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  font: 600 var(--fs-sm) var(--sans);
+  text-align: center;
+  word-break: keep-all;
+}
