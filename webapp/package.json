@@ -13,11 +13,12 @@
     "check-i18n-completeness": "node scripts/check-i18n-completeness.mjs",
     "check-i18n-keys": "node scripts/check-i18n-keys.mjs",
     "check-perf-budget": "node scripts/check-perf-budget.mjs",
-    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && npm run check-i18n-keys && npm run check-perf-budget && npm run check-contrast && tsc -b --noEmit && npm run test:unit",
+    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && npm run check-i18n-keys && npm run check-perf-budget && npm run check-contrast && npm run check-icon-imports && tsc -b --noEmit && npm run test:unit",
     "size": "node scripts/check-bundle-size.mjs",
     "test:unit": "node scripts/run-unit-tests.mjs",
     "e2e": "playwright test",
-    "check-contrast": "node scripts/check-contrast.mjs"
+    "check-contrast": "node scripts/check-contrast.mjs",
+    "check-icon-imports": "node scripts/check-icon-imports.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.24.0",
