@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, ImageOff, Lock, MessageCircle, Star } from 'lucide-react';
 import { t } from '../../i18n';
 import { fetchPublicBookData, type PublicBookAvailability, type PublicBookData } from '../../services/publicBookData';
+import { safeCoverUrl } from '../../services/urlGuard';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
 
 export interface BookPageProps {
@@ -83,9 +84,9 @@ export default function BookPage({ barcode }: BookPageProps) {
       </h1>
 
       <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-        {data.coverUrl ? (
+        {safeCoverUrl(data.coverUrl) ? (
           <img
-            src={data.coverUrl}
+            src={safeCoverUrl(data.coverUrl)}
             alt={t('student.bookPage.coverAlt', { title: data.title })}
             width={COVER_WIDTH}
             height={COVER_HEIGHT}

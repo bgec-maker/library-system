@@ -18,6 +18,7 @@ import {
 import { subscribeScan, getEffectiveScanRoute, isValidEan13 } from '../../services/scanBus';
 import { ScanCameraStart } from '../../components/ScanCameraStart';
 import { operatorNoteFor } from '../../services/operatorNote';
+import { safeCoverUrl } from '../../services/urlGuard';
 import { intlLocaleTag, t } from '../../i18n';
 import './register.css';
 
@@ -861,8 +862,8 @@ export default function RegisterView({ shell }: ViewProps) {
           {!dupVisible && (
             <div className="reg-confirmForm panel">
               <div className="reg-titleRow">
-                {lookup.coverUrl && (
-                  <img className="reg-cover" src={lookup.coverUrl} alt="" width={56} height={80} loading="lazy" />
+                {safeCoverUrl(lookup.coverUrl) && (
+                  <img className="reg-cover" src={safeCoverUrl(lookup.coverUrl)} alt="" width={56} height={80} loading="lazy" />
                 )}
                 <div>
                   <div className="mono reg-isbn">{lookup.isbn}</div>
