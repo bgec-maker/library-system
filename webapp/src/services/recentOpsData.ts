@@ -31,7 +31,9 @@ export type RecentOpsFetchOutcome = { ok: true; rows: RecentOpRow[]; sample: boo
 export async function fetchRecentOps(limit = 100, entityId?: string): Promise<RecentOpsFetchOutcome> {
   // todo/29: 읽기 캐시 — 대시보드 갱신 신호마다 열려 있는 소비자들이 동시 재조회해도 fetch는 1회.
   const res = await cachedApiCall<{ rows: RecentOpRow[] }>('recentOps', entityId ? { limit, entityId } : { limit }, 15000);
-  if (res.ok) return { ok: true, rows: res.data.rows, sample: false };
+  // todo/48 후속: 응답 모양 방어 — rows 부재(불완전 목·구버전 서버)면 빈 배열로. 이 가드가
+  // 없으면 소비자(대시보드 카드)가 undefined.length로 죽어 셸 전체가 무너진다(e2e가 잡아냄).
+  if (res.ok) return { ok: true, rows: res.data.rows ?? [], sample: false };
   if (res.error.code === 'UNKNOWN_ACTION') {
     // 아직 recentOps 액션이 없는 배포(재배포 전) — dashboardData.ts와 같은 정상 상태, 샘플로 폴백.
     // entityId가 주어졌으면 목데이터도 같은 방식(entity_id 일치)으로 좁혀서 보여준다 — 실제
