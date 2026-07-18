@@ -199,7 +199,14 @@ export default function InventoryView({ shell }: ViewProps) {
               <span className="inv-progress-value">{scannedCount}</span>
               <span className="inv-progress-label">{t('views.inventory.progress', { scanned: scannedCount, total: baselineTotal })}</span>
             </div>
-            <div className="inv-progress-bar">
+            <div
+              className="inv-progress-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={baselineTotal}
+              aria-valuenow={scannedCount}
+              aria-label={t('views.inventory.progress', { scanned: scannedCount, total: baselineTotal })}
+            >
               <div className="inv-progress-bar-fill" style={{ width: `${progressPct}%` }} />
             </div>
             <div className="inv-progress-stat">

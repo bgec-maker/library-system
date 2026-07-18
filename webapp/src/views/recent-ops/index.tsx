@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import type { ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
@@ -78,7 +78,9 @@ export default function RecentOpsView({ shell }: ViewProps) {
     void load();
   }, []);
 
-  const columns: DataTableColumn<RecentOpRow>[] = [
+  // todo/40: 동급 뷰(catalog·search) 관례 정렬 — 매 렌더 새 배열이 DataTable의 filterColumns
+  // 메모를 무효화하지 않게 한다(deps []도 관례 동일: 로케일 전환은 창 재마운트 경로).
+  const columns = useMemo<DataTableColumn<RecentOpRow>[]>(() => [
     { key: 'occurredAt', header: t('views.recentOps.col.occurredAt'), sortable: true, mono: true, mobilePrimary: true },
     {
       key: 'actionCode',
@@ -92,7 +94,7 @@ export default function RecentOpsView({ shell }: ViewProps) {
     { key: 'entityType', header: t('views.recentOps.col.entityType'), sortable: true },
     { key: 'entityId', header: t('views.recentOps.col.entityId'), sortable: true, mono: true },
     { key: 'actorId', header: t('views.recentOps.col.actor'), sortable: true, mono: true }
-  ];
+  ], []);
 
   const toolbarExtra = sample ? <SampleDataBadge /> : null;
 

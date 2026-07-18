@@ -234,6 +234,7 @@ export function DataTable<T>({
                     key={rowKey(row)}
                     className={onRowClick ? 'is-clickable' : ''}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    role={onRowClick ? 'button' : undefined}
                     tabIndex={onRowClick ? 0 : undefined}
                     onKeyDown={
                       onRowClick

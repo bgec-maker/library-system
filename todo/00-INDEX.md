@@ -44,7 +44,7 @@
 - [x] 37 write-retry — 쓰기 BUSY_RETRY 자동 흡수(공유 헬퍼, UX 불변)
 - [x] 38 sync-resilience — catalog 동기화 고착·setConfig 가드·inventory 재스캔 복구
 - [x] 39 offline-queue-cleanup — 죽은 offlineQueue 정리 + FRONTEND.md 정합
-- [ ] 40 hygiene-2 — 오류 표시·useMemo·role/aria 소형 4건
+- [x] 40 hygiene-2 — 오류 표시·useMemo·role/aria 소형 4건
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)

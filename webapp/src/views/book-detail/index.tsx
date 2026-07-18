@@ -159,6 +159,8 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   const [ops, setOps] = useState<RecentOpRow[]>([]);
   const [opsSample, setOpsSample] = useState(false);
   const [opsLoading, setOpsLoading] = useState(false);
+  // todo/40: 실패가 조용히 빈 표로 보이던 것 — DataTable error prop으로 노출(오류 상태 내장).
+  const [opsError, setOpsError] = useState<string | null>(null);
 
   // 예약 걸기 대기 상태 — loan-return의 "누가 빌리나요?" 대기 슬롯과 같은 개념(학생증 스캔을
   // 기다린다). reserveBusy는 apiWebReserve_ 왕복 중 버튼 연타/중복 스캔을 막는다.
@@ -380,12 +382,16 @@ export default function BookDetailView({ shell, params }: ViewProps) {
     }
     let cancelled = false;
     setOpsLoading(true);
+    setOpsError(null);
     void fetchRecentOps(20, opsEntityId).then((outcome) => {
       if (cancelled) return;
       setOpsLoading(false);
       if (outcome.ok) {
         setOps(outcome.rows);
         setOpsSample(outcome.sample);
+      } else {
+        // todo/40: 보조 피드라도 실패는 실패로 보인다 — 빈 표로 위장하지 않는다.
+        setOpsError(outcome.message);
       }
     });
     return () => {
@@ -632,6 +638,7 @@ export default function BookDetailView({ shell, params }: ViewProps) {
               rowKey={(row) => row.logId}
               platform={shell.platform}
               loading={opsLoading && ops.length === 0}
+              error={opsError}
               emptyHint={t('views.bookDetail.opsEmpty')}
               csvFileName="book-ops.csv"
               defaultPageSize={10}
