@@ -157,8 +157,10 @@
 }
 .data-table-card {
   background: var(--panel);
-  border: 1px solid var(--rule);
+  /* todo/59(리스킨 v2) — 표면 규칙 통일: 무보더 + 저층 그림자. */
+  border: none;
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 12px 14px;
 }
 .data-table-card.is-clickable {

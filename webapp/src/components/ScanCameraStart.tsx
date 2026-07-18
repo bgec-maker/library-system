@@ -52,8 +52,10 @@ export function ScanCameraStart({ viewId, platform, variant = 'hero' }: ScanCame
       );
     }
     return (
-      <div className="scan-off-card panel">
-        <button type="button" className="scan-off-card__btn warn" onClick={() => cameraSession.start('view-button')}>
+      /* todo/59 — panel 클래스 제거(카드-안-카드 해소) + 히어로 버튼은 warn(주의색)이 아니라
+         기본 프라이머리(deep 채움): 화면 대표 동작의 위계를 색으로 표현(시안 B 채택). */
+      <div className="scan-off-card">
+        <button type="button" className="scan-off-card__btn" onClick={() => cameraSession.start('view-button')}>
           <Camera size={22} aria-hidden /> {t('camera.start')}
         </button>
         <p className="scan-off-card__hint">{t('camera.offHint')}</p>
@@ -65,7 +67,7 @@ export function ScanCameraStart({ viewId, platform, variant = 'hero' }: ScanCame
 
   return (
     <div className="scan-camera-start">
-      <button type="button" className="warn" onClick={() => openScannerWindow()}>
+      <button type="button" onClick={() => openScannerWindow()}>
         <Camera size={16} aria-hidden /> {t('camera.start')}
       </button>
     </div>

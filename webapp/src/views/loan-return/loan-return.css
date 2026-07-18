@@ -14,20 +14,26 @@
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--ink);
-  margin-bottom: 8px;
+  /* todo/59 — 이중 타이틀 해소: 셸 헤더(모바일)·창 타이틀바(데스크톱)가 이미 화면 이름을
+     보여주므로 뷰 안의 h1·경계선을 걷어내고 힌트 한 줄만 남긴다. */
+  padding-bottom: 0;
+  border-bottom: none;
+  margin-bottom: 2px;
 }
 .lr-header h1 {
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  /* 시각적으로만 숨긴다(sr-only 패턴) — 스크린리더의 화면 제목 헤딩은 유지. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .lr-header-hint {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--ink-3);
 }
 
@@ -38,20 +44,25 @@
 }
 .lr-slot {
   flex: 1;
-  border: 1.5px dashed var(--idle);
+  /* todo/59(리스킨 v2) — 대시 보더 → 톤 카드: 빈 슬롯=deep 틴트(대기), 채워지면 화이트+그림자
+     (아래 .lr-slot.filled). 표면 규칙(무보더+저층 그림자)과 한 계열. */
+  border: none;
   border-radius: var(--radius);
   padding: 12px;
-  background: var(--panel);
+  background: var(--deep-tint);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 .lr-slot.filled {
+  /* 의미색 보더는 유지(색=의미, Polaris) — 표면만 v2(화이트+저층 그림자)로. */
   border: 1.5px solid var(--pass);
   background: var(--panel);
+  box-shadow: var(--shadow-card);
 }
 .lr-slot.waiting {
-  border: 1.5px dashed var(--brass);
+  border: 1.5px solid var(--brass);
+  background: var(--panel);
 }
 .lr-slot-sub {
   font-size: var(--fs-xs);

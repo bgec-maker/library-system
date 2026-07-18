@@ -41,6 +41,11 @@
   --radius: 14px;
   --shadow-window: 0 8px 28px rgba(109, 63, 214, 0.22);
 
+  /* todo/59 — work.css와 같은 변수명(스킨 교체 원칙): 학생 표면 값. */
+  --shadow-card: 0 1px 4px rgba(32, 26, 58, 0.08);
+  --shadow-card-up: 0 -1px 4px rgba(32, 26, 58, 0.08);
+  --deep-tint: rgba(109, 63, 214, 0.08);
+
   /* 시각화 램프 — work.css와 같은 변수명, 다른 값(DESIGN.md "같은 변수명, 다른 값"). */
   --viz-seq-1: #fbf7ff;
   --viz-seq-2: #d8c9f5;

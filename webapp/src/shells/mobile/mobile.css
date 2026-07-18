@@ -40,8 +40,10 @@
   /* 설치형 PWA에서 상단이 시계·노치에 가리지 않도록 safe-area 상단 보정 */
   padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 12px
     calc(16px + env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid var(--rule);
-  background: var(--panel);
+  /* todo/59(리스킨 v2) — 셸 헤더를 딥 네이비로: manifest theme_color(#1b3a4b)와 이어져
+     설치형에서 상태바~헤더가 한 면으로 읽힌다. 도크(데스크톱)와도 같은 면. */
+  border-bottom: none;
+  background: var(--deep);
 }
 
 .m-shell-title,
@@ -49,7 +51,7 @@
   flex: 1;
   font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--panel);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -63,7 +65,7 @@
   padding: 0;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--panel);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,7 +89,9 @@
 .m-tabbar {
   flex: 0 0 auto;
   display: flex;
-  border-top: 1px solid var(--rule);
+  /* todo/59 — 보더 대신 위로 드리우는 저층 그림자(카드 표면 규칙과 동일 계열). */
+  border-top: none;
+  box-shadow: var(--shadow-card-up);
   background: var(--panel);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
@@ -160,7 +164,8 @@
   min-width: 44px;
   min-height: 44px;
   background: transparent;
-  color: var(--deep);
+  /* todo/59 — 네이비 헤더 위 화이트 */
+  color: var(--panel);
   line-height: 1;
   padding: 0;
   display: flex;

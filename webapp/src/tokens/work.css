@@ -38,8 +38,15 @@
   --sp-6: 24px;
   --sp-8: 32px;
 
-  --radius: 6px;
+  /* todo/59(리스킨 v2) — 6px→10px: 무보더 카드(아래 --shadow-card)와 세트. 시안 B 채택분. */
+  --radius: 10px;
   --shadow-window: 0 8px 28px rgba(22, 24, 29, 0.28);
+
+  /* todo/59 — v2 표면 시스템: 카드는 보더 대신 저층 그림자 한 겹(성능 예산: 1겹 한도).
+     -up은 하단 탭바처럼 위로 드리우는 변형. --deep-tint는 세컨더리(톤) 버튼·빈 슬롯 배경. */
+  --shadow-card: 0 1px 4px rgba(25, 31, 40, 0.08);
+  --shadow-card-up: 0 -1px 4px rgba(25, 31, 40, 0.08);
+  --deep-tint: rgba(27, 58, 75, 0.08);
 
   /* 시각화 램프(추가, VIZ 전용 — docs/VIZ.md·DESIGN.md "토큰" 절, src/viz/**가 참조).
      색상 리터럴은 tokens/ 두 파일에만 존재한다는 원칙에 따라 여기서 직접 보간값을 굳힌다

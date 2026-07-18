@@ -179,9 +179,10 @@ export default function InventoryView({ shell }: ViewProps) {
                 </>
               )}
             </div>
+            {/* todo/59 — 화면 대표 동작은 warn(주의색)이 아니라 기본 프라이머리(deep 채움). */}
             <button
               type="button"
-              className="warn inv-start-btn"
+              className="inv-start-btn"
               onClick={handleStartSession}
               disabled={catalogState.rows.length === 0}
             >

@@ -294,7 +294,9 @@
   flex: 1;
   overflow: auto;
   position: relative;
-  background: var(--panel);
+  /* todo/59(리스킨 v2) — 창 본문을 캔버스(paper)로: 안의 무보더 화이트 카드(.panel)가
+     떠 보이는 표면 위계가 모바일과 동일해진다(두 셸 한 시스템). */
+  background: var(--paper);
   min-height: 0;
 }
 

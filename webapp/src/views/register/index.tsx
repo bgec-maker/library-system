@@ -726,9 +726,24 @@ export default function RegisterView({ shell }: ViewProps) {
           <ScanCameraStart viewId="register" platform={shell.platform} />
           <p className="reg-scanHint">{t('views.register.scanHint')}</p>
           {!manualOpen ? (
-            <button type="button" className="ghost" onClick={() => setManualOpen(true)}>
-              {t('views.register.manualEntryButton')}
-            </button>
+            /* todo/59 — 보조 진입 2종을 한 행으로(세로 스택 해소): 히어로(카메라) 아래
+               같은 급의 대안 경로임이 배치로 읽히게. */
+            <div className="reg-scanActions">
+              <button type="button" className="ghost" onClick={() => setManualOpen(true)}>
+                {t('views.register.manualEntryButton')}
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setManualForm(EMPTY_MANUAL_FORM);
+                  setErrorBanner('');
+                  setScreen('manualConfirm');
+                }}
+              >
+                {t('views.register.manualRegisterButton')}
+              </button>
+            </div>
           ) : (
             <div className="reg-manual">
               <label htmlFor="regManualIsbn">{t('views.register.manualIsbnLabel')}</label>
@@ -755,19 +770,6 @@ export default function RegisterView({ shell }: ViewProps) {
                 </button>
               </div>
             </div>
-          )}
-          {!manualOpen && (
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => {
-                setManualForm(EMPTY_MANUAL_FORM);
-                setErrorBanner('');
-                setScreen('manualConfirm');
-              }}
-            >
-              {t('views.register.manualRegisterButton')}
-            </button>
           )}
         </section>
       )}
