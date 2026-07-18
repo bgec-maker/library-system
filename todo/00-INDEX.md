@@ -108,6 +108,7 @@
 - [x] 102 report-name-date-nowrap — 리포트 표 이름·날짜 꺾임 (시각 감사 6R)
 - [x] 103 print-footer-overlap — 인쇄 fixed 푸터의 본문 겹침 (사용자 이미지 제보)
 - [x] 104 budget-stream-labels — 예산 그림 우측 라벨 잘림 (사용자 캡처 확인)
+- [x] 105 srtable-scroll-inflation — sr 표가 스크롤 영역 8배 부풀림 (시각 감사 7R 실결함)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

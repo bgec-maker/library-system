@@ -84,6 +84,10 @@
 /* 화면에서는 숨기되 스크린리더에는 노출 — VIZ.md "sr-only 표 대체". */
 .viz-sr-only {
   position: absolute;
+  /* todo/105 — display:table엔 overflow·height 클리핑이 안 먹혀 365행 sr 표가 원高(≈9.6천px)
+     그대로 남아 조상 스크롤 영역을 부풀렸다(실측 11,013px). 블록 박스로 강제해야 아래
+     height:1px + overflow:hidden이 실효한다 — 표준 sr-only 레시피의 누락분. */
+  display: block;
   width: 1px;
   height: 1px;
   padding: 0;
