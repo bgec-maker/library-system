@@ -103,6 +103,7 @@
 - [x] 97 mobile-locale-titles — 모바일 헤더 로케일 전환 미반영 (시각 감사 3R 실결함)
 - [x] 98 today-label-nowrap — EN Today 카운트 값 분리 줄바꿈 (시각 감사 3R)
 - [x] 99 table-action-nowrap — 표 셀 행동 버튼 세로 낱자 꺾임 (시각 감사 4R)
+- [x] 100 detail-mountedref-strictmode — 도서 상세 StrictMode 영구 로딩 실결함 (시각 감사 5R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

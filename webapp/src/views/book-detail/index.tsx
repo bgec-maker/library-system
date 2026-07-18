@@ -178,12 +178,15 @@ export default function BookDetailView({ shell, params }: ViewProps) {
   const [actionBusy, setActionBusy] = useState(false);
 
   const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // todo/100 — StrictMode 이중 마운트(mount→cleanup→remount)에서도 살아나도록 본문에서
+    // true를 재설정한다. 구현이 클린업만 두면 remount 후 ref가 false로 굳어 아래 가드들이
+    // setDetail/setLoading을 영원히 삼켰다(dev/e2e 영구 스켈레톤 실결함 — 프로덕션은 무관).
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, []);
 
   useEffect(() => {
     shell.setTitle(detail?.title || (getViewMeta('book-detail')?.title ?? t('registry.bookDetail.title')));

@@ -44,6 +44,10 @@ test('스택 push/pop · 루트 뒤로가기 트랩 · 탭 전환 reset', async 
   await expect(page.locator('.m-stack-title')).toHaveText('장서 대장');
   await page.locator('.data-table-card').first().click();
   await expect(page.locator('.m-stack-title')).toHaveText('도서 상세');
+  // todo/100 — 상세 "데이터 도착"까지 단정: mountedRef가 StrictMode 이중 마운트에서 false로
+  // 굳어 영구 스켈레톤이던 실결함의 재발 방지(기존 e2e는 제목만 봐서 이 상태를 그냥 지나쳤다).
+  await expect(page.locator('.bd-title')).toBeVisible();
+  await expect(page.locator('.bd-skeleton')).toHaveCount(0);
   await page.goBack();
   await expect(page.locator('.m-stack-title')).toHaveText('장서 대장');
   await page.goBack();
