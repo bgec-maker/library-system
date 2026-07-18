@@ -36,7 +36,11 @@ const CHART_H = 200;
 const MARGIN_LEFT = 34;
 const MARGIN_BOTTOM = 18;
 const MARGIN_TOP = 10;
-const MARGIN_RIGHT = 54;
+// todo/104 — 라벨 슬롯: 사용자 캡처에서 「학교 운영ㅂ」처럼 우측 라벨이 viewBox 경계에
+// 잘렸다. 슬롯을 70으로 넓히고(아래), 그래도 넘치는 자유 텍스트 출처명은 5자+…로 줄인다 —
+// 전체 명칭·금액은 범례와 sr 표가 항상 온전히 제공하므로 밴드 라벨은 "가리키는 손가락"만 하면 된다.
+const MARGIN_RIGHT = 70;
+const BAND_LABEL_MAX_CHARS = 6;
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat(intlLocaleTag(), { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amount);
@@ -75,11 +79,26 @@ export default function BudgetPicture() {
       // (연도 1개뿐일 때 복제된 두 항목을 그대로 더하면 두 배로 셈해지는 걸 피한다).
       const totalAmount = data.years.reduce((s, y) => s + (y.sources[bi]?.amount ?? 0), 0);
       const lastMidY = toY((top[n - 1] + bottom[n - 1]) / 2);
-      return { label, path, token: SOURCE_TOKENS[bi] ?? '--deep', totalAmount, lastMidY };
+      const labelShort = label.length > BAND_LABEL_MAX_CHARS ? `${label.slice(0, BAND_LABEL_MAX_CHARS - 1)}…` : label;
+      return { label, labelShort, path, token: SOURCE_TOKENS[bi] ?? '--deep', totalAmount, lastMidY };
     });
 
+    // todo/104 — 얇은 인접 밴드(그 외 출처·외부 공모…)의 라벨이 세로로 겹치던 것: 위에서부터
+    // 최소 11px 간격을 강제(라벨 y만 밀고 밴드 기하는 그대로).
+    const MIN_LABEL_GAP = 11;
+    let prevY = -Infinity;
+    const bandsWithLabelY = bands
+      .slice()
+      .sort((a, b) => a.lastMidY - b.lastMidY)
+      .map((band) => {
+        const labelY = Math.max(band.lastMidY, prevY + MIN_LABEL_GAP);
+        prevY = labelY;
+        return { band, labelY };
+      });
+    const labelYByLabel = new Map(bandsWithLabelY.map(({ band, labelY }) => [band.label, labelY]));
+
     return {
-      bands,
+      bands: bands.map((band) => ({ ...band, labelY: labelYByLabel.get(band.label) ?? band.lastMidY })),
       years,
       xs,
       yearLabels: data.years.map((y) => y.year)
@@ -111,8 +130,8 @@ export default function BudgetPicture() {
             {/* 밴드 오른쪽 끝에 출처명을 직접 라벨링 — 인쇄(hover 없음)에서도 색만으로 구분하지
                 않도록 항상 보이는 텍스트를 남긴다(위 컴포넌트 주석 참고). */}
             {layout.bands.map((band) => (
-              <text key={band.label} x={CHART_W - MARGIN_RIGHT + 4} y={band.lastMidY + 3} className="viz-budget-band-label">
-                {band.label}
+              <text key={band.label} x={CHART_W - MARGIN_RIGHT + 4} y={band.labelY + 3} className="viz-budget-band-label">
+                {band.labelShort}
               </text>
             ))}
             {layout.yearLabels.map((year, i) => (
