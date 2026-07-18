@@ -124,7 +124,8 @@
     "mobile": {
       "scanTabLabel": "Scan",
       "moreEmpty": "Nothing to show here.",
-      "tabBarLabel": "Primary navigation"
+      "tabBarLabel": "Primary navigation",
+      "registerFailedBadge": "{count} failed registrations — check the Register tab"
     }
   },
   "components": {
@@ -208,6 +209,10 @@
       "diagCopySuccess": "Diagnostic log copied to clipboard.",
       "diagCopyFailure": "Failed to copy to clipboard.",
       "failedListHeading": "Failed — needs retry",
+      "failReasonNetwork": "Couldn't reach the server — check the network and retry",
+      "failReasonTimeout": "Stopped after waiting too long — retrying picks up safely",
+      "failReasonBusy": "The server stayed busy — retry in a moment",
+      "failReasonDuplicate": "This request was already received — retry to confirm the result",
       "scanHint": "Once the camera is on, scan an ISBN (EAN-13) barcode.",
       "manualEntryButton": "Manual entry",
       "manualIsbnLabel": "Enter ISBN-13 directly",

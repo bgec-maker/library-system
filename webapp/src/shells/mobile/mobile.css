@@ -123,9 +123,26 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+  /* todo/53 — 배지 앵커 */
+  position: relative;
 }
 .m-tab-label {
   line-height: 1.2;
+}
+/* todo/53(HIG Badging) — 등록 파이프라인 실패 건수. --fail 재사용(임의 hex 금지),
+   12px는 DESIGN.md 최소 폰트 하한. */
+.m-tab-badge {
+  position: absolute;
+  top: -5px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--fail);
+  color: var(--panel);
+  font: 700 12px/18px var(--sans);
+  text-align: center;
 }
 
 /* ── StackNav(push 화면) ──────────────────────────────────────────── */

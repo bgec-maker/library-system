@@ -227,6 +227,22 @@ function DiagnosticsPanel({ log, onCopy }: { log: ApiCallLogEntry[]; onCopy: () 
   );
 }
 
+// todo/53(레퍼런스 점검 2-1 후속) — 실패 사유의 원시 코드(NETWORK_ERROR 등)를 사람 말로.
+// reason은 "서버 message ‖ 코드"라 코드일 때만 치환하고, 이미 문장인 서버 메시지는 그대로 둔다
+// ("시스템 내부어 금지"는 우리가 만드는 문구에 대한 규율 — 서버가 준 한글 설명은 이미 사람 말이다).
+const FAIL_REASON_LABELS: Record<string, () => string> = {
+  NETWORK_ERROR: () => t('views.register.failReasonNetwork'),
+  CLIENT_TIMEOUT: () => t('views.register.failReasonTimeout'),
+  BUSY_RETRY: () => t('views.register.failReasonBusy'),
+  DUPLICATE_REQUEST: () => t('views.register.failReasonDuplicate')
+};
+
+function failReasonLabel(reason: string): string {
+  const head = reason.split(':')[0]?.trim();
+  const hit = head ? FAIL_REASON_LABELS[head] : undefined;
+  return hit ? hit() : reason;
+}
+
 function FailedList({ entries, onRetry }: { entries: RegisterFailedEntry[]; onRetry: (entry: RegisterFailedEntry) => void }) {
   if (entries.length === 0) return null;
   return (
@@ -235,7 +251,7 @@ function FailedList({ entries, onRetry }: { entries: RegisterFailedEntry[]; onRe
       {entries.map((entry) => (
         <div className="reg-failRow" key={entry.requestId}>
           <span>
-            {entry.title || entry.isbn} — {entry.reason}
+            {entry.title || entry.isbn} — {failReasonLabel(entry.reason)}
           </span>
           <button type="button" onClick={() => onRetry(entry)}>
             {t('common.retry')}

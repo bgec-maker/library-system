@@ -167,6 +167,20 @@ label {
   font-size: var(--fs-sm);
 }
 
+/* 스크린리더 전용 텍스트 — 시각적으로 숨기되 접근성 트리에는 남긴다(표준 clip 패턴).
+   todo/53의 탭 배지처럼 시각 신호에 대응하는 문장을 붙일 때 사용. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* components/SampleDataBadge.tsx — todo/04 이후 대시보드·리포트·시각화가 공유하는 「샘플 데이터」
    배지. --wait(대기/주의 톤)를 재사용 — 새 색을 만들지 않는다(DESIGN.md "임의 hex 금지"). */
 .sample-data-badge {

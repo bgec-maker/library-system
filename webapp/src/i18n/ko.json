@@ -124,7 +124,8 @@
     "mobile": {
       "scanTabLabel": "스캔",
       "moreEmpty": "표시할 항목이 없습니다.",
-      "tabBarLabel": "주요 화면"
+      "tabBarLabel": "주요 화면",
+      "registerFailedBadge": "등록 실패 {count}건 — 도서 등록 탭에서 확인하세요"
     }
   },
   "components": {
@@ -208,6 +209,10 @@
       "diagCopySuccess": "진단 로그를 클립보드에 복사했습니다.",
       "diagCopyFailure": "클립보드 복사에 실패했습니다.",
       "failedListHeading": "실패 목록 — 재시도 필요",
+      "failReasonNetwork": "서버에 연결하지 못했어요 — 네트워크 확인 후 재시도해 주세요",
+      "failReasonTimeout": "응답이 오래 걸려 중단됐어요 — 재시도하면 이어서 처리돼요",
+      "failReasonBusy": "서버가 계속 바빴어요 — 잠시 후 재시도해 주세요",
+      "failReasonDuplicate": "같은 요청이 이미 접수돼 있어요 — 재시도하면 결과를 확인해요",
       "scanHint": "카메라가 켜져 있으면 ISBN(EAN-13) 바코드를 스캔하세요.",
       "manualEntryButton": "수동 입력",
       "manualIsbnLabel": "ISBN-13 직접 입력",
