@@ -30,13 +30,13 @@ jobs:
       - name: webapp 의존성 설치
         working-directory: webapp
         run: npm ci
-      - name: webapp 뷰 경계·i18n 린트 (FRONTEND.md·ADR-023 수용 기준 — CI 게이트)
+      # todo/36 — 검사를 개별 나열하지 않고 verify 한 줄로(단일 원천): 나열 방식은 todo/30·35가
+      # verify에 추가한 check-perf-budget·check-i18n-keys를 CI에서 빠뜨리는 구멍을 만들었다.
+      # 앞으로 verify에 게이트를 추가하면 CI가 자동으로 포함한다. (verify의 tsc -b --noEmit은
+      # 아래 build의 tsc와 중복 실행이지만 순수 검사라 무해 — 구멍보다 중복이 낫다.)
+      - name: webapp 통합 검증 (lint·경계·i18n 3종·성능 예산 — npm run verify 단일 게이트)
         working-directory: webapp
-        run: |
-          npm run lint
-          npm run check-view-boundary
-          npm run check-i18n-literals
-          npm run check-i18n-completeness
+        run: npm run verify
       - name: webapp 빌드 (tsc + vite)
         working-directory: webapp
         run: npm run build
