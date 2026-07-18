@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { apiCall, newRequestId } from './api';
+import { newRequestId } from './api';
+import { apiCallWithRetry } from './writeRetry';
 import { cachedApiCall } from './readCache';
 import { publishDataChange, subscribeDataChange } from './dataChangeBus';
 import { mockReservationsList } from '../mocks/reservations';
@@ -80,7 +81,7 @@ export type CreateReservationOutcome =
 
 /** 예약 걸기 — reserve_(Code.gs)가 기대하는 페이로드 키(memberKey·titleKey) 그대로. */
 export async function createReservation(memberKey: string, titleKey: string): Promise<CreateReservationOutcome> {
-  const res = await apiCall<CreateReservationResult>('reserve', { memberKey, titleKey, requestId: newRequestId() });
+  const res = await apiCallWithRetry<CreateReservationResult>('reserve', { memberKey, titleKey, requestId: newRequestId() });
   if (res.ok) {
     // todo/29: 쓰기 성공 = 데이터 변경 신호(FRONTEND.md 「트랜잭션 후」) — 읽기 캐시 무효화와
     // 대시보드 재조회가 이 한 줄에 걸려 있다(그동안 대출·반납만 발행하고 있었다).
@@ -103,7 +104,7 @@ export type CancelReservationOutcome =
 
 /** 예약 취소 — cancelReservation_(Code.gs)이 기대하는 페이로드 키(reservationId) 그대로. */
 export async function cancelReservation(reservationId: string): Promise<CancelReservationOutcome> {
-  const res = await apiCall<CancelReservationResult>('cancelReservation', { reservationId, requestId: newRequestId() });
+  const res = await apiCallWithRetry<CancelReservationResult>('cancelReservation', { reservationId, requestId: newRequestId() });
   if (res.ok) {
     publishDataChange();
     return { ok: true, data: res.data };

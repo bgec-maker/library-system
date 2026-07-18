@@ -265,11 +265,5 @@ export function newRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-// 실패한 쓰기 요청 재시도 규약: 같은 requestId로만 재시도(서버 멱등이 중복을 흡수).
-// 무한 재시도 금지 — 호출자가 명시적으로 다시 호출해야 한다(자동 백오프 루프 없음).
-export async function retryApiCall<T = unknown>(
-  action: string,
-  payload: Record<string, unknown> & { requestId: string }
-): Promise<ApiResult<T>> {
-  return apiCall<T>(action, payload);
-}
+// (구 retryApiCall은 todo/37에서 제거 — 사용처 0건의 죽은 export였고, "같은 requestId로만
+// 재시도" 관례의 실체는 services/writeRetry.ts apiCallWithRetry가 맡는다.)

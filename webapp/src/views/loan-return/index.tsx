@@ -4,6 +4,7 @@ import type { ScanTarget, ViewProps } from '../../types';
 import { getViewMeta } from '../../registry';
 import { getEffectiveScanRoute, parseScan, subscribeScan } from '../../services/scanBus';
 import { apiCall, newRequestId } from '../../services/api';
+import { apiCallWithRetry } from '../../services/writeRetry';
 import { publishDataChange } from '../../services/dataChangeBus';
 import { useSession } from '../../services/session';
 import { renewLoan, markLoanLost } from '../../services/loanActionsData';
@@ -248,7 +249,8 @@ export default function LoanReturnView({ shell }: ViewProps) {
       setBusy(true);
       const requestId = newRequestId();
       pushOp({ id: requestId, mode: 'checkout', copyKey: info.barcode, memberKey, status: 'pending', at: Date.now() });
-      const res = await apiCall<{ memberName?: string; dueAt?: string }>('checkout', {
+      // todo/37: 쓰기엔 BUSY_RETRY(락 경합) 자동 흡수 — 같은 requestId, 블로킹 유지.
+      const res = await apiCallWithRetry<{ memberName?: string; dueAt?: string }>('checkout', {
         memberKey,
         copyKey: info.barcode,
         note: operatorNote(),
@@ -282,7 +284,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
       setBusy(true);
       const requestId = newRequestId();
       pushOp({ id: requestId, mode: 'return', copyKey: info.barcode, memberKey: info.memberNo || undefined, status: 'pending', at: Date.now() });
-      const res = await apiCall<Record<string, unknown>>('return', {
+      const res = await apiCallWithRetry<Record<string, unknown>>('return', {
         copyKey: info.barcode,
         note: operatorNote(),
         requestId
@@ -443,7 +445,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
     const payload: Record<string, unknown> =
       undoAction === 'checkout' ? { memberKey, copyKey, note: undoNote, requestId } : { copyKey, note: undoNote, requestId };
     pushOp({ id: requestId, mode: undoAction, copyKey, memberKey, status: 'pending', isUndo: true, at: Date.now() });
-    const res = await apiCall<Record<string, unknown>>(undoAction, payload);
+    const res = await apiCallWithRetry<Record<string, unknown>>(undoAction, payload as Record<string, unknown> & { requestId: string });
     if (res.ok) {
       patchOp(requestId, { status: 'ok' });
       shell.toast(t('views.loanReturn.undoDone'), 'success');
@@ -480,7 +482,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
     setRedirectBusy(true);
     const note = operatorNote();
     const undoNote = `${note} · ${t('views.loanReturn.undoPrefix')}`;
-    const undoRes = await apiCall<Record<string, unknown>>('checkout', {
+    const undoRes = await apiCallWithRetry<Record<string, unknown>>('checkout', {
       memberKey: redirect.memberKey,
       copyKey: redirect.copyKey,
       note: undoNote,

@@ -1,4 +1,5 @@
 import { apiCall, newRequestId } from './api';
+import { apiCallWithRetry } from './writeRetry';
 import { cachedApiCall } from './readCache';
 import { publishDataChange } from './dataChangeBus';
 import { mockIntegrityCheckResult, mockSettingsOverview } from '../mocks/settings';
@@ -121,7 +122,7 @@ export type EnrichBibliographicOutcome = { ok: true; data: EnrichBibliographicRe
 /** 서지 일괄 보강 실행(todo/17 액션을 그대로 호출) — 실제 쓰기(cover_url 갱신)이므로 샘플
  *  폴백이 없다. 성공하면 다른 화면(catalog·book-detail)도 새 cover_url을 보도록 알린다. */
 export async function runBibliographicEnrichment(): Promise<EnrichBibliographicOutcome> {
-  const res = await apiCall<EnrichBibliographicResult>('enrichBibliographic', { requestId: newRequestId() });
+  const res = await apiCallWithRetry<EnrichBibliographicResult>('enrichBibliographic', { requestId: newRequestId() });
   if (res.ok) {
     publishDataChange();
     return { ok: true, data: res.data };

@@ -1,4 +1,5 @@
-import { apiCall, newRequestId } from './api';
+import { newRequestId } from './api';
+import { apiCallWithRetry } from './writeRetry';
 import { cachedApiCall } from './readCache';
 import { publishDataChange } from './dataChangeBus';
 import { mockUnpaidFines } from '../mocks/fines';
@@ -27,7 +28,7 @@ export type RenewOutcome = { ok: true; data: RenewResult } | { ok: false; code: 
 /** 연장 — renew_(Code.gs)가 기대하는 페이로드 키(loanOrCopyKey) 그대로. loanOrCopyKey에는
  *  loan_id든 소장본 바코드든 넘길 수 있다(renew_이 둘 다 시도해서 찾는다). */
 export async function renewLoan(loanOrCopyKey: string, note: string): Promise<RenewOutcome> {
-  const res = await apiCall<RenewResult>('renew', { loanOrCopyKey, note, requestId: newRequestId() });
+  const res = await apiCallWithRetry<RenewResult>('renew', { loanOrCopyKey, note, requestId: newRequestId() });
   if (res.ok) {
     // todo/29: 쓰기 성공 = publishDataChange (reservationData와 같은 사유 — 캐시 무효화 전제).
     publishDataChange();
@@ -57,7 +58,7 @@ export type MarkLostOutcome = { ok: true; data: MarkLostResult } | { ok: false; 
  *  apiWebTitleDetail_(수정 금지 대상)이 내려주지 않으므로 화면이 자동으로 채우지 못하고 사서가
  *  직접 입력한다. */
 export async function markLoanLost(loanOrCopyKey: string, fineAmount: number, note: string): Promise<MarkLostOutcome> {
-  const res = await apiCall<MarkLostResult>('markLost', { loanOrCopyKey, fineAmount, note, requestId: newRequestId() });
+  const res = await apiCallWithRetry<MarkLostResult>('markLost', { loanOrCopyKey, fineAmount, note, requestId: newRequestId() });
   if (res.ok) {
     publishDataChange();
     return { ok: true, data: res.data };
@@ -80,7 +81,7 @@ export type PayFineOutcome = { ok: true; data: PayFineResult } | { ok: false; co
  *  note 필드가 없어(appendNote_를 호출하지 않음) 여기서도 note를 받지 않는다 — 없는 걸 관통시킬
  *  수는 없다(docs/ASSUMPTIONS.md `## todo/13` 참고). */
 export async function payFine(fineId: string, amount: number): Promise<PayFineOutcome> {
-  const res = await apiCall<PayFineResult>('payFine', { fineId, amount, requestId: newRequestId() });
+  const res = await apiCallWithRetry<PayFineResult>('payFine', { fineId, amount, requestId: newRequestId() });
   if (res.ok) {
     publishDataChange();
     return { ok: true, data: res.data };

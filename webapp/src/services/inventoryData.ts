@@ -1,4 +1,5 @@
-import { apiCall, newRequestId } from './api';
+import { newRequestId } from './api';
+import { apiCallWithRetry } from './writeRetry';
 
 // 장서 점검(inventory, todo/14) 데이터 계층 — school-patch-v1/Code.gs의 신규 액션 하나를
 // 소비한다: apiWebInventoryScan_(쓰기지만 last_inventory_at 하나만 갱신하는 단순 갱신 —
@@ -21,7 +22,7 @@ export type InventoryScanOutcome = { ok: true; data: InventoryScanResult } | { o
 /** 장서 점검 스캔 1건 — inventoryScan_(Code.gs)이 기대하는 페이로드 키(copyKey) 그대로.
  *  copyKey에는 소장본 바코드든 copy_id든 넘길 수 있다(findCopyByKey_이 둘 다 시도해서 찾는다). */
 export async function inventoryScan(copyKey: string): Promise<InventoryScanOutcome> {
-  const res = await apiCall<InventoryScanResult>('inventoryScan', { copyKey, requestId: newRequestId() });
+  const res = await apiCallWithRetry<InventoryScanResult>('inventoryScan', { copyKey, requestId: newRequestId() });
   if (res.ok) return { ok: true, data: res.data };
   return { ok: false, code: res.error.code, message: res.error.message || res.error.code };
 }
