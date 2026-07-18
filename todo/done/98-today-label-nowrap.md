@@ -6,3 +6,10 @@
 할 일: .lr-recent-header 첫 span(카운트 라벨) white-space:nowrap — 캡션만 자연 개행.
 
 완료 조건: EN 재캡처, 전 게이트.
+
+---
+
+## 이행 노트 (완료)
+
+- loan-return.css: .lr-recent-header 첫 span white-space:nowrap — "Today: 0" 통짜 유지,
+  개행은 캡션만(재캡처 /tmp/vis/98-crop.png). 전 게이트 · 12 e2e 통과.

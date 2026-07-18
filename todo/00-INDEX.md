@@ -101,7 +101,7 @@
 - [x] 95 table-token-nowrap — 표 토큰값(ID·날짜) 중간 꺾임 잔여 전수 (시각 감사 2R)
 - [x] 96 inventory-hero-width — 장서점검 시작 버튼 전폭 완화 (시각 감사 2R)
 - [x] 97 mobile-locale-titles — 모바일 헤더 로케일 전환 미반영 (시각 감사 3R 실결함)
-- [ ] 98 today-label-nowrap — EN Today 카운트 값 분리 줄바꿈 (시각 감사 3R)
+- [x] 98 today-label-nowrap — EN Today 카운트 값 분리 줄바꿈 (시각 감사 3R)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)

@@ -147,6 +147,11 @@
   gap: 8px;
   font-size: var(--fs-sm);
   font-weight: 700;
+}
+/* todo/98 — 카운트 라벨("Today: 0")이 라벨과 값 사이에서 꺾여 값이 다음 줄로 떨어지던 것
+   (EN 캡처 실측): 이 span은 통짜, 개행은 옆 캡션만. */
+.lr-recent-header > span:first-child {
+  white-space: nowrap;
   color: var(--ink);
   margin-bottom: 6px;
 }
