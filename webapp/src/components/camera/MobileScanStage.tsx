@@ -56,6 +56,9 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
   const textTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [missHint, setMissHint] = useState(false);
   const missTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // todo/81 — 스크린리더 낭독문(사람 말 phrasing). 시각 배지(recognizedText)는 원문 유지,
+  // 낭독은 대상 종류를 붙여서: "등록번호 0001230 인식". 미인식은 침묵(비프 스팸 방지 규칙 동일).
+  const [announce, setAnnounce] = useState('');
 
   // todo/68 — 미인식 힌트 타이머. 디코드 성공/미인식 불문 publishScan이 한 번이라도 오면
   // "카메라가 읽고는 있다"는 뜻이라 힌트를 접고 재무장한다. setInterval이 아니라 단발
@@ -129,6 +132,16 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
       subscribeScan((event) => {
         lastScanRef.current = event.raw;
         armMissTimer(); // todo/68 — 디코드가 살아 있으면 미인식 힌트 리셋
+        // todo/81 — 유효 대상만 낭독(카메라 판정과 같은 기준: unknown 제외). scanFeedback이
+        // 아니라 scanBus 기준인 이유: 주입 경로(__e2eScan)까지 같은 계약으로 검증 가능해야 한다.
+        const target = event.target;
+        if (target.kind === 'book' || target.kind === 'book-url') {
+          setAnnounce(t('camera.stage.announceBook', { barcode: target.barcode }));
+        } else if (target.kind === 'student') {
+          setAnnounce(t('camera.stage.announceStudent'));
+        } else if (target.kind === 'isbn') {
+          setAnnounce(t('camera.stage.announceIsbn', { isbn: target.isbn }));
+        }
       }),
     [armMissTimer]
   );
@@ -217,6 +230,12 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
           {t('camera.stage.missHint')}
         </div>
       )}
+
+      {/* todo/81 — 낭독 전용(시각 배지와 분리): 사람 말 문장을 polite로. 항상 마운트해 두고
+          텍스트만 갈아끼운다 — live region은 내용 변경 시점에 낭독된다. */}
+      <span className="sr-only" role="status">
+        {announce}
+      </span>
 
       <div className="scan-stage__topbar">
         <span className="scan-stage__title">{t('camera.stage.scanningTo', { target: targetTitle })}</span>

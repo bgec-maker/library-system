@@ -95,7 +95,10 @@
       "scanningTo": "Scanning → {target}",
       "autoStopIn": "Auto-stop in {seconds}s",
       "torch": "Flashlight",
-      "missHint": "Not scanning? Bring the barcode closer and add light"
+      "missHint": "Not scanning? Bring the barcode closer and add light",
+      "announceBook": "Barcode {barcode} recognized",
+      "announceStudent": "Student card recognized",
+      "announceIsbn": "ISBN {isbn} recognized"
     }
   },
   "shell": {

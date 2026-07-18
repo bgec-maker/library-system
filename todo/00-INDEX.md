@@ -84,7 +84,7 @@
 - [x] 78 print-v2-audit — 인쇄 v2 정합 감사(백지 강제 1건 수리)
 - [x] 79 recall-slip-pages — 회수 쪽지 페이지 나눔 검증(학생 칸 avoid 결함 수리)
 - [x] 80 dialog-focus-trap — 다이얼로그 포커스 트랩·ESC
-- [ ] 81 scan-aria-live — 스캔 결과 스크린리더 낭독
+- [x] 81 scan-aria-live — 스캔 결과 스크린리더 낭독
 - [ ] 82 contrast-gate — 색 대비 검사 게이트
 - [ ] 83 bundle-report — 번들 리포트 세분화
 - [ ] 84 icon-import-audit — lucide 임포트 감사 스크립트
