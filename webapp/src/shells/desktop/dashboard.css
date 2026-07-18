@@ -134,6 +134,12 @@
   font-size: var(--fs-md);
   color: var(--deep);
   margin-bottom: 10px;
+  /* todo/92(시각 감사 1R) — 제목 뒤에 인라인으로 붙는 샘플 배지가 「예약 도착샘플 데이터」처럼
+     밀착돼 보이던 문제: 배지 유무와 무관한 flex+gap. */
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dash-empty {
