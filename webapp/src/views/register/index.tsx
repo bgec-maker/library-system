@@ -445,7 +445,9 @@ function BulkCopyPanel({
 
   return (
     <div className="reg-bulkPanel panel">
-      <h2>{t('views.register.bulkHeading')}</h2>
+      {/* todo/113 — 유일 사용처가 <details><summary>복본 추가 발급</summary> 내부: 같은 문구
+          h2가 바로 아래 또 보이던 이중 제목(DESIGN.md 금지)을 sr 전용으로 강등. */}
+      <h2 className="sr-only">{t('views.register.bulkHeading')}</h2>
 
       {canStartFresh && (
         <div className="reg-row2">
