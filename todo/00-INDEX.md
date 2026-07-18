@@ -45,6 +45,8 @@
 - [x] 38 sync-resilience — catalog 동기화 고착·setConfig 가드·inventory 재스캔 복구
 - [x] 39 offline-queue-cleanup — 죽은 offlineQueue 정리 + FRONTEND.md 정합
 - [x] 40 hygiene-2 — 오류 표시·useMemo·role/aria 소형 4건
+- [ ] 41 mobile-e2e — 모바일 셸 스모크 CI 상주
+- [ ] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
