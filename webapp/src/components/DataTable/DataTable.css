@@ -138,8 +138,14 @@
 .data-table-grid tbody tr.is-clickable {
   cursor: pointer;
 }
-.data-table-grid tbody tr.is-clickable:hover {
-  background: var(--paper);
+/* todo/56 — hover는 정밀 포인터 전용(터치의 유령 hover 금지, 인터랙션 표준). */
+@media (hover: hover) and (pointer: fine) {
+  .data-table-grid tbody tr.is-clickable:hover {
+    background: var(--paper);
+  }
+}
+.data-table-grid tbody tr.is-clickable:active {
+  background: var(--deep-tint);
 }
 
 .data-table-no-match td {
@@ -165,6 +171,15 @@
 }
 .data-table-card.is-clickable {
   cursor: pointer;
+  /* todo/56 — 프레스 상태: 카드는 면적이 커서 버튼(0.98)보다 미세하게(0.99). */
+  transition: transform 60ms ease-out;
+}
+.data-table-card.is-clickable:active {
+  transform: scale(0.99);
+}
+@media (prefers-reduced-motion: reduce) {
+  .data-table-card.is-clickable { transition: none; }
+  .data-table-card.is-clickable:active { transform: none; background: var(--paper); }
 }
 .data-table-card-primary {
   font-weight: 700;

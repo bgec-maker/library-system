@@ -38,9 +38,17 @@ button {
   background: var(--deep);
   color: #fff;
   cursor: pointer;
+  /* todo/56(인터랙션 표준 — 프레스 상태) — 누르면 즉시(60ms) 반응. transform/opacity만. */
+  transition: transform 60ms ease-out, opacity 60ms ease-out;
 }
-button:active { transform: translateY(1px); }
+/* todo/56 — 구 translateY(1px) '눌림'을 표준 scale(0.98)로 통일. 예외는 자기 규칙을 가진
+   컴포넌트(.m-tab 배경 방식, .m-stack-back 투명도)가 각자 파일에서 덮는다. */
+button:active { transform: scale(0.98); }
 button:disabled { opacity: 0.45; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+  button:active { transform: none; opacity: 0.8; }
+}
 /* todo/59(리스킨 v2) — 세컨더리: 아웃라인 → 톤 배경(TDS 계열). 위계: 기본(deep 채움) >
    ghost(톤) > 텍스트. warn은 진짜 주의 동작 전용 — 화면 대표 동작(hero)에 쓰지 않는다. */
 button.ghost { background: var(--deep-tint); color: var(--deep); border: none; font-weight: 700; }

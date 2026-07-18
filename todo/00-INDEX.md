@@ -60,7 +60,7 @@
 - [x] 54 empty-pathways — 빈 상태 다음 행동 버튼 (레퍼런스 점검 2-2)
 - [x] 55 touch-target-pass — 터치 타깃 44px 전수 보정 (레퍼런스 점검 2-3)
 - [x] 59 reskin-v2 — 표면 시스템 리스킨+배치 정리 (시안 B+웜 캔버스, 사용자 채택)
-- [ ] 56 press-states — 프레스 피드백 통일 (대기업 감각 1)
+- [x] 56 press-states — 프레스 피드백 통일 (대기업 감각 1)
 - [ ] 57 motion-pass — 등장 모션 방향 사전 이행 (대기업 감각 2)
 - [ ] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
