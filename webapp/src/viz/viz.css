@@ -105,7 +105,7 @@
   rx: 2;
 }
 .viz-heatmap-month-label {
-  font-size: 9px;
+  font-size: 12px;
   fill: var(--ink-3);
 }
 .viz-legend-scale {
@@ -139,12 +139,12 @@
   stroke-width: 2;
 }
 .viz-treemap-label {
-  font-size: 10px;
+  font-size: 12px;
   fill: var(--ink);
   pointer-events: none;
 }
 .viz-treemap-label-dim {
-  font-size: 9px;
+  font-size: 12px;
   fill: var(--ink-2);
   pointer-events: none;
 }
@@ -209,7 +209,7 @@
 
 /* ── #2 하루의 파도 — 시간대 바 ──────────────────────────────────────────── */
 .viz-bar-axis-label {
-  font-size: 9px;
+  font-size: 12px;
   fill: var(--ink-3);
   text-anchor: middle;
 }
@@ -285,13 +285,13 @@
   stroke-dasharray: 3 2;
 }
 .viz-shelf-tile-code {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   fill: var(--ink);
   text-anchor: middle;
 }
 .viz-shelf-tile-avg {
-  font-size: 9px;
+  font-size: 12px;
   fill: var(--ink-2);
   text-anchor: middle;
 }
@@ -350,7 +350,7 @@
   stroke-width: 1;
 }
 .viz-budget-band-label {
-  font-size: 8px;
+  font-size: 10px;
   fill: var(--ink-2);
 }
 .viz-budget-legend {

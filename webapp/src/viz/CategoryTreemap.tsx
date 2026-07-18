@@ -94,12 +94,13 @@ function TreemapSvg({
           >
             <title>{`${r.categoryLabel} · ${t(`viz.categoryTreemap.${labelKey}`)} ${r[valueKey]}`}</title>
           </rect>
-          {r.w > 42 && r.h > 16 && (
+          {/* todo/34: 12px 라벨에 맞춰 표시 임계 42→52 (10px 기준 42와 같은 글자수 여유) */}
+          {r.w > 52 && r.h > 16 && (
             <text x={r.x + 4} y={r.y + 12} className="viz-treemap-label">
               {r.categoryLabel}
             </text>
           )}
-          {r.w > 42 && r.h > 30 && (
+          {r.w > 52 && r.h > 30 && (
             <text x={r.x + 4} y={r.y + 24} className="viz-treemap-label-dim">
               {r[valueKey]}
             </text>

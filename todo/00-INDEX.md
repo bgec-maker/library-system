@@ -38,7 +38,7 @@
 - [x] 31 derived-bench — 파생 뷰 O(n²) 감사·실측
 - [x] 32 security-pass — 보안 점검 (GAS·Pages 맞춤)
 - [x] 33 e2e-pipeline — 등록 파이프라인 회귀 스펙 CI 상주
-- [ ] 34 viz-label-audit — viz 라벨 렌더 크기 실측 감사
+- [x] 34 viz-label-audit — viz 라벨 렌더 크기 실측 감사
 - [x] 35 i18n-key-check — t() 키 실존 검증 (34 실측 중 발견한 vizInsights 키 불일치)
 
 ## waiting/ (사용자만 승격)
