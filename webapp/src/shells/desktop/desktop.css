@@ -35,7 +35,18 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
+  /* todo/50: overflow-y:auto는 스크롤 컨테이너가 되어 가로로 나가는 호버 플라이아웃까지
+     클립했다(실측 — 요소 스크린샷). 아이콘 10개(~580px)는 기준기 세로에 다 들어가므로 기본
+     visible, 낮은 화면에서만 아래 미디어로 스크롤 폴백(그땐 플라이아웃도 끔). */
+  overflow: visible;
+}
+@media (max-height: 720px) {
+  .dock-apps {
+    overflow-y: auto;
+  }
+  .dock-flyout {
+    display: none !important;
+  }
 }
 
 .dock-minimized {
@@ -68,6 +79,70 @@
 
 .dock-icon.is-open {
   background: var(--brass);
+  color: var(--ink);
+}
+/* todo/50 — 열린 창 표시 강화: 색(brass)에 더해 좌측 활성 바(위치 단서 — 색약 대비). */
+.dock-icon.is-open::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--brass);
+}
+.dock-icon {
+  position: relative;
+}
+
+/* todo/50 — 그룹 구분선: 업무(상단 4) / 관리 / (하단 시스템은 기존 언어·설정 영역) */
+.dock-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dock-group--rest {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* todo/50 — 호버 라벨 플라이아웃: 포인터 기기 한정, transform/opacity만(법전), 150ms,
+   reduced-motion이면 즉시 표시. 도크 위(z 500) 우측으로 흘러나온다. */
+.dock-flyout {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .dock-flyout {
+    display: block;
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: var(--deep);
+    color: var(--panel);
+    font-size: var(--fs-xs);
+    line-height: 1;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+    box-shadow: var(--shadow-window);
+    z-index: 600;
+  }
+  .dock-icon:hover .dock-flyout,
+  .dock-icon:focus-visible .dock-flyout {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dock-flyout {
+      transition: none;
+    }
+  }
 }
 
 .dock-icon--min {

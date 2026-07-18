@@ -45,24 +45,39 @@ export function Dock() {
   const views = viewsForRole('LIBRARIAN');
   const minimized = windows.filter((w) => w.minimized);
 
+  // todo/50(디자인 연구 — 사이드바): 업무(매일 손이 가는 처리)와 관리(가끔 여는 조회·설정)를
+  // 구분선으로 나눈다. registry 순서를 바꾸지 않고 앞 4개(대출·등록·검색·점검)를 업무군으로
+  // 자른다 — 새 뷰가 추가되면 registry 순서가 곧 소속이다(단일 원천 유지).
+  const workViews = views.slice(0, 4);
+  const manageViews = views.slice(4);
+
   return (
     <nav className="dock" style={{ width: DOCK_WIDTH }} aria-label={t('common.appLauncher')}>
       <div className="dock-apps">
-        {views.map((v) => {
-          const isOpen = windows.some((w) => w.viewId === v.id && !w.minimized);
-          const Icon = v.icon;
-          return (
-            <button
-              key={v.id}
-              type="button"
-              className={`dock-icon${isOpen ? ' is-open' : ''}`}
-              title={v.title}
-              onClick={() => openWindow(v.id)}
-            >
-              <Icon size={DOCK_ICON_SIZE} aria-hidden />
-            </button>
-          );
-        })}
+        {[workViews, manageViews].map((group, gi) => (
+          <div key={gi} className={`dock-group${gi > 0 ? ' dock-group--rest' : ''}`}>
+            {group.map((v) => {
+              const isOpen = windows.some((w) => w.viewId === v.id && !w.minimized);
+              const Icon = v.icon;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`dock-icon${isOpen ? ' is-open' : ''}`}
+                  title={v.title}
+                  onClick={() => openWindow(v.id)}
+                >
+                  <Icon size={DOCK_ICON_SIZE} aria-hidden />
+                  {/* todo/50: 호버 라벨 플라이아웃 — title 툴팁의 지연 없이 즉시 학습.
+                      포인터 없는 기기에선 CSS가 아예 렌더 억제(@media hover). */}
+                  <span className="dock-flyout" aria-hidden="true">
+                    {v.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
       {minimized.length > 0 && (
         <div className="dock-minimized">
