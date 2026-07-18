@@ -53,10 +53,11 @@
   gap: 10px;
   padding: 8px 0;
 }
-.data-table-skel-row {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
+/* todo/87 — 데스크톱 스켈레톤은 실제 표(.data-table-grid) 골격을 그대로 재사용한다: 진짜
+   thead + 실제 열 수만큼의 셀(구 .data-table-skel-row 막대 3개 고정 제거). 여기서는
+   스켈레톤 특유의 규칙만 얹는다. */
+.data-table-skel-table td .skel-bar {
+  min-width: 32px; /* 아주 좁은 열에서도 막대가 존재감을 갖게 */
 }
 .data-table-skel-card {
   background: var(--panel);
@@ -73,8 +74,6 @@
   background: var(--rule);
   animation: skel-pulse 1.2s ease-in-out infinite;
 }
-.skel-w-15 { width: 15%; }
-.skel-w-25 { width: 25%; }
 .skel-w-40 { width: 40%; }
 .skel-w-55 { width: 55%; }
 .skel-w-70 { width: 70%; }

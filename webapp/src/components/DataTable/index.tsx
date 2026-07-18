@@ -228,13 +228,38 @@ export function DataTable<T>({
                   <div className="skel-bar skel-w-55" />
                 </div>
               ))
-            : Array.from({ length: 5 }, (_, i) => (
-                <div key={i} className="data-table-skel-row" aria-hidden="true">
-                  <div className="skel-bar skel-w-25" />
-                  <div className="skel-bar skel-w-40" />
-                  <div className="skel-bar skel-w-15" />
-                </div>
-              ))}
+            : /* todo/87 — 막대 3개 고정 대신 실제 표와 같은 골격: 진짜 thead(헤더는 이미
+                 아는 정보다 — 로딩 중인 건 행뿐) + 실제 열 수만큼의 셀. 도착할 표와 닮을수록
+                 자리표시가 "곧 온다"로 읽힌다. 폭 변주는 (행+열)%3 — 결정론(랜덤 금지). */
+              (() => {
+                const widths = ['skel-w-70', 'skel-w-40', 'skel-w-55'];
+                return (
+                  <div className="data-table-scroll" aria-hidden="true">
+                    <table className="data-table-grid data-table-skel-table">
+                      <thead>
+                        <tr>
+                          {columns.map((col) => (
+                            <th key={col.key} scope="col" className={col.numeric ? 'is-numeric' : ''}>
+                              {col.header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: 5 }, (_, r) => (
+                          <tr key={r}>
+                            {columns.map((col, c) => (
+                              <td key={col.key}>
+                                <div className={`skel-bar ${widths[(r + c) % widths.length]}`} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
         </div>
       )}
 
