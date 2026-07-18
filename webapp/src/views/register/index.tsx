@@ -655,8 +655,10 @@ export default function RegisterView({ shell }: ViewProps) {
 
   const retryFailed = useCallback((entry: RegisterFailedEntry) => {
     // 재시도는 항상 같은 requestId — 서버 멱등(requestId)이 중복 저장을 흡수한다.
-    // 자동 재시도는 하지 않는다: 사용자가 버튼을 눌러야만 여기 도달한다. todo/28부터는
-    // 직접 전송 대신 큐 재적재 — 진행 중인 다른 등록과 순서 경합하지 않고 파이프라인에 줄 선다.
+    // todo/60 개정: BUSY류(서버 일시 장애)는 다음 부팅에서 자동 재개된다(registerQueue의
+    // resumeRetryableFailuresAtBoot_). 이 버튼은 그 밖의 경우 — 내용 문제(VALIDATION 등),
+    // 자동 재개 상한 소진, 부팅을 기다리지 않는 즉시 재시도 — 를 위해 남는다.
+    // todo/28부터 직접 전송 대신 큐 재적재 — 진행 중인 다른 등록과 순서 경합하지 않는다.
     enqueueRegister({
       requestId: entry.requestId,
       action: entry.action,

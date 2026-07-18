@@ -51,6 +51,8 @@ export interface RegisterQueueEntry {
   created?: boolean;
   idempotentReplay?: boolean;
   completedAt?: number;
+  /** todo/60 — 부팅 자동 재개로 큐에 돌아온 횟수(실패로 되돌아갈 때 FailedEntry로 이월). */
+  autoResumes?: number;
 }
 
 // 실패 목록 — register 뷰가 쓰던 localStorage 관례를 그대로 계승하되, 쓰기 주체를 이
@@ -62,6 +64,12 @@ export interface RegisterFailedEntry {
   isbn: string;
   payload: Record<string, unknown>;
   reason: string;
+  /** todo/60 — 실패 시점의 오류 코드. 부팅 자동 재개가 "서버 일시 장애류(BUSY 등)"만
+   *  골라내는 근거. 없으면(구버전 저장분) 분류 불가 → 자동 재개 대상에서 제외(보수적). */
+  lastErrorCode?: string;
+  /** todo/60 — 부팅 자동 재개 횟수. 상한(AUTO_RESUME_MAX) 도달 후엔 수동 재시도만 —
+   *  서버가 영구히 아픈 경우의 무한 되살림 방지. */
+  autoResumes?: number;
 }
 
 interface RegisterByIsbnLikeResult {
@@ -212,7 +220,10 @@ function moveToFailed(entry: RegisterQueueEntry, reason: string): void {
     title: entry.title,
     isbn: entry.isbn,
     payload: entry.payload,
-    reason
+    reason,
+    // todo/60 — 자동 재개 판단 근거와 재개 이력을 함께 보존.
+    lastErrorCode: entry.lastErrorCode,
+    autoResumes: entry.autoResumes
   });
   writeFailedList(failed);
 }
@@ -292,6 +303,43 @@ async function pump(): Promise<void> {
 
 // 온라인 복귀 = 대기 중이던 백오프를 기다릴 이유가 없어진 시점 — 즉시 재개를 시도한다.
 // (등록 요청의 재전송 주체는 이 큐 하나뿐이다 — 이중 발사 없음, todo/39 참고.)
+// todo/60 — BUSY류 소진 실패의 부팅 자동 재개. 사용자 실사례(서버 락 혼잡 지속 → 5회
+// 소진 → 실패 2건, 수동 재시도 필요)에서 승인된 결정으로, todo/28의 "자동 재시도 없음"
+// 원칙을 **서버 일시 장애류에 한해** 개정한다: VALIDATION 같은 내용 문제는 여전히 수동
+// (다시 보내도 같은 이유로 실패 — 사람이 고쳐야 함), 재시도형 코드만 같은 requestId로
+// 재큐(서버 멱등이 중복 저장 흡수). 부팅당 1회 · 항목당 생애 상한 AUTO_RESUME_MAX회 —
+// 서버가 영구히 아픈 경우 무한 되살림을 막고 실패 목록(+탭 배지)으로 수렴시킨다.
+const AUTO_RESUME_MAX = 3;
+
+function resumeRetryableFailuresAtBoot_(): void {
+  const failed = readFailedList();
+  const toResume = failed.filter(
+    (f) =>
+      f.lastErrorCode !== undefined &&
+      RETRYABLE_CODES.has(f.lastErrorCode) &&
+      (f.autoResumes ?? 0) < AUTO_RESUME_MAX &&
+      !entries.some((e) => e.requestId === f.requestId && e.status !== 'done')
+  );
+  if (toResume.length === 0) return;
+  toResume.forEach((f) => {
+    entries.push({
+      requestId: f.requestId,
+      action: f.action,
+      payload: f.payload as Record<string, unknown> & { requestId: string },
+      title: f.title,
+      isbn: f.isbn,
+      copyCount: Math.max(1, Number((f.payload as { copyCount?: unknown }).copyCount) || 1),
+      enqueuedAt: Date.now(),
+      status: 'queued',
+      attempts: 0,
+      autoResumes: (f.autoResumes ?? 0) + 1
+    });
+  });
+  writeFailedList(failed.filter((f) => !toResume.some((r) => r.requestId === f.requestId)));
+  persist();
+  notify();
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     entries.forEach((e) => {
@@ -299,6 +347,7 @@ if (typeof window !== 'undefined') {
     });
     void pump();
   });
-  // 새로고침 복원분(미전송 잔여)이 있으면 부팅 직후 재개한다.
+  resumeRetryableFailuresAtBoot_();
+  // 새로고침 복원분(미전송 잔여) 또는 방금 자동 재개분이 있으면 부팅 직후 재개한다.
   if (entries.some((e) => e.status !== 'done')) void pump();
 }

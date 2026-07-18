@@ -16,6 +16,8 @@ test.setTimeout(90_000);
 interface MockController {
   /** registerByIsbn 도착 횟수 */
   registerAttempts: () => number;
+  /** 마지막 registerByIsbn의 requestId — 멱등 계약(같은 id 재전송) 단정용(todo/60). */
+  lastRegisterRequestId: () => string;
   /** n번째 시도까지의 응답 모드 지정 */
   setRegisterPlan: (plan: Array<'busy' | 'network' | 'ok'>) => void;
 }
@@ -23,6 +25,7 @@ interface MockController {
 // 시나리오 제어형 목 백엔드 — plan 배열을 소진하면 이후는 전부 'ok'.
 async function installScenarioMock(page: Page): Promise<MockController> {
   let attempts = 0;
+  let lastRequestId = '';
   let plan: Array<'busy' | 'network' | 'ok'> = [];
 
   await page.route(MOCK_API_URL + '**', async (route) => {
@@ -39,6 +42,7 @@ async function installScenarioMock(page: Page): Promise<MockController> {
         });
       case 'registerByIsbn': {
         attempts += 1;
+        lastRequestId = String((payload as { requestId?: unknown }).requestId ?? '');
         const mode = plan[attempts - 1] ?? 'ok';
         if (mode === 'busy') {
           return json({
@@ -61,7 +65,11 @@ async function installScenarioMock(page: Page): Promise<MockController> {
     }
   });
 
-  return { registerAttempts: () => attempts, setRegisterPlan: (p) => (plan = p) };
+  return {
+    registerAttempts: () => attempts,
+    lastRegisterRequestId: () => lastRequestId,
+    setRegisterPlan: (p) => (plan = p)
+  };
 }
 
 async function passSessionGate(page: Page): Promise<void> {
@@ -127,4 +135,52 @@ test('네트워크 유실 → 새로고침 → 부팅 펌프가 같은 requestId
   await page.locator('.dock-icon[title="도서 등록"]').click();
   const reopened = page.locator('.window').nth(0);
   await expect(reopened.locator('.reg-bignum')).toHaveText(REGISTER_BARCODE, { timeout: 20_000 });
+});
+
+test('BUSY 소진 실패 → 다음 부팅에서 같은 requestId로 자동 재개 (todo/60)', async ({ page }) => {
+  const mock = await installScenarioMock(page); // plan 비움 = 이번 부팅의 서버는 정상(전부 ok)
+  // 지난 세션의 잔해를 시딩: BUSY_RETRY로 5회 소진해 실패 목록에 넘어간 등록 1건.
+  // lastErrorCode가 재시도형이므로 부팅 자동 재개 대상 — VALIDATION이었다면 그대로 남아야 한다.
+  await page.addInitScript(
+    ({ isbn }) => {
+      window.localStorage.setItem(
+        'lib.register.failed',
+        JSON.stringify([
+          {
+            requestId: 'resume-e2e-1',
+            action: 'registerByIsbn',
+            title: 'Pipeline Book',
+            isbn,
+            payload: { requestId: 'resume-e2e-1', isbn, title: 'Pipeline Book', copyCount: 1 },
+            reason: '다른 작업이 처리 중입니다. 잠시 후 다시 시도하세요.',
+            lastErrorCode: 'BUSY_RETRY',
+            autoResumes: 0
+          },
+          {
+            requestId: 'stay-e2e-1',
+            action: 'registerByIsbn',
+            title: 'Broken Book',
+            isbn: '',
+            payload: { requestId: 'stay-e2e-1', title: 'Broken Book', copyCount: 1 },
+            reason: 'VALIDATION: 서명 누락',
+            lastErrorCode: 'VALIDATION',
+            autoResumes: 0
+          }
+        ])
+      );
+    },
+    { isbn: REGISTER_ISBN }
+  );
+  await passSessionGate(page);
+
+  // 사용자 개입 없이 부팅 재개가 전송을 끝낸다 — 같은 requestId(멱등 계약)로.
+  await expect.poll(() => mock.registerAttempts(), { timeout: 15_000 }).toBe(1);
+  expect(mock.lastRegisterRequestId()).toBe('resume-e2e-1');
+
+  // 등록 창: 완료 트레이에 등록번호, 실패 목록엔 VALIDATION 건만 남는다(자동 재개 비대상).
+  await page.locator('.dock-icon[title="도서 등록"]').click();
+  const registerWindow = page.locator('.window').nth(0);
+  await expect(registerWindow.locator('.reg-bignum')).toHaveText(REGISTER_BARCODE, { timeout: 20_000 });
+  await expect(registerWindow.locator('.reg-failRow')).toHaveCount(1);
+  await expect(registerWindow.locator('.reg-failRow')).toContainText('Broken Book');
 });

@@ -1,4 +1,8 @@
 import { useEffect } from 'react';
+// todo/60 — 부팅 자동 재개(BUSY류 실패)·미전송 잔여 펌프가 "등록 창을 열어야" 도는 게 아니라
+// 셸 부팅 즉시 돌게 하는 사이드이펙트 임포트. 모바일 셸은 TabBar(배지, todo/53)가 이미 이
+// 모듈을 부팅 시 적재한다 — 두 셸의 재개 시점을 같게 맞춘다.
+import '../../services/registerQueue';
 import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { getViewMeta } from '../../registry';
