@@ -136,6 +136,7 @@ export function MobileScanStage({ viewId }: MobileScanStageProps) {
   // 유휴 자동종료 카운트다운 — cameraSession.idleDeadlineAt(절대 시각)을 마운트 동안 주기적으로
   // 재평가만 한다. 실제 타이머(3분 고정)는 cameraSession 안에 그대로 있다.
   useEffect(() => {
+    // perf-budget: UI 카운트다운 틱(250ms) — 네트워크 호출 없음, 언마운트 시 해제.
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, []);

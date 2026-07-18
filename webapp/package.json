@@ -11,7 +11,8 @@
     "check-view-boundary": "node scripts/check-view-boundary.mjs",
     "check-i18n-literals": "node scripts/check-i18n-literals.mjs",
     "check-i18n-completeness": "node scripts/check-i18n-completeness.mjs",
-    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && tsc -b --noEmit",
+    "check-perf-budget": "node scripts/check-perf-budget.mjs",
+    "verify": "npm run lint && npm run check-view-boundary && npm run check-i18n-literals && npm run check-i18n-completeness && npm run check-perf-budget && tsc -b --noEmit",
     "size": "node scripts/check-bundle-size.mjs",
     "e2e": "playwright test"
   },

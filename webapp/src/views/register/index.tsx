@@ -861,7 +861,9 @@ export default function RegisterView({ shell }: ViewProps) {
           {!dupVisible && (
             <div className="reg-confirmForm panel">
               <div className="reg-titleRow">
-                {lookup.coverUrl && <img className="reg-cover" src={lookup.coverUrl} alt="" />}
+                {lookup.coverUrl && (
+                  <img className="reg-cover" src={lookup.coverUrl} alt="" width={56} height={80} loading="lazy" />
+                )}
                 <div>
                   <div className="mono reg-isbn">{lookup.isbn}</div>
                   <span className="reg-srcTag">{lookup.source ?? 'MANUAL'}</span>

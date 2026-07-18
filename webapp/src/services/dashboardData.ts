@@ -95,6 +95,7 @@ class DashboardDataService {
    */
   ensureAutoRefresh(): void {
     if (this.intervalTimer === null) {
+      // perf-budget: 5분 주기(REFRESH_INTERVAL_MS=300000) — FRONTEND.md가 허용한 유일한 자동 폴링.
       this.intervalTimer = setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS);
     }
     if (this.dataChangeUnsub === null) {

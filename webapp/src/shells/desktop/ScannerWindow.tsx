@@ -119,6 +119,7 @@ export function ScannerWindow() {
   // 시각)을 주기적으로 재평가만 한다. 창이 닫히거나 최소화되면 재평가를 멈춘다(불필요한 타이머).
   useEffect(() => {
     if (!winState.open || winState.minimized) return;
+    // perf-budget: UI 카운트다운 틱(250ms) — 네트워크 호출 없음, 언마운트 시 해제.
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, [winState.open, winState.minimized]);

@@ -213,6 +213,7 @@ export default function LoanReturnView({ shell }: ViewProps) {
       const deadline = Date.now() + UNDO_MS;
       setUndo({ opId, mode: txMode, copyKey, memberKey, title, deadline });
       setUndoSecondsLeft(Math.ceil(UNDO_MS / 1000));
+      // perf-budget: 실행취소 5초 스낵바의 1초 UI 틱 — 네트워크 호출 없음, 만료 시 해제.
       undoIntervalRef.current = setInterval(() => {
         const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
         setUndoSecondsLeft(remain);
