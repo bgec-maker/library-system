@@ -113,6 +113,7 @@ export default function RecentOpsView({ shell }: ViewProps) {
         loading={loading}
         error={error}
         emptyHint={t('views.recentOps.empty')}
+        emptyAction={{ label: t('views.recentOps.emptyAction'), onClick: () => shell.open('loan-return') }}
         csvFileName="recent-ops.csv"
         searchPlaceholder={t('views.recentOps.searchPlaceholder')}
         toolbarExtra={toolbarExtra}

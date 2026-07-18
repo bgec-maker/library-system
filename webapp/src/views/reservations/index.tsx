@@ -208,6 +208,7 @@ export default function ReservationsView({ shell, params }: ViewProps) {
         loading={loading && items.length === 0}
         error={error}
         emptyHint={t('views.reservations.empty')}
+        emptyAction={{ label: t('views.reservations.emptyAction'), onClick: () => shell.open('search') }}
         csvFileName="reservations.csv"
         searchPlaceholder={t('views.reservations.searchPlaceholder')}
         toolbarExtra={toolbarExtra}

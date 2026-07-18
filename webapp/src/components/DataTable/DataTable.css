@@ -56,7 +56,14 @@
   color: var(--ink-3);
   text-align: center;
 }
-
+/* todo/54(레퍼런스 점검 2-2, NN/g) — 빈 상태의 다음 행동 버튼. 전역 button 기본폭에 눌리지 않게 자동폭. */
+.data-table-empty-action {
+  width: auto;
+  min-height: 44px;
+  padding: 10px 18px;
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+}
 /* ── 데스크톱 표 ──────────────────────────────────────────────────────── */
 .data-table-scroll {
   overflow: auto;

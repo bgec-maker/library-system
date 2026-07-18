@@ -384,6 +384,7 @@
     "recentOps": {
       "refresh": "Refresh",
       "empty": "No recent activity.",
+      "emptyAction": "Open Checkout·Return",
       "searchPlaceholder": "Search by action, summary, or staff",
       "col": {
         "occurredAt": "Time",
@@ -531,6 +532,7 @@
     "reservations": {
       "refresh": "Refresh",
       "empty": "No reservations in this status.",
+      "emptyAction": "Reserve from Search",
       "searchPlaceholder": "Search by title or member name",
       "col": {
         "title": "Title",

@@ -70,6 +70,10 @@ export interface DataTableProps<T> {
   loading?: boolean;
   error?: string | null;
   emptyHint?: string;
+  /** todo/54(레퍼런스 점검 2-2, NN/g 빈 상태 가이드라인 3) — 빈 상태에서 바로 이어갈 다음 행동.
+   *  라벨은 호출측이 t()로 번역해 넘긴다(이 컴포넌트는 도메인 무지 원칙 유지). 행동이
+   *  자연스러운 화면에만 달 것 — "행동 없음이 정상"인 목록(미변상 등)엔 달지 않는다. */
+  emptyAction?: { label: string; onClick: () => void };
   csvFileName?: string;
   defaultSort?: SortState;
   pageSizeOptions?: number[];
@@ -91,6 +95,7 @@ export function DataTable<T>({
   loading = false,
   error = null,
   emptyHint,
+  emptyAction,
   csvFileName = 'export.csv',
   defaultSort,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
@@ -196,6 +201,11 @@ export function DataTable<T>({
         <div className="data-table-empty">
           <Inbox size={28} aria-hidden />
           <p>{emptyHint ?? t('components.dataTable.emptyDefault')}</p>
+          {emptyAction && (
+            <button type="button" className="ghost data-table-empty-action" onClick={emptyAction.onClick}>
+              {emptyAction.label}
+            </button>
+          )}
         </div>
       )}
 

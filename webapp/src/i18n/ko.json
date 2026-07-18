@@ -384,6 +384,7 @@
     "recentOps": {
       "refresh": "새로고침",
       "empty": "최근 처리 내역이 없습니다.",
+      "emptyAction": "대출·반납 열기",
       "searchPlaceholder": "구분·요약·처리자로 검색",
       "col": {
         "occurredAt": "처리 시각",
@@ -531,6 +532,7 @@
     "reservations": {
       "refresh": "새로고침",
       "empty": "이 상태의 예약이 없습니다.",
+      "emptyAction": "통합 검색에서 예약 걸기",
       "searchPlaceholder": "도서명·회원명으로 검색",
       "col": {
         "title": "도서명",
