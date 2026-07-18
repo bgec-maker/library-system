@@ -3,7 +3,7 @@
 :root {
   --ink: #201a3a;
   --ink-2: #4d4370;
-  --ink-3: #8b81ab;
+  --ink-3: #6b6190; /* todo/82 — 3.41:1 → 5.31:1 */
 
   --paper: #fbf7ff;
   --panel: #ffffff;
@@ -12,8 +12,8 @@
   --deep: #6d3fd6;
   --brass: #ff8a3d;
 
-  --pass: #1fa96a;
-  --fail: #e5484d;
+  --pass: #128052; /* todo/82 — 텍스트 용법 3.03:1 → 4.96:1 */
+  --fail: #d02a30; /* todo/82 — 텍스트 용법 3.91:1 → 5.18:1 */
   --wait: #f4b740;
   --idle: #d8cff0;
 
