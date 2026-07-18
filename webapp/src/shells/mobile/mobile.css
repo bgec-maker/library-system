@@ -159,6 +159,20 @@
   background: var(--paper);
 }
 
+/* todo/57(인터랙션 표준 — 등장 방향 사전) — 스택 push는 우→좌 180ms ease-out, transform만.
+   pop 역재생은 보류: StackNav 언마운트를 지연시키는 상태기계가 필요해(popstate 동기화 위험,
+   todo/45~46 계열) 현장 검증 뒤 별도 항목으로. reduced-motion이면 무효(즉시 표시). */
+@keyframes m-stack-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.m-stack-overlay {
+  animation: m-stack-in 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .m-stack-overlay { animation: none; }
+}
+
 .m-stack-back {
   flex: 0 0 auto;
   min-width: 44px;

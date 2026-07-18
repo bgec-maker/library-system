@@ -123,6 +123,15 @@ label {
   font-size: var(--fs-sm);
   box-shadow: var(--shadow-window);
   max-width: 320px;
+  /* todo/57(등장 방향 사전) — 토스트 = 아래→위 fade, 150ms. */
+  animation: toast-in 150ms ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
 }
 .toast.success { background: var(--pass); }
 .toast.error { background: var(--fail); }
