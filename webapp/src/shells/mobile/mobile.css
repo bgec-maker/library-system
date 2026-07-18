@@ -256,6 +256,20 @@
   color: var(--fail);
 }
 
+/* todo/72 — 탭 가능한 타일(예약 대기): 전역 버튼 크롬 리셋 + 링크임을 옅은 톤·쉐브론 없이도
+   톤 배경 한 단계로 표시(가짜 어포던스와 구분되는 최소 신호). */
+.m-dash-summary-link {
+  border: none;
+  width: auto;
+  font: inherit;
+  color: inherit;
+  background: var(--deep-tint);
+  cursor: pointer;
+}
+.m-dash-summary-link .m-dash-summary-value {
+  color: var(--deep);
+}
+
 .m-dash-summary-value {
   font-size: var(--fs-xl);
   font-weight: 700;

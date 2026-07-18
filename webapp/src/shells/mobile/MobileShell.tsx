@@ -82,7 +82,7 @@ function CameraContinuousRow() {
 // 「더보기」 상단에 축약 배치". 데스크톱 6칸 전부가 아니라 가장 실무적인 3개(대출중·연체·예약
 // 대기)만 압축 표시한다 — 이 화면은 진입할 때마다 새로 마운트되므로(MobileShell의 탭 전환은
 // 조건부 렌더) ensureAutoRefresh() 호출이 곧 "더보기 진입 = 갱신"을 만족시킨다.
-function DashboardSummaryStrip() {
+function DashboardSummaryStrip({ onOpenReservations }: { onOpenReservations: () => void }) {
   const { data, sample } = useDashboardData();
 
   useEffect(() => {
@@ -106,10 +106,12 @@ function DashboardSummaryStrip() {
           <span className="m-dash-summary-value">{stats?.overdue ?? 0}</span>
           <span className="m-dash-summary-label">{t('dashboard.kpi.overdue')}</span>
         </div>
-        <div className="m-dash-summary-item">
+        {/* todo/72 — 대응 화면이 있는 타일만 탭 가능(예약 대기→예약 관리, 데스크톱 예약 도착
+            카드와 패리티). 대출중·연체는 1:1 화면이 없어 정적 유지 — 가짜 어포던스 금지. */}
+        <button type="button" className="m-dash-summary-item m-dash-summary-link" onClick={onOpenReservations}>
           <span className="m-dash-summary-value">{stats?.activeReservations ?? 0}</span>
           <span className="m-dash-summary-label">{t('dashboard.kpi.activeReservations')}</span>
-        </div>
+        </button>
       </div>
     </div>
   );
@@ -118,7 +120,7 @@ function DashboardSummaryStrip() {
 function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
   return (
     <>
-      <DashboardSummaryStrip />
+      <DashboardSummaryStrip onOpenReservations={() => onOpen('reservations')} />
       <LocaleRow />
       <CameraContinuousRow />
       {items.length === 0 ? (
