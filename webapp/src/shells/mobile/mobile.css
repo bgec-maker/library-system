@@ -259,7 +259,8 @@
 
 .m-more-locale-btn {
   min-width: 44px;
-  min-height: 36px;
+  /* todo/55 — 36→44px(HIG 터치 타깃) */
+  min-height: 44px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
   background: var(--paper);

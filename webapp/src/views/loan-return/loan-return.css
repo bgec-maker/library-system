@@ -102,6 +102,13 @@
   font-weight: 600;
   color: var(--ink-2);
 }
+/* todo/55(HIG 44pt) — 수동 입력 접기 토글도 터치 환경에선 44px 라인으로. */
+@media (pointer: coarse) {
+  .lr-manual summary {
+    padding-top: var(--sp-3);
+    padding-bottom: var(--sp-3);
+  }
+}
 .lr-manual-row {
   display: flex;
   gap: 8px;

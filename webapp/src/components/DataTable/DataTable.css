@@ -64,6 +64,13 @@
   margin-top: 4px;
   font-size: var(--fs-sm);
 }
+
+/* todo/55(HIG 44pt) — 카드 안 행동 버튼(검색의 예약 등)도 터치 환경에선 44px. */
+@media (pointer: coarse) {
+  .data-table-card button {
+    min-height: 44px;
+  }
+}
 /* ── 데스크톱 표 ──────────────────────────────────────────────────────── */
 .data-table-scroll {
   overflow: auto;
