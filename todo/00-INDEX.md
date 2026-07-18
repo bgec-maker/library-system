@@ -64,6 +64,36 @@
 - [x] 57 motion-pass — 등장 모션 방향 사전 이행 (대기업 감각 2)
 - [x] 58 skeleton-loading — 첫 로딩 스켈레톤 (대기업 감각 3)
 - [x] 60 auto-resume-busy — BUSY류 등록 실패 부팅 자동 재개 (사용자 승인·실사례)
+- [ ] 61 queue-unit-tests — registerQueue 단위 테스트 상주화
+- [ ] 62 dock-badge-parity — 데스크톱 도크 등록 아이콘 실패 배지 (53 패리티)
+- [ ] 63 scan-route-tests — 스캔 라우팅 단위 테스트
+- [ ] 64 undo-e2e — 언두바 회귀 e2e
+- [ ] 65 reservation-e2e — 예약 흐름 e2e
+- [ ] 66 backtrap-e2e — 모바일 뒤로가기 트랩·스택 e2e
+- [ ] 67 barcode-copy — 완료 카드 등록번호 탭 복사
+- [ ] 68 scan-miss-hint — 스캔 미인식 힌트 (still-searching)
+- [ ] 69 stack-pop-reverse — 스택 pop 역재생 모션 (57 보류분)
+- [ ] 70 search-filter-chips — 검색 필터 활성 칩 표시
+- [ ] 71 tray-desktop-density — 등록 트레이 데스크톱 밀도 점검
+- [ ] 72 dash-deeplinks — 대시보드 카드 딥링크 전수 점검
+- [ ] 73 currency-format — 금액 표기 통일 (Intl KRW)
+- [ ] 74 date-format-util — 날짜 표기 유틸 통일
+- [ ] 75 codebook-labels — 코드값 라벨 병기 (16_CODEBOOK 미러)
+- [ ] 76 csv-column-set — CSV 내보내기 컬럼 선택
+- [ ] 77 integrity-copy — 무결성 점검 결과 카피 정리
+- [ ] 78 print-v2-audit — 인쇄 v2 정합 감사
+- [ ] 79 recall-slip-pages — 회수 쪽지 페이지 나눔 검증
+- [ ] 80 dialog-focus-trap — 다이얼로그 포커스 트랩·ESC
+- [ ] 81 scan-aria-live — 스캔 결과 스크린리더 낭독
+- [ ] 82 contrast-gate — 색 대비 검사 게이트
+- [ ] 83 bundle-report — 번들 리포트 세분화
+- [ ] 84 icon-import-audit — lucide 임포트 감사 스크립트
+- [ ] 85 cover-fallback — 표지 이미지 폴백 전수
+- [ ] 86 update-banner — 새 버전 감지 배너
+- [ ] 87 skeleton-desktop-rows — 스켈레톤 데스크톱 표형 정합
+- [ ] 88 i18n-en-pass — 영어 카피 품질 패스
+- [ ] 89 handoff-refresh — HANDOFF·문서 최신화
+- [ ] 90 schema-report-prep — 🅿 schemaReport 백엔드 준비 (배포는 사용자)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
