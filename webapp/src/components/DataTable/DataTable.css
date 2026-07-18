@@ -175,6 +175,11 @@
 .data-table-grid tbody td.is-numeric {
   text-align: right;
 }
+/* todo/99 — 셀 안 행동 버튼("예약"·"취소" 등)은 통짜: 최소 폭 창에서 "예/약" 세로 낱자 꺾임
+   방지(검색 결과 실측). 폭 부족은 .data-table-scroll 가로 스크롤이 담당. */
+.data-table-grid tbody td button {
+  white-space: nowrap;
+}
 .data-table-grid tbody tr.is-clickable {
   cursor: pointer;
 }
