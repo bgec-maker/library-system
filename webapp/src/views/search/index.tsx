@@ -236,7 +236,7 @@ export default function SearchView({ shell }: ViewProps) {
 
   return (
     <div className="search-view">
-      <ScanCameraStart viewId="search" platform={shell.platform} />
+      <ScanCameraStart viewId="search" platform={shell.platform} variant="compact" />
 
       <div className="panel search-toolbar">
         <input

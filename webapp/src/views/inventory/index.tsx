@@ -164,7 +164,7 @@ export default function InventoryView({ shell }: ViewProps) {
 
   return (
     <div className="inv-view">
-      <ScanCameraStart viewId="inventory" platform={shell.platform} />
+      <ScanCameraStart viewId="inventory" platform={shell.platform} variant="compact" />
 
       {!sessionActive && !ended && (
         <div className="panel" style={{ padding: 20 }}>
@@ -179,7 +179,12 @@ export default function InventoryView({ shell }: ViewProps) {
                 </>
               )}
             </div>
-            <button type="button" className="warn" onClick={handleStartSession} disabled={catalogState.rows.length === 0}>
+            <button
+              type="button"
+              className="warn inv-start-btn"
+              onClick={handleStartSession}
+              disabled={catalogState.rows.length === 0}
+            >
               {t('views.inventory.startSession')}
             </button>
           </div>

@@ -11,6 +11,10 @@ interface ScanCameraStartProps {
   viewId: ViewId;
   /** ShellContext.platform — 반응형 판단은 셸이 이미 끝낸 값만 받는다(뷰와 같은 규율, FRONTEND.md). */
   platform: 'desktop' | 'mobile';
+  /** todo/52 — 시각 무게: 'hero'(기본)는 카드형 시작 지점(카메라가 주역인 대출·반납/등록),
+   *  'compact'는 한 줄 아웃라인 버튼(검색·점검·상세처럼 카메라가 보조인 화면 — 본 콘텐츠를
+   *  밀어내지 않는다). 켜졌을 때의 무대 동작은 variant와 무관하게 동일. */
+  variant?: 'hero' | 'compact';
 }
 
 /**
@@ -29,7 +33,7 @@ interface ScanCameraStartProps {
  *    (components/camera/MobileScanStage.tsx — 조준 프레임은 데스크톱 ScannerWindow와 공유하는
  *    ScanAimFrame).
  */
-export function ScanCameraStart({ viewId, platform }: ScanCameraStartProps) {
+export function ScanCameraStart({ viewId, platform, variant = 'hero' }: ScanCameraStartProps) {
   const [route, setRoute] = useState(getEffectiveScanRoute());
   const [session, setSession] = useState<CameraSessionStatus>(() => cameraSession.getStatus());
 
@@ -40,6 +44,13 @@ export function ScanCameraStart({ viewId, platform }: ScanCameraStartProps) {
 
   if (platform === 'mobile') {
     if (session.running) return <MobileScanStage viewId={viewId} />;
+    if (variant === 'compact') {
+      return (
+        <button type="button" className="scan-off-inline ghost" onClick={() => cameraSession.start('view-button')}>
+          <Camera size={18} aria-hidden /> {t('camera.start')}
+        </button>
+      );
+    }
     return (
       <div className="scan-off-card panel">
         <button type="button" className="scan-off-card__btn warn" onClick={() => cameraSession.start('view-button')}>

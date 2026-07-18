@@ -285,7 +285,7 @@
       "shelfGroupHeading": "Shelf {shelf} ({count})",
       "noShelfGroupHeading": "No shelf assigned ({count})",
       "backToStart": "Start a new session",
-      "eligibleNote": "In scope: AVAILABLE and HOLD_READY copies. ON_LOAN copies are excluded because they're expected to be absent from the shelves (they're with a member) — that's normal, not a loss. LOST, WITHDRAWN, and REPAIR copies are excluded because their whereabouts are already accounted for.",
+      "eligibleNote": "In scope: copies that are available or ready for pickup. Books on loan are excluded — they're with a member, so being absent from the shelf is normal. Lost, withdrawn, and in-repair copies are excluded because their whereabouts are already accounted for.",
       "notSyncedHint": "The catalog mirror isn't ready yet — try again shortly."
     },
     "catalog": {
@@ -545,7 +545,7 @@
       "arrivalHint": "In Checkout/Return, scan barcode {barcode} · member {member}."
     },
     "settings": {
-      "readonlyNote": "Policy and config values here are view-only. Change them directly in the spreadsheet instead — policies (13_POLICIES) via the sheet or the sidebar's \"Admin\" tab \"Change default loan policy\" panel, and config (17_CONFIG) by editing the 17_CONFIG sheet directly.",
+      "readonlyNote": "This screen is view-only. To change a value, edit the sheet named in each section title directly in the spreadsheet. The default loan policy can also be changed from the spreadsheet sidebar's \"Admin\" tab (\"Change default loan policy\").",
       "refresh": "Refresh",
       "loadFailed": "Couldn't load settings — {message}",
       "policiesTitle": "Loan policies (13_POLICIES)",

@@ -285,7 +285,7 @@
       "shelfGroupHeading": "서가 {shelf} ({count}권)",
       "noShelfGroupHeading": "서가 미지정 ({count}권)",
       "backToStart": "새 세션 시작",
-      "eligibleNote": "점검 대상은 대출가능(AVAILABLE)·예약대기(HOLD_READY) 상태의 소장본입니다. 대출중(ON_LOAN)은 현재 회원에게 있어 서가 점검으로 찾을 수 없는 게 정상이라 대상에서 제외했고, 분실(LOST)·폐기(WITHDRAWN)·수선중(REPAIR)은 이미 처리·소재가 확인된 상태라 다시 점검할 필요가 없습니다.",
+      "eligibleNote": "점검 대상은 대출가능·예약대기 상태의 소장본입니다. 대출중인 책은 회원이 갖고 있어 서가에 없는 게 정상이라 제외했고, 분실·폐기·수선중인 책은 이미 소재가 확인된 상태라 다시 셀 필요가 없습니다.",
       "notSyncedHint": "카탈로그 미러가 아직 준비되지 않았습니다 — 잠시 후 다시 시도하세요."
     },
     "catalog": {
@@ -545,7 +545,7 @@
       "arrivalHint": "대출·반납 화면에서 바코드 {barcode} · 회원 {member}을(를) 스캔하세요."
     },
     "settings": {
-      "readonlyNote": "정책·설정 값은 이 화면에서 조회만 가능합니다. 변경은 스프레드시트에서 직접 하세요 — 정책(13_POLICIES)은 시트를 편집하거나 사이드바 「관리」 탭의 「기본 대출 정책 변경」에서, 설정(17_CONFIG)은 17_CONFIG 시트를 직접 편집해서 바꿉니다.",
+      "readonlyNote": "이 화면은 조회 전용입니다. 값을 바꾸려면 각 제목에 적힌 시트를 스프레드시트에서 직접 수정하세요. 기본 대출 정책은 스프레드시트 사이드바 「관리」 탭의 「기본 대출 정책 변경」에서도 바꿀 수 있습니다.",
       "refresh": "새로고침",
       "loadFailed": "설정 정보를 불러오지 못했습니다 — {message}",
       "policiesTitle": "대출 정책 (13_POLICIES)",

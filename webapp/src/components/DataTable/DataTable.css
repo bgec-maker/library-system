@@ -162,8 +162,15 @@
 .data-table-card-rest {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* todo/52(모바일 점검 #2) — 라벨:값 쌍을 한 줄 두 쌍으로: 카드 높이 절반, 스크롤 절감.
+     390px에서 쌍 하나 ≈ 170px — 등록번호·날짜(mono)도 잘리지 않는 실측 폭. */
+  grid-template-columns: auto 1fr auto 1fr;
   gap: 4px 10px;
+}
+/* 부가 필드가 9개 이상인 넓은 표(설정의 정책 카드)는 반폭에서 값(타임스탬프)이 세 줄로 쪼개져
+   오히려 손해 — 한 줄 한 쌍으로 되돌린다. :has 미지원 브라우저는 2열 그대로(성능·기능 무해). */
+.data-table-card-rest:has(> .data-table-card-row:nth-child(9)) {
+  grid-template-columns: auto 1fr;
 }
 .data-table-card-row {
   display: contents;
@@ -172,6 +179,8 @@
   color: var(--ink-3);
   font-size: var(--fs-xs);
   margin: 0;
+  /* todo/52 — 2열 압축 뒤 한글 라벨이 어절 중간에서 꺾이던 것("수령대기\n일수")을 어절 단위로만. */
+  word-break: keep-all;
 }
 .data-table-card-row dd {
   font-size: var(--fs-sm);

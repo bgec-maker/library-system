@@ -71,6 +71,12 @@
   color: var(--ink-3);
 }
 
+/* todo/52(모바일 점검 #4) — 시작 버튼이 텍스트 폭만큼만 좁게 떠 있어 모바일에서 초라했다.
+   화면의 유일한 1차 동작이므로 전폭으로. */
+.inv-start-btn {
+  width: 100%;
+}
+
 .inv-actions {
   display: flex;
   gap: 8px;

@@ -152,6 +152,21 @@ label {
   font-size: var(--fs-sm);
 }
 
+/* todo/52(모바일 점검 #1) — 검색·점검·상세처럼 카메라가 보조 수단인 화면의 "꺼짐 상태" 압축형.
+   큰 카드(.scan-off-card)가 첫 화면 절반을 차지해 본문(검색 입력·목록)을 밀어내던 문제를,
+   한 줄짜리 고스트 버튼으로 줄인다. 시작 트리거(cameraSession.start)는 동일. */
+.scan-off-inline {
+  width: 100%;
+  margin: 10px 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+}
+
 /* components/SampleDataBadge.tsx — todo/04 이후 대시보드·리포트·시각화가 공유하는 「샘플 데이터」
    배지. --wait(대기/주의 톤)를 재사용 — 새 색을 만들지 않는다(DESIGN.md "임의 hex 금지"). */
 .sample-data-badge {
