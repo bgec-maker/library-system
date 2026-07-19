@@ -500,10 +500,7 @@
 .reg-formActions button {
   width: 100%;
 }
-/* todo/118 — 필수 미충족 입력 표시(포커스·스크롤과 세트, aria-invalid 짝) */
-.reg-confirmForm .is-invalid {
-  border-color: var(--fail);
-}
+/* todo/118의 .is-invalid 규칙은 todo/123에서 base.css 전역 표준으로 승격 — 여기선 제거. */
 
 /* todo/119 — 단일 열 입력·설명은 전폭(모바일 폼 관례 — 기본 auto 폭이 어중간하게 떠 보였다).
    reg-row2(2열)는 flex:1이 이미 폭을 관리하므로 영향 없음(width:100%는 칸 안에서도 무해). */

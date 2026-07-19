@@ -63,6 +63,40 @@ input, select, textarea {
   background: var(--panel);
   color: var(--ink);
 }
+/* todo/123 — 입력 컨트롤 표준 5칙.
+   ① iOS 포커스 줌 방지: 16px 미만 입력은 포커스 때 사파리가 화면을 확대하고 되돌리지 않는다
+      — 터치 기기에서만 16px(데스크톱은 15px 유지, 표 밀도 보존). */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+/* ② placeholder 톤 통일(브라우저 기본·Firefox 반투명 제각각) — ink-3/panel은 대비 게이트 검증 쌍. */
+::placeholder {
+  color: var(--ink-3);
+  opacity: 1;
+}
+/* ③ 설명류 다행 입력: 세로만 늘리기(가로 자유 resize는 카드 레이아웃 파손) + 최소 3줄 높이. */
+textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+/* ④ 비활성 입력 상태(버튼 disabled와 같은 결 — 종이 톤으로 가라앉힘). */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--paper);
+  color: var(--ink-3);
+  cursor: default;
+}
+/* ⑤ 검증 실패 표시 전역 표준(aria-invalid 짝) — 등록 폼(todo/118)에서 승격, 모든 폼 재사용. */
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid {
+  border-color: var(--fail);
+}
 
 label {
   display: block;

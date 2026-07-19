@@ -126,6 +126,7 @@
 - [x] 120 gate-form-standard — 연결 설정 폼 키보드·필수 표준 (전수 1/3)
 - [x] 121 report-form-inputs — 리포트 패널 숫자 입력·모바일 폼 줄 (전수 2/3)
 - [x] 122 bulk-row-align — 대량 발권 줄 버튼 정렬 (전수 3/3)
+- [x] 123 input-control-standard — 입력 컨트롤 디자인 표준 (iOS 줌·placeholder·invalid 전역)
 - [x] 42 unit-tests — 서비스 단위 테스트 상주화 (의존성 0)
 
 ## waiting/ (사용자만 승격)
