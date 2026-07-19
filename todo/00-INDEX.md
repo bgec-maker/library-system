@@ -140,7 +140,7 @@
 ## 플로팅 윈도우 점검 (2026-07-19, 사용자 지시)
 - [x] 130 window-bounds — 창 좌표 격리: 4방향 클램프·오염 저장 복원·리사이즈 앵커 (유실 실결함)
 - [x] 131 window-interactions — 도크 중복 창·스냅 저장 덮기·z 도크 잠식·더블클릭 최대화·포인터 캡처
-- [ ] 132 window-a11y-finish — role/aria·핸들 표적·등장 표준·커스텀 제목 도크 툴팁·캡처
+- [x] 132 window-a11y-finish — role/aria·핸들 표적·등장 표준·커스텀 제목 도크 툴팁·캡처
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
