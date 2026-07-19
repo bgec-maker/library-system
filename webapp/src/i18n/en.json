@@ -50,6 +50,9 @@
     },
     "settings": {
       "title": "Settings"
+    },
+    "help": {
+      "title": "Help"
     }
   },
   "dashboard": {
@@ -158,7 +161,8 @@
       "moreEmpty": "Nothing to show here.",
       "tabBarLabel": "Primary navigation",
       "registerFailedBadge": "{count} failed registrations — check the Register tab"
-    }
+    },
+    "noticeToast": "New notice: {title} — see Help"
   },
   "components": {
     "dataTable": {
@@ -802,6 +806,16 @@
         "headerMissing": "Missing headers: {list}",
         "headerExtra": "Extra columns: {list} (allowed — informational)"
       }
+    },
+    "help": {
+      "noticesHeading": "Notices",
+      "noticesEmpty": "No new notices",
+      "noticesUnavailable": "Notices appear after the server update — the usage guide below works right away.",
+      "pinned": "Pinned",
+      "levelInfo": "Info",
+      "levelWarn": "Important",
+      "guideHeading": "How to Use",
+      "guideFoot": "This guide is updated together with the features. For anything else, send the administrator a screenshot."
     }
   },
   "viz": {

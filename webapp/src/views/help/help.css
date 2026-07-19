@@ -1,0 +1,182 @@
+/* 도움말 뷰 — todo/137·138. 토큰만 사용, 그림자 1겹, 12px 하한(perf·contrast 게이트). */
+
+.help-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+  max-width: 720px;
+  box-sizing: border-box;
+}
+
+.help-view h2 {
+  margin: 0 0 10px;
+  font: 700 var(--fs-lg) var(--sans);
+  color: var(--deep);
+}
+
+.help-muted {
+  margin: 0;
+  font: 400 var(--fs-sm) var(--sans);
+  color: var(--ink-3);
+  word-break: keep-all;
+}
+
+.help-retry {
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+}
+
+/* ── 공지 ─────────────────────────────────────────────────────────── */
+.help-notice {
+  background: var(--panel);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.help-notice--warn {
+  border-left: 4px solid var(--brass);
+}
+
+.help-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-notice-head h3 {
+  margin: 0;
+  font: 700 var(--fs-md) var(--sans);
+  color: var(--ink);
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere; /* DESIGN 박스 이탈 규칙 — 긴 무공백 제목 응급 꺾음 */
+}
+
+.help-notice-pin,
+.help-notice-level {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 700 var(--fs-xs) var(--sans);
+  background: var(--paper);
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.help-notice-level--warn {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--ink);
+}
+
+.help-notice-body {
+  margin: 8px 0 0;
+  font: 400 var(--fs-sm) var(--sans);
+  color: var(--ink-2);
+  white-space: pre-wrap; /* 시트 셀의 줄바꿈 존중 — 공지는 문단이 있는 글이다 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.help-notice-date {
+  margin: 6px 0 0;
+  font: 400 var(--fs-xs) var(--mono);
+  color: var(--ink-3);
+}
+
+/* ── 사용법 가이드 ────────────────────────────────────────────────── */
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.help-toc-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-2);
+  font: 600 var(--fs-xs) var(--sans);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.help-toc-chip.is-active {
+  background: var(--deep);
+  border-color: var(--deep);
+  color: #fff;
+}
+
+.help-section {
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0 14px;
+  margin-bottom: 8px;
+}
+
+.help-section summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font: 700 var(--fs-md) var(--sans);
+  color: var(--deep);
+  word-break: keep-all;
+}
+
+.help-section-body {
+  padding: 0 0 12px;
+}
+
+.help-block h3 {
+  margin: 10px 0 4px;
+  font: 700 var(--fs-sm) var(--sans);
+  color: var(--ink);
+}
+
+.help-block p {
+  margin: 4px 0;
+  font: 400 var(--fs-sm) var(--sans);
+  color: var(--ink-2);
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.help-block ol {
+  margin: 4px 0;
+  padding-left: 20px;
+  font: 400 var(--fs-sm) var(--sans);
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.help-block li {
+  margin: 3px 0;
+  word-break: keep-all;
+}
+
+.help-note {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--deep-tint);
+  color: var(--deep);
+  font-weight: 600;
+}
+
+.help-guide-foot {
+  margin-top: 4px;
+}
+
+@media (pointer: coarse) {
+  .help-toc-chip {
+    min-height: 44px;
+  }
+}

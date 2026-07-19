@@ -10,6 +10,7 @@ import { setScanRoute, subscribeScan } from '../../services/scanBus';
 import { pushToast } from '../../services/toastBus';
 import { currentWindowDeepLink, subscribeWindowDeepLink } from '../../deepLink';
 import { dashboardData, useDashboardData } from '../../services/dashboardData';
+import { checkNewNoticesOnBoot } from '../../services/noticeData';
 import { ToastHost } from '../../components/ToastHost';
 import { ScanFlashOverlay } from '../../components/ScanFlashOverlay';
 import { SampleDataBadge } from '../../components/SampleDataBadge';
@@ -149,10 +150,21 @@ function MoreMenuScreen({ items, onOpen }: MoreMenuScreenProps) {
   );
 }
 
+let noticeBootChecked = false; // todo/137 — 세션당 1회 공지 확인(DesktopShell과 동일 가드)
+
 export default function MobileShell() {
   // 언어 토글이 눌리면 이 컴포넌트가 재렌더되고, 활성 탭 뷰·StackNav도 함께 재렌더돼 t()를
   // 다시 평가한다(DesktopShell.tsx의 동일 패턴 참고).
   useLocale();
+
+  // todo/137 — 부팅 시 새 공지 1회 안내(DesktopShell과 동일, 타이머 없음).
+  useEffect(() => {
+    if (noticeBootChecked) return;
+    noticeBootChecked = true;
+    void checkNewNoticesOnBoot().then((notice) => {
+      if (notice) pushToast(t('shell.noticeToast', { title: notice.title }), 'info');
+    });
+  }, []);
 
   // todo/44(현장 제보 2 — 설치형 PWA 콜드 스타트에서 탭바 아래 죽은 띠): iOS standalone은
   // 첫 레이아웃을 낡은 뷰포트 높이로 잡고 정정 resize를 첫 상호작용 전까지 안 쏘는 경우가

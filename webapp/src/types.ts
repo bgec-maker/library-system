@@ -15,7 +15,8 @@ export type ViewId =
   | 'reports'
   | 'reservations'
   | 'members'
-  | 'settings';
+  | 'settings'
+  | 'help';
 
 export type ScanInterest = 'focus' | 'none';
 

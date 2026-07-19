@@ -50,6 +50,9 @@
     },
     "settings": {
       "title": "설정"
+    },
+    "help": {
+      "title": "도움말"
     }
   },
   "dashboard": {
@@ -158,7 +161,8 @@
       "moreEmpty": "표시할 항목이 없습니다.",
       "tabBarLabel": "주요 화면",
       "registerFailedBadge": "등록 실패 {count}건 — 도서 등록 탭에서 확인하세요"
-    }
+    },
+    "noticeToast": "새 공지: {title} — 도움말에서 확인하세요"
   },
   "components": {
     "dataTable": {
@@ -802,6 +806,16 @@
         "headerMissing": "헤더 누락: {list}",
         "headerExtra": "여분 열: {list} (허용 — 참고용)"
       }
+    },
+    "help": {
+      "noticesHeading": "공지사항",
+      "noticesEmpty": "새 공지가 없어요",
+      "noticesUnavailable": "공지는 서버 업데이트 후 표시돼요 — 사용법 안내는 아래에서 바로 볼 수 있어요.",
+      "pinned": "고정",
+      "levelInfo": "안내",
+      "levelWarn": "중요",
+      "guideHeading": "사용법",
+      "guideFoot": "기능이 업데이트되면 이 안내도 함께 갱신돼요. 더 궁금한 건 관리자에게 화면 캡처와 함께 물어봐 주세요."
     }
   },
   "viz": {

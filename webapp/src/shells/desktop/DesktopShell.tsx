@@ -15,10 +15,15 @@ import { Window } from './Window';
 import { ScannerDockWidget } from './ScannerDockWidget';
 import { ScannerWindow } from './ScannerWindow';
 import { toggleScannerWindow } from '../../services/scannerWindowStore';
+import { checkNewNoticesOnBoot } from '../../services/noticeData';
+import { pushToast } from '../../services/toastBus';
+import { t } from '../../i18n';
 import { DOCK_WIDTH, useWindowStore } from './useWindowStore';
 import './desktop.css';
 
 // FRONTEND.md "데스크톱 셸 — 창 관리자"의 루트. boot.tsx가 lazy(()=>import(...))로 불러온다.
+let noticeBootChecked = false; // todo/137 — 세션당 1회 공지 확인(StrictMode 이중 마운트 가드)
+
 export default function DesktopShell() {
   // 언어 토글이 눌리면 이 컴포넌트가 재렌더되고, 그 아래 Dock·Window(→각 뷰)도 함께 재렌더돼
   // t()를 다시 평가한다 — 뷰/셸 어디도 로케일 구독을 따로 두지 않아도 되는 지점.
@@ -61,6 +66,16 @@ export default function DesktopShell() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // todo/137 — 부팅 시 새 공지 1회 안내(타이머 없음). 모듈 플래그로 StrictMode 이중 마운트·
+  // 셸 재마운트에도 세션당 1회만. lastSeen 갱신은 도움말 열람 시(noticeData 주석).
+  useEffect(() => {
+    if (noticeBootChecked) return;
+    noticeBootChecked = true;
+    void checkNewNoticesOnBoot().then((notice) => {
+      if (notice) pushToast(t('shell.noticeToast', { title: notice.title }), 'info');
+    });
   }, []);
 
   return (

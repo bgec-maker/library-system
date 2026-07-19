@@ -359,6 +359,21 @@ export async function installApiMock(page: Page): Promise<void> {
         );
         return;
       }
+      case 'notices': {
+        // todo/137 — 도움말 공지: 고정 WARN 1 + 일반 INFO 1(정렬·레벨 pill 계약 검증용)
+        await route.fulfill(
+          jsonResponse(
+            ok({
+              sheetReady: true,
+              notices: [
+                { noticeId: 'N-2', title: '7월 마지막 주 도서관 휴관', body: '방역 소독으로 7/28(화) 하루 쉽니다.\n대출 반납일은 자동으로 하루 밀려요.', level: 'WARN', pinned: true, createdAt: '2026-07-19 09:00' },
+                { noticeId: 'N-1', title: '새 학생 관리 탭이 열렸어요', body: '더보기 → 학생 관리에서 반 이동과 등록을 할 수 있어요.', level: 'INFO', pinned: false, createdAt: '2026-07-18 18:00' }
+              ]
+            })
+          )
+        );
+        return;
+      }
       case 'classCodes': {
         await route.fulfill(jsonResponse(ok({ classes: MEMBER_CLASSES })));
         return;

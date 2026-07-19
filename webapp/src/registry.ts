@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { ArrowLeftRight, BellRing, BookOpen, BookPlus, CircleHelp, ClipboardCheck, FileText, History, Library, Search, SlidersHorizontal, Users } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -21,7 +21,8 @@ const TITLE_KEYS: Record<ViewId, string> = {
   reports: 'registry.reports.title',
   reservations: 'registry.reservations.title',
   members: 'registry.members.title',
-  settings: 'registry.settings.title'
+  settings: 'registry.settings.title',
+  help: 'registry.help.title'
 };
 
 export const VIEW_REGISTRY: ViewMeta[] = [
@@ -151,6 +152,17 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [560, 560] },
+    mobile: {}
+  },
+  {
+    // 도움말(help, todo/137) — 공지(23_NOTICES 시트 원천) + 사용법 가이드(번들 내장,
+    // src/content/help.*.ts). 새 기능이 실리면 가이드도 같은 커밋에서 갱신한다(138 규약).
+    id: 'help',
+    title: t(TITLE_KEYS.help),
+    icon: CircleHelp,
+    roles: ['LIBRARIAN'],
+    scan: 'none',
+    desktop: { min: [520, 560] },
     mobile: {}
   }
 ];
