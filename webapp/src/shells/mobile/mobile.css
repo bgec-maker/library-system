@@ -71,10 +71,15 @@
   justify-content: center;
 }
 
+/* todo/133 — 가로 이탈 방어층: 콘텐츠 결함(그리드 블로우아웃 등)이 앱 전체 가로 스크롤로
+   승격되지 못하게 셸 스크롤러 두 곳에서 차단한다(실기기 제보 — 뷰 전체가 옆으로 밀렸다).
+   개별 결함 수정(133~134)과 병행하는 심층 방어이지 대체가 아니다 — 넓은 표처럼 가로 스크롤이
+   정답인 콘텐츠는 자기 컨테이너(overflow-x:auto)를 따로 갖는다. */
 .m-shell-main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -213,6 +218,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden; /* todo/133 — 위 .m-shell-main과 같은 가로 이탈 방어층 */
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }

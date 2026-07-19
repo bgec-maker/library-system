@@ -239,19 +239,23 @@
   margin-top: 8px;
   display: grid;
   /* todo/52(모바일 점검 #2) — 라벨:값 쌍을 한 줄 두 쌍으로: 카드 높이 절반, 스크롤 절감.
-     390px에서 쌍 하나 ≈ 170px — 등록번호·날짜(mono)도 잘리지 않는 실측 폭. */
-  grid-template-columns: auto 1fr auto 1fr;
+     390px에서 쌍 하나 ≈ 170px — 등록번호·날짜(mono)도 잘리지 않는 실측 폭.
+     todo/133 — 값 트랙은 1fr이 아니라 minmax(0,1fr): 1fr의 자동 최소값(min-content)은
+     nowrap/장토큰의 전체 폭까지 올라가, 20자 mono 토큰(STF-…) 두 쌍이 한 줄에 오면 그리드가
+     카드·뷰포트를 뚫었다(실기기 제보 — 최근 처리 카드가 화면 좌우로 이탈). minmax(0,·)은
+     그 바닥을 없애고, 넘침 처리는 아래 dd 규칙(anywhere/ellipsis)이 맡는다. */
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 4px 10px;
 }
 /* 부가 필드가 9개 이상인 넓은 표(설정의 정책 카드)는 반폭에서 값(타임스탬프)이 세 줄로 쪼개져
    오히려 손해 — 한 줄 한 쌍으로 되돌린다. :has 미지원 브라우저는 2열 그대로(성능·기능 무해). */
 .data-table-card-rest:has(> .data-table-card-row:nth-child(9)) {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 /* todo/93 — 호출측 명시 강등(cardMetaColumns=1): 타임스탬프+행동 버튼처럼 반폭이 구조적으로
    부족한 화면(예약 관리 실측 — nowrap만으론 옆 쌍이 짓눌림). :has와 달리 명시라 전 브라우저 확정. */
 .data-table-card-rest--single {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 .data-table-card-row {
   display: contents;
@@ -268,12 +272,22 @@
   text-align: right;
   margin: 0;
   word-break: keep-all; /* todo/93 — 값도 어절 단위로만("1번/째" 같은 어절 중간 꺾임 방지) */
+  /* todo/133 — keep-all과 병행하는 응급 꺾음: 한글은 어절 단위 그대로, 공백 없는 긴 토큰
+     (TTL-8291… 같은 불투명 ID)만 넘칠 때 아무 데서나 접는다. ID는 접혀도 무손실 — 말줄임으로
+     대조 정보를 지우는 것보다 낫다. min-width:0은 그리드 아이템의 min-content 바닥 제거 짝. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 /* todo/93 — nowrap 열(todo/47 계약: 날짜·상태 등 중간에서 꺾이면 안 되는 짧은 값)의 카드 값.
    "2026-07-" 뒤 꺾임 방지(예약 관리 카드 실측). 1fr 트랙의 자동 최소값이 nowrap 값의 전체
    폭으로 올라가므로 그리드가 스스로 트랙을 넓힌다 — 대신 옆 라벨이 keep-all 어절 단위로 접힌다. */
 .data-table-card-row dd.is-nowrap {
   white-space: nowrap;
+  /* todo/133 — nowrap 계약 재정의: "꺾지 마라"는 유지하되 "뚫어라"는 아니다. 트랙 바닥이
+     사라졌으므로(minmax) 극단값은 여기서 말줄임된다 — 날짜·상태 같은 정상 nowrap 값은 반폭에
+     충분히 들어가 종전과 픽셀 하나 다르지 않다(93·95의 실측 계약 보존). */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .data-table-card-no-match {
   text-align: center;

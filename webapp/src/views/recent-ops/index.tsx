@@ -93,7 +93,10 @@ export default function RecentOpsView({ shell }: ViewProps) {
     },
     { key: 'summary', header: t('views.recentOps.col.summary'), sortable: true },
     { key: 'entityType', header: t('views.recentOps.col.entityType'), sortable: true },
-    { key: 'entityId', header: t('views.recentOps.col.entityId'), sortable: true, mono: true, nowrap: true },
+    // todo/133 — entityId의 nowrap 제거: 불투명 ID(TTL-8291…)는 접혀도 무손실이라 nowrap+
+    // 말줄임(정보 소실)보다 anywhere 접힘이 낫다. 날짜(occurredAt)는 짧고 중간 꺾임이 의미를
+    // 해치므로 nowrap 유지(95 계약).
+    { key: 'entityId', header: t('views.recentOps.col.entityId'), sortable: true, mono: true },
     { key: 'actorId', header: t('views.recentOps.col.actor'), sortable: true, mono: true }
   ], []);
 
