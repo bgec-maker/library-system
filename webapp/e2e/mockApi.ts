@@ -212,6 +212,37 @@ export async function installApiMock(page: Page): Promise<void> {
         // 돌려줘 각 패널이 자기 샘플 목(src/mocks/reports.ts)으로 폴백해 렌더되게 한다.
         // (교정 전엔 type 무관하게 미대출 모양만 줘서 담임 리포트 미리보기가 오류 경계로
         // 떨어졌다 — 시각 감사 3R 증빙. 실환경 계약(UNKNOWN_ACTION→샘플)과도 이쪽이 일치.)
+        if (payload.type === 'homeroom-report' && payload.classCode) {
+          // todo/128 — classCode 모드(이름 반 학교): grade/classNo는 ''로, classLabel 동봉
+          // (Code.gs reportHomeroomClass_의 응답 모양 그대로).
+          const cls = MEMBER_CLASSES.find((c) => c.code === String(payload.classCode).toUpperCase());
+          if (!cls) {
+            await route.fulfill(jsonResponse(fail('INVALID_CODE', `unknown classCode ${String(payload.classCode)}`)));
+            return;
+          }
+          await route.fulfill(
+            jsonResponse(
+              ok({
+                libraryName: 'BGEC Library',
+                generatedAt: '2026-07-15 09:00',
+                grade: '',
+                classNo: '',
+                classCode: cls.code,
+                classLabel: cls.label,
+                month: String(payload.month ?? '2026-07'),
+                studentCount: 2,
+                loanStatus: [
+                  { memberNo: '0000002', name: 'Mock Bora', studentNo: 0, loanCount: 1 },
+                  { memberNo: '0000003', name: 'Mock Chan', studentNo: 0, loanCount: 0 }
+                ],
+                noLoanList: [{ memberNo: '0000003', name: 'Mock Chan', studentNo: 0, loanCount: 0 }],
+                overdueList: [],
+                popularBooks: [{ title: 'Zebra Tales', loanCount: 1 }]
+              })
+            )
+          );
+          return;
+        }
         if (payload.type !== 'no-loan-finder') {
           await route.fulfill(jsonResponse(fail('UNKNOWN_ACTION', `e2e mock: report type "${String(payload.type ?? '(none)')}" not stubbed`)));
           return;

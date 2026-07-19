@@ -494,7 +494,9 @@
         "noLoanEmpty": "No students without a loan this month.",
         "overdueEmpty": "No loans are currently overdue.",
         "popularEmpty": "No loans recorded this month.",
-        "printTitle": "Grade {grade}, Class {classNo} homeroom report · {month}"
+        "printTitle": "Grade {grade}, Class {classNo} homeroom report · {month}",
+        "printTitleClass": "{classLabel} Class Homeroom Report · {month}",
+        "studentCountLineClass": "{classLabel} Class · {count} students"
       },
       "weeding": {
         "title": "Dead stock / purchase picks",

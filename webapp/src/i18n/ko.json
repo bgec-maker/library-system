@@ -494,7 +494,9 @@
         "noLoanEmpty": "이 달 미대출 학생이 없습니다.",
         "overdueEmpty": "현재 연체 중인 대출이 없습니다.",
         "popularEmpty": "이 달 대출 기록이 없습니다.",
-        "printTitle": "{grade}학년 {classNo}반 담임 리포트 · {month}"
+        "printTitle": "{grade}학년 {classNo}반 담임 리포트 · {month}",
+        "printTitleClass": "{classLabel}반 담임 리포트 · {month}",
+        "studentCountLineClass": "{classLabel}반 · 재학생 {count}명"
       },
       "weeding": {
         "title": "죽은 장서 / 구매 추천",

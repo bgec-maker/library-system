@@ -60,8 +60,12 @@ export interface HomeroomPopularBook {
 export interface HomeroomReport {
   libraryName: string;
   generatedAt: string;
-  grade: number;
-  classNo: number;
+  /** classCode 모드(todo/124·128 — 이름 반 학교)에선 ''로 온다 */
+  grade: number | '';
+  classNo: number | '';
+  /** todo/128 — 이름 반 학교 모드에서만 채워진다(제목·요약 줄이 classLabel 우선 표기) */
+  classCode?: string;
+  classLabel?: string;
   /** yyyy-MM */
   month: string;
   studentCount: number;
@@ -237,9 +241,13 @@ export function fetchNoLoanFinderReport(sinceDate?: string): Promise<ReportFetch
   return fetchReport('no-loan-finder', sinceDate ? { sinceDate } : {}, mockNoLoanFinderReport);
 }
 
+/** todo/128 — 담임 리포트 대상 지정의 이중 모드: 이름 반 학교는 classCode 하나,
+ *  숫자 반 학교는 종전 grade+classNo(서버 reportHomeroomClass_의 이중 계약 그대로). */
+export type HomeroomTarget = { classCode: string } | { grade: number; classNo: number };
+
 /** R1-2 담임 리포트(월간·반별). month는 'yyyy-MM'. */
-export function fetchHomeroomReport(grade: number, classNo: number, month: string): Promise<ReportFetchOutcome<HomeroomReport>> {
-  return fetchReport('homeroom-report', { grade, classNo, month }, mockHomeroomReport);
+export function fetchHomeroomReport(target: HomeroomTarget, month: string): Promise<ReportFetchOutcome<HomeroomReport>> {
+  return fetchReport('homeroom-report', { ...target, month }, mockHomeroomReport);
 }
 
 /** R1-3 죽은 장서 / 구매 추천 — 파라미터 없음(전체 장서 대상 1회 조회). */

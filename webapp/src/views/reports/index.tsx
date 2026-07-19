@@ -41,6 +41,7 @@ import {
 } from '../../viz';
 import { t } from '../../i18n';
 import { formatKRW } from '../../i18n/format';
+import { fetchClassCodes, type ClassCodeEntry } from '../../services/memberData';
 import './reports.css';
 
 // 리포트 허브 — FEATURES.md R1 "종류 선택 → 미리보기 → 인쇄". todo/04가 만든 「조용한 신호」
@@ -517,22 +518,44 @@ interface HomeroomReportPanelProps {
 function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomReportPanelProps) {
   const [grade, setGrade] = useState(initialGrade ?? 1);
   const [classNo, setClassNo] = useState(initialClassNo ?? 1);
+  // todo/128 — 이름 반 학교 이중 모드: CLASS 코드북이 있으면 학년·반 숫자 입력 대신 반 select
+  // 하나(이 학교엔 학년 축이 아예 없다). null = 조회 중, [] = 숫자 학교/미배포(종전 UI 그대로 —
+  // 회귀 0). 서버 계약은 reportHomeroomClass_의 classCode 모드(todo/124).
+  const [classes, setClasses] = useState<ClassCodeEntry[] | null>(null);
+  const [classCode, setClassCode] = useState('');
   const [month, setMonth] = useState(() => currentMonthDefault());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ data: HomeroomReport; sample: boolean } | null>(null);
 
+  useEffect(() => {
+    let alive = true;
+    void fetchClassCodes().then((res) => {
+      if (!alive) return;
+      if (res.ok && res.classes.length > 0) {
+        setClasses(res.classes);
+        setClassCode((prev) => prev || res.classes[0].code);
+      } else {
+        setClasses([]);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const labelMode = (classes?.length ?? 0) > 0;
+
   const handlePreview = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const outcome = await fetchHomeroomReport(grade, classNo, month);
+    const outcome = await fetchHomeroomReport(labelMode ? { classCode } : { grade, classNo }, month);
     setLoading(false);
     if (outcome.ok) setResult({ data: outcome.data, sample: outcome.sample });
     else {
       setResult(null);
       setError(outcome.message);
     }
-  }, [grade, classNo, month]);
+  }, [labelMode, classCode, grade, classNo, month]);
 
   // todo/18 — 반 참여 링에서 특정 반을 지정해 넘어온 경우에만 "직행"답게 진입 즉시 한 번
   // 자동으로 미리보기를 실행한다(그 외 나머지 4개 리포트 패널과 동일하게 평소엔 버튼을
@@ -542,37 +565,53 @@ function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomRe
   useEffect(() => {
     if (autoPreviewDone) return;
     if (initialGrade == null || initialClassNo == null) return;
+    if (classes === null || labelMode) return; // todo/128 — 라벨 학교에선 학년·반 딥링크가 무의미(학년 축 없음)
     setAutoPreviewDone(true);
     void handlePreview();
-  }, [autoPreviewDone, initialGrade, initialClassNo, handlePreview]);
+  }, [autoPreviewDone, initialGrade, initialClassNo, classes, labelMode, handlePreview]);
 
   return (
     <div>
       <div className="no-print">
         <h2>{t('views.reports.homeroom.title')}</h2>
         <div className="reports-form">
-          <div className="reports-field">
-            <label htmlFor="homeroom-grade">{t('views.reports.homeroom.gradeLabel')}</label>
-            <input
-              id="homeroom-grade"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={grade}
-              onChange={(e) => setGrade(Number(e.target.value) || 0)}
-            />
-          </div>
-          <div className="reports-field">
-            <label htmlFor="homeroom-class">{t('views.reports.homeroom.classNoLabel')}</label>
-            <input
-              id="homeroom-class"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={classNo}
-              onChange={(e) => setClassNo(Number(e.target.value) || 0)}
-            />
-          </div>
+          {labelMode ? (
+            <div className="reports-field">
+              <label htmlFor="homeroom-class-code">{t('views.reports.homeroom.classNoLabel')}</label>
+              <select id="homeroom-class-code" value={classCode} onChange={(e) => setClassCode(e.target.value)}>
+                {(classes ?? []).map((cls) => (
+                  <option key={cls.code} value={cls.code}>
+                    {cls.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <>
+              <div className="reports-field">
+                <label htmlFor="homeroom-grade">{t('views.reports.homeroom.gradeLabel')}</label>
+                <input
+                  id="homeroom-grade"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={grade}
+                  onChange={(e) => setGrade(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="reports-field">
+                <label htmlFor="homeroom-class">{t('views.reports.homeroom.classNoLabel')}</label>
+                <input
+                  id="homeroom-class"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={classNo}
+                  onChange={(e) => setClassNo(Number(e.target.value) || 0)}
+                />
+              </div>
+            </>
+          )}
           <div className="reports-field">
             <label htmlFor="homeroom-month">{t('views.reports.homeroom.monthLabel')}</label>
             <input id="homeroom-month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
@@ -649,13 +688,19 @@ function HomeroomReportPanel({ shell, initialGrade, initialClassNo }: HomeroomRe
       {result && (
         <div className="print-preview-frame">
           <PrintDocument libraryName={result.data.libraryName} generatedAtText={result.data.generatedAt}>
-            <h2>{t('views.reports.homeroom.printTitle', { grade: result.data.grade, classNo: result.data.classNo, month: result.data.month })}</h2>
+            <h2>
+              {result.data.classLabel
+                ? t('views.reports.homeroom.printTitleClass', { classLabel: result.data.classLabel, month: result.data.month })
+                : t('views.reports.homeroom.printTitle', { grade: result.data.grade, classNo: result.data.classNo, month: result.data.month })}
+            </h2>
             <p className="reports-summary-line">
-              {t('views.reports.homeroom.studentCountLine', {
-                grade: result.data.grade,
-                classNo: result.data.classNo,
-                count: result.data.studentCount
-              })}
+              {result.data.classLabel
+                ? t('views.reports.homeroom.studentCountLineClass', { classLabel: result.data.classLabel, count: result.data.studentCount })
+                : t('views.reports.homeroom.studentCountLine', {
+                    grade: result.data.grade,
+                    classNo: result.data.classNo,
+                    count: result.data.studentCount
+                  })}
             </p>
 
             <h2>{t('views.reports.homeroom.loanStatusHeading')}</h2>
