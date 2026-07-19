@@ -82,3 +82,21 @@ transform/opacity만 · reduced-motion 무효) 안에서 움직인다.
 ## 스킬화 여부 (사용자 질문의 답)
 
 외부에서 구해올 스킬은 없다 — 범용 디자인 스킬은 이 프로젝트의 고유 결정(두 표면·램프·인쇄)을 모른다. **이 문서가 곧 프로젝트 전용 디자인 스킬의 원고**다. 운용 규칙: Claude Code가 이 문서를 두 번 이상 어기면, 그때 skill-creator로 `library-design` 스킬로 승격해 자동 트리거시킨다. 그 전엔 문서로 충분 — 과설계 방지.
+
+## 박스 이탈 규칙 (todo/133~135, 실기기 제보 발단)
+
+콘텐츠는 자기 박스를 뚫지 않는다 — 새 뷰·새 열 체크리스트:
+
+- **그리드 값 트랙은 `minmax(0, 1fr)`** — `1fr`의 자동 최소값(min-content)은 nowrap/장토큰의
+  전체 폭까지 올라가 컨테이너를 뚫는다(최근 처리 카드 실사례: 20자 mono 토큰 두 쌍이 한 줄).
+  플렉스도 동일: 줄어들 자식엔 `min-width: 0`.
+- **불투명 토큰(ID·바코드)은 접는다** — `overflow-wrap: anywhere`(+한글 `word-break: keep-all`
+  병행 — 어절은 지키고 공백 없는 토큰만 응급 꺾음). 접힘은 무손실, 말줄임은 정보 소실이다.
+- **nowrap은 ellipsis 안전망과 세트** — nowrap 계약은 "꺾지 마라"지 "뚫어라"가 아니다. 날짜·
+  상태처럼 짧아서 nowrap이 정당한 값도 극단 입력에선 `overflow: hidden; text-overflow:
+  ellipsis`로 멈춘다.
+- **셸 스크롤러는 가로 차단** — .m-shell-main/.m-stack-body `overflow-x: hidden`(심층 방어).
+  가로 스크롤이 정답인 콘텐츠(넓은 표)는 자기 컨테이너에만 `overflow-x: auto`.
+- **검증은 검출기로** — e2e/overflow.spec.ts의 가로 이탈 검출기(문서·셸 스크롤러 scrollWidth).
+  "0건"을 믿기 전에 심은 위반이 잡히는지 자가 검증부터(134 교훈 — 고정 대기가 lazy 셸을
+  앞지르면 무음 불발로 고무도장이 된다).
