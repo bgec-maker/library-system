@@ -14,5 +14,6 @@ export const VIEW_COMPONENTS: Record<ViewId, LazyExoticComponent<ComponentType<V
   'recent-ops': lazy(() => import('./views/recent-ops')),
   reports: lazy(() => import('./views/reports')),
   reservations: lazy(() => import('./views/reservations')),
+  members: lazy(() => import('./views/members')),
   settings: lazy(() => import('./views/settings'))
 };

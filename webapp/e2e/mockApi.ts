@@ -63,6 +63,39 @@ export const CATALOG_ROWS: CatalogRow[] = [
   }
 ];
 
+// todo/126 — 학생 관리 목 명단. ★가짜 이름만 쓴다: 실학생 이름·생년은 공개 레포에 절대 넣지
+// 않는다(아동 PII — 난민학교라 더더욱). 이름 반(LOVE/HOPE/FAITH) + 출생연도 혼합 + 상태 다양성
+// (재학 3·졸업 1)으로 필터·정렬 계약을 검증할 수 있는 최소 구성.
+export const MEMBER_CLASSES = [
+  { code: 'LOVE', label: 'Love' },
+  { code: 'HOPE', label: 'Hope' },
+  { code: 'FAITH', label: 'Faith' }
+];
+
+export interface MockMember {
+  memberId: string;
+  memberNo: string;
+  name: string;
+  classNo: string;
+  classCode: string;
+  classLabel: string;
+  grade: '';
+  birthYear: number | '';
+  memberTypeCode: string;
+  statusCode: string;
+  note: string;
+  openLoans: number;
+}
+
+export function makeMockMembers(): MockMember[] {
+  return [
+    { memberId: 'mem-ari', memberNo: '0000001', name: 'Mock Ari', classNo: 'LOVE', classCode: 'LOVE', classLabel: 'Love', grade: '', birthYear: 2021, memberTypeCode: 'STUDENT', statusCode: 'ACTIVE', note: '', openLoans: 0 },
+    { memberId: 'mem-bora', memberNo: '0000002', name: 'Mock Bora', classNo: 'HOPE', classCode: 'HOPE', classLabel: 'Hope', grade: '', birthYear: 2018, memberTypeCode: 'STUDENT', statusCode: 'ACTIVE', note: '', openLoans: 1 },
+    { memberId: 'mem-chan', memberNo: '0000003', name: 'Mock Chan', classNo: 'HOPE', classCode: 'HOPE', classLabel: 'Hope', grade: '', birthYear: 2019, memberTypeCode: 'STUDENT', statusCode: 'ACTIVE', note: '', openLoans: 0 },
+    { memberId: 'mem-dana', memberNo: '0000004', name: 'Mock Dana', classNo: 'FAITH', classCode: 'FAITH', classLabel: 'Faith', grade: '', birthYear: 2014, memberTypeCode: 'STUDENT', statusCode: 'GRADUATED', note: '', openLoans: 0 }
+  ];
+}
+
 function ok<T>(data: T) {
   return { ok: true, data, error: null };
 }
@@ -100,6 +133,7 @@ function extractAction(route: Route): { action: string; payload: Record<string, 
  *  최소 상태를 하나 들고 있는다(실제 시트 대신 이 함수 호출 사이 클로저가 "진실"이다). */
 export async function installApiMock(page: Page): Promise<void> {
   let loaned = false;
+  const mockMembers = makeMockMembers(); // todo/126 — 호출 간 클로저가 진실(등록/수정은 127에서 이 배열을 변이)
 
   await page.route(`${MOCK_API_URL}**`, async (route) => {
     const { action, payload } = extractAction(route);
@@ -201,6 +235,25 @@ export async function installApiMock(page: Page): Promise<void> {
                   ]
                 }
               ]
+            })
+          )
+        );
+        return;
+      }
+      case 'memberList': {
+        // 서버 계약(apiWebMemberList_): 웹앱은 status:'ALL' 한 번으로 다 받아 로컬 필터한다.
+        // 목도 필터를 흉내 내지 않고 전량을 준다 — 필터 검증은 클라이언트 몫이 맞다.
+        await route.fulfill(
+          jsonResponse(
+            ok({
+              members: mockMembers,
+              totalCount: mockMembers.length,
+              classes: MEMBER_CLASSES,
+              memberStatuses: [
+                { code: 'ACTIVE', label: '재학' },
+                { code: 'GRADUATED', label: '졸업' }
+              ],
+              birthYearReady: true
             })
           )
         );

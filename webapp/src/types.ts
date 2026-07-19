@@ -14,6 +14,7 @@ export type ViewId =
   | 'recent-ops'
   | 'reports'
   | 'reservations'
+  | 'members'
   | 'settings';
 
 export type ScanInterest = 'focus' | 'none';

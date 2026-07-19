@@ -45,6 +45,9 @@
     "reservations": {
       "title": "Reservations"
     },
+    "members": {
+      "title": "Students"
+    },
     "settings": {
       "title": "Settings"
     }
@@ -588,6 +591,34 @@
       "cancelDone": "Cancelled the reservation for {title}.",
       "cancelFailed": "Failed to cancel reservation — {message}",
       "arrivalHint": "In Checkout / Return, scan barcode {barcode} for {member}."
+    },
+    "members": {
+      "unavailableTitle": "Server update required",
+      "unavailableBody": "Student management turns on after deploying the new GAS version. Follow the order in the \"pending redeploy ledger\" at the top of school-patch-v1/PATCH_NOTES.md (deploy, then run the schema upgrade menu) and this screen activates automatically.",
+      "birthYearNotReady": "The sheet has no birth-year column yet — birth years will not be saved until you run \"Schema upgrade (class & birth year)\" from the admin menu.",
+      "filterAria": "Student filters",
+      "chipAll": "All classes",
+      "statusFilterAria": "Status filter",
+      "statusAll": "All statuses",
+      "countShown": "Showing {shown} of {total}",
+      "searchPlaceholder": "Search name or member no.",
+      "colMemberNo": "Member No.",
+      "colName": "Name",
+      "colClass": "Class",
+      "colBirthYear": "Birth Year",
+      "colOpenLoans": "On Loan",
+      "colStatus": "Status",
+      "emptyHint": "No students match the filters",
+      "scanPin": "Card scan: {memberNo} — showing this student only",
+      "scanPinClear": "Show all",
+      "scanNotFound": "Scanned student card ({code}) is not in the roster",
+      "status": {
+        "active": "Enrolled",
+        "suspended": "Suspended",
+        "graduated": "Graduated",
+        "transferred": "Transferred",
+        "withdrawn": "Withdrawn"
+      }
     },
     "settings": {
       "readonlyNote": "This screen is view-only. To change a value, edit the sheet named in each section title directly in the spreadsheet. The default loan policy can also be changed from the spreadsheet sidebar's \"Admin\" tab (\"Change default loan policy\").",

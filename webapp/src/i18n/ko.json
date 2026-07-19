@@ -45,6 +45,9 @@
     "reservations": {
       "title": "예약 관리"
     },
+    "members": {
+      "title": "학생 관리"
+    },
     "settings": {
       "title": "설정"
     }
@@ -588,6 +591,34 @@
       "cancelDone": "{title} 예약을 취소했습니다.",
       "cancelFailed": "예약 취소 실패 — {message}",
       "arrivalHint": "대출·반납 화면에서 바코드 {barcode} · 회원 {member}을(를) 스캔하세요."
+    },
+    "members": {
+      "unavailableTitle": "서버 업데이트가 필요해요",
+      "unavailableBody": "학생 관리는 GAS 새 버전 배포 후 켜집니다. school-patch-v1/PATCH_NOTES.md 상단 「재배포 대기 대장」의 순서(배포 → 스키마 업그레이드 메뉴)대로 진행하면 이 화면이 자동으로 활성화돼요.",
+      "birthYearNotReady": "시트에 출생연도 열이 아직 없어요 — 관리 메뉴 「스키마 업그레이드(반·생년)」를 실행하기 전까지 출생연도는 저장되지 않아요.",
+      "filterAria": "학생 필터",
+      "chipAll": "전체 반",
+      "statusFilterAria": "상태 필터",
+      "statusAll": "전체 상태",
+      "countShown": "{shown}명 표시 · 전체 {total}명",
+      "searchPlaceholder": "이름·회원번호 검색",
+      "colMemberNo": "회원번호",
+      "colName": "이름",
+      "colClass": "반",
+      "colBirthYear": "출생연도",
+      "colOpenLoans": "대출중",
+      "colStatus": "상태",
+      "emptyHint": "조건에 맞는 학생이 없어요",
+      "scanPin": "카드 스캔: {memberNo} — 이 학생만 보는 중",
+      "scanPinClear": "전체 보기",
+      "scanNotFound": "스캔한 학생 카드({code})가 명단에 없어요",
+      "status": {
+        "active": "재학",
+        "suspended": "대출 정지",
+        "graduated": "졸업",
+        "transferred": "전출",
+        "withdrawn": "탈퇴"
+      }
     },
     "settings": {
       "readonlyNote": "이 화면은 조회 전용입니다. 값을 바꾸려면 각 제목에 적힌 시트를 스프레드시트에서 직접 수정하세요. 기본 대출 정책은 스프레드시트 사이드바 「관리」 탭의 「기본 대출 정책 변경」에서도 바꿀 수 있습니다.",

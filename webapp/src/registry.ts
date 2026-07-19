@@ -1,4 +1,4 @@
-import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeftRight, BellRing, BookOpen, BookPlus, ClipboardCheck, FileText, History, Library, Search, SlidersHorizontal, Users } from 'lucide-react';
 import type { ViewId, ViewMeta } from './types';
 import { subscribeLocale, t } from './i18n';
 
@@ -20,6 +20,7 @@ const TITLE_KEYS: Record<ViewId, string> = {
   'recent-ops': 'registry.recentOps.title',
   reports: 'registry.reports.title',
   reservations: 'registry.reservations.title',
+  members: 'registry.members.title',
   settings: 'registry.settings.title'
 };
 
@@ -123,6 +124,19 @@ export const VIEW_REGISTRY: ViewMeta[] = [
     roles: ['LIBRARIAN'],
     scan: 'none',
     desktop: { min: [640, 520] },
+    mobile: {}
+  },
+  {
+    // 학생 관리(members, todo/126 — 난민학교 대응): 명단·검색·반 필터 + (127) 등록·수정·일괄.
+    // scan:'focus' — 학생 카드(S: 접두 QR)를 스캔하면 그 학생만 핀 필터(카드 든 채 "이 아이
+    // 누구지"가 최빈 질문, 같은 반 유사 이름 실례 때문에 이름 검색보다 안전한 1차 경로).
+    // 모바일 탭 슬롯 없음 — catalog·reports와 같은 「더보기」 경로.
+    id: 'members',
+    title: t(TITLE_KEYS.members),
+    icon: Users,
+    roles: ['LIBRARIAN'],
+    scan: 'focus',
+    desktop: { min: [640, 560] },
     mobile: {}
   },
   {
