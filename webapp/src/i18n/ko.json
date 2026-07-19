@@ -597,7 +597,7 @@
     "members": {
       "unavailableTitle": "서버 업데이트가 필요해요",
       "unavailableBody": "학생 관리는 GAS 새 버전 배포 후 켜집니다. school-patch-v1/PATCH_NOTES.md 상단 「재배포 대기 대장」의 순서(배포 → 스키마 업그레이드 메뉴)대로 진행하면 이 화면이 자동으로 활성화돼요.",
-      "birthYearNotReady": "시트에 출생연도 열이 아직 없어요 — 관리 메뉴 「스키마 업그레이드(반·생년)」를 실행하기 전까지 출생연도는 저장되지 않아요.",
+      "birthYearNotReady": "시트에 출생연도 열이 아직 없어요 — 관리 메뉴 「스키마 업그레이드」를 실행하기 전까지 출생연도는 저장되지 않아요.",
       "filterAria": "학생 필터",
       "chipAll": "전체 반",
       "statusFilterAria": "상태 필터",

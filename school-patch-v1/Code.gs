@@ -33,6 +33,7 @@ var LIBRARY_MVP = Object.freeze({
     STAFF: '14_STAFF_USERS',
     AUDIT: '15_AUDIT_LOG',
     CODEBOOK: '16_CODEBOOK',
+    NOTICES: '23_NOTICES',
     CONFIG: '17_CONFIG',
     OPERATIONS: '18_SYS_OPERATIONS',
     NOTIFICATIONS: '19_NOTIFICATION_QUEUE',
@@ -69,6 +70,8 @@ var LIBRARY_MVP = Object.freeze({
     '14_STAFF_USERS': ['staff_id', 'email', 'display_name', 'role_code', 'status_code', 'last_login_at', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
     '15_AUDIT_LOG': ['log_id', 'occurred_at', 'actor_id', 'request_id', 'action_code', 'entity_type', 'entity_id', 'before_json', 'after_json', 'summary'],
     '16_CODEBOOK': ['code_group', 'code', 'label_ko', 'label_en', 'sort_order', 'status_code', 'description'],
+    // todo/136 — 사서 공지 저장소(웹앱 도움말 탭이 소비). 22까지 사용 중이라 23.
+    '23_NOTICES': ['notice_id', 'title', 'body', 'level', 'pinned', 'starts_at', 'ends_at', 'status_code', 'created_at', 'created_by'],
     '17_CONFIG': ['setting_key', 'setting_value', 'value_type', 'description', 'updated_at', 'updated_by'],
     '18_SYS_OPERATIONS': ['request_id', 'operation_type', 'status_code', 'target_type', 'target_id', 'payload_hash', 'started_at', 'completed_at', 'actor_id', 'error_code', 'error_message'],
     '19_NOTIFICATION_QUEUE': ['notification_id', 'member_id', 'event_code', 'channel_code', 'recipient', 'template_code', 'payload_json', 'scheduled_at', 'sent_at', 'status_code', 'retry_count', 'last_error', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
@@ -109,7 +112,7 @@ function buildLibraryMenu_() {
     .addItem('일일 관리 트리거 설치', 'installLibraryTriggers')
     .addItem('서지 일괄 보강', 'runBibliographicEnrichment')
     .addItem('수기입력 흡수', 'runAbsorbManualEntries')
-    .addItem('스키마 업그레이드(반·생년)', 'runSchemaUpgradeClassBirth')
+    .addItem('스키마 업그레이드', 'runSchemaUpgradeClassBirth') // todo/136 — 누적 업그레이드(반·생년+공지 시트)로 일반화
     .addSubMenu(annualResetMenu);
 
   ui.createMenu('📚 도서관 관리')
@@ -761,7 +764,7 @@ function registerMember_(payload, actor, requestId, transaction) {
   // todo/124 — appendRecord_는 없는 열의 값을 조용히 버린다(무음 유실). 마이그레이션 전이면
   // 명시 실패로 승격해 사서가 조치할 수 있게 한다(관리 메뉴 → 스키마 업그레이드(반·생년)).
   if (birthYear !== '' && membersTable.index.birth_year === undefined) {
-    fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드(반·생년)」를 먼저 실행하세요.');
+    fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드」를 먼저 실행하세요.');
   }
   if (schoolNo) {
     var dupSchool = members.find(function(row) { return row.status_code !== 'WITHDRAWN' && cleanText_(row.school_no) === schoolNo; });
@@ -839,7 +842,7 @@ function updateMember_(payload, actor, requestId, transaction) {
   if (payload.classNo !== undefined && payload.classNo !== '') patch.class_no = classValueOrBlank_(payload.classNo);
   if (payload.birthYear !== undefined && payload.birthYear !== '') {
     if (readTable_(LIBRARY_MVP.SHEETS.MEMBERS).index.birth_year === undefined) {
-      fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드(반·생년)」를 먼저 실행하세요.');
+      fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드」를 먼저 실행하세요.');
     }
     patch.birth_year = birthYearOrBlank_(payload.birthYear);
   }
@@ -3125,6 +3128,7 @@ function doPost(e) {
       if (action === 'memberRegister') return apiWebMemberRegister_(payload);
       if (action === 'memberUpdate') return apiWebMemberUpdate_(payload);
       if (action === 'classCodes') return apiWebClassCodes_(payload);
+      if (action === 'notices') return apiWebNotices_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -5592,6 +5596,18 @@ function upgradeSchemaClassBirth_() {
   } else {
     summary.push('CLASS 코드군은 이미 있음(변경 없음)');
   }
+  // todo/136 — 공지 시트(웹앱 도움말 탭의 공지 저장소). ensureSchema_와 같은 생성 관례.
+  var ss = getSpreadsheet_();
+  if (!ss.getSheetByName(LIBRARY_MVP.SHEETS.NOTICES)) {
+    var noticesSheet = ss.insertSheet(LIBRARY_MVP.SHEETS.NOTICES);
+    var noticesHeaders = LIBRARY_MVP.HEADERS[LIBRARY_MVP.SHEETS.NOTICES];
+    noticesSheet.getRange(1, 1, 1, noticesHeaders.length).setValues([noticesHeaders]);
+    formatNewDbSheet_(noticesSheet, noticesHeaders.length);
+    invalidateTableCache_(LIBRARY_MVP.SHEETS.NOTICES);
+    summary.push('23_NOTICES 공지 시트 생성');
+  } else {
+    summary.push('23_NOTICES는 이미 있음(변경 없음)');
+  }
   applyDataValidations_(); // todo/124 검증 리스트 교정(STUDENT·TEACHER·GRADUATED) 반영
   summary.push('데이터 검증 리스트 재적용');
   return summary;
@@ -5693,4 +5709,43 @@ function apiWebMemberUpdate_(payload) {
 
 function apiWebClassCodes_(payload) {
   return { classes: getCodes_('CLASS') }; // 128(담임 리포트 반 선택)의 가벼운 옵션 소스
+}
+
+
+// --------------------------- 공지 (todo/136) ---------------------------
+//
+// 관리자가 사서에게 남기는 공지 — 저장은 23_NOTICES 시트(폰 Sheets 앱에서 행 추가 = 즉시
+// 게시, 배포 불요), 표시는 웹앱 도움말 탭. 읽기 전용이라 executeWrite_ 불요.
+// 작성 규칙(시트에 직접 기입): title·body만 채우면 즉시·상시·INFO 공지다.
+//   level: INFO(기본)/WARN, pinned: TRUE면 상단 고정, starts_at/ends_at: 게시 기간(공백=제한
+//   없음), status_code: ACTIVE 외에는 숨김(초안은 DRAFT 등 아무 값이나).
+
+function apiWebNoticesSheetReady_() {
+  return Boolean(getSpreadsheet_().getSheetByName(LIBRARY_MVP.SHEETS.NOTICES));
+}
+
+function apiWebNotices_(payload) {
+  if (!apiWebNoticesSheetReady_()) return { notices: [], sheetReady: false };
+  var now = Date.now();
+  var rows = readTable_(LIBRARY_MVP.SHEETS.NOTICES).rows.filter(function(row) {
+    if (cleanCode_(row.status_code || 'ACTIVE') !== 'ACTIVE') return false;
+    var starts = asDate_(row.starts_at);
+    var ends = asDate_(row.ends_at);
+    if (starts && starts.getTime() > now) return false;
+    if (ends && ends.getTime() < now) return false;
+    return cleanText_(row.title) !== '' || cleanText_(row.body) !== '';
+  }).map(function(row) {
+    return {
+      noticeId: cleanText_(row.notice_id) || ('ROW-' + row._row),
+      title: cleanText_(row.title),
+      body: cleanText_(row.body),
+      level: cleanCode_(row.level) === 'WARN' ? 'WARN' : 'INFO',
+      pinned: String(row.pinned).toUpperCase() === 'TRUE',
+      createdAt: row.created_at ? formatDateTime_(row.created_at) : ''
+    };
+  }).sort(function(a, b) {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return String(b.createdAt).localeCompare(String(a.createdAt));
+  });
+  return { notices: rows.slice(0, 50), sheetReady: true };
 }

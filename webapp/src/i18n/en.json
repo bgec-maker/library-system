@@ -597,7 +597,7 @@
     "members": {
       "unavailableTitle": "Server update required",
       "unavailableBody": "Student management turns on after deploying the new GAS version. Follow the order in the \"pending redeploy ledger\" at the top of school-patch-v1/PATCH_NOTES.md (deploy, then run the schema upgrade menu) and this screen activates automatically.",
-      "birthYearNotReady": "The sheet has no birth-year column yet — birth years will not be saved until you run \"Schema upgrade (class & birth year)\" from the admin menu.",
+      "birthYearNotReady": "The sheet has no birth-year column yet — birth years will not be saved until you run \"Schema upgrade\" from the admin menu.",
       "filterAria": "Student filters",
       "chipAll": "All classes",
       "statusFilterAria": "Status filter",
