@@ -143,7 +143,7 @@
 - [x] 132 window-a11y-finish — role/aria·핸들 표적·등장 표준·커스텀 제목 도크 툴팁·캡처
 
 ## 박스 이탈 전수 점검 (2026-07-19, 사용자 실기기 제보 — 최근 처리 카드 이탈)
-- [ ] 133 overflow-detector-cards — 이탈 검출기 + 카드 메타 그리드 min-content 블로우아웃 수정
+- [x] 133 overflow-detector-cards — 이탈 검출기 + 카드 메타 그리드 min-content 블로우아웃 수정
 - [ ] 134 overflow-sweep — 전 뷰 스트레스 스윕(모바일 390·데스크톱 최소 폭·ko/en) 개별 수정
 - [ ] 135 overflow-regression — 상주 e2e + DESIGN 「박스 이탈 규칙」 절
 
