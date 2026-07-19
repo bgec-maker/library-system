@@ -135,7 +135,7 @@
 - [x] 126 members-view — 웹앱 학생 관리 뷰 뼈대(목록·검색·반 필터·미배포 폴백)
 - [x] 127 member-forms-bulk — 등록·수정 폼 + 붙여넣기 일괄 등록 + 35명 CSV(비커밋 전달)
 - [x] 128 homeroom-class-picker — 담임 리포트 반 선택 전환(이중 모드)
-- [ ] 129 members-e2e-docs — members e2e 회귀 + ADR-028·문서 마감
+- [x] 129 members-e2e-docs — members e2e 회귀 + ADR-028·문서 마감
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
