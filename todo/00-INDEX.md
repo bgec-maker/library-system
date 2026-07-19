@@ -147,5 +147,10 @@
 - [x] 134 overflow-sweep — 전 뷰 스트레스 스윕(모바일 390·데스크톱 최소 폭·ko/en) 개별 수정
 - [x] 135 overflow-regression — 상주 e2e + DESIGN 「박스 이탈 규칙」 절
 
+## 도움말·공지 탭 (2026-07-19, 사용자 요청 "공지+사용법 탭, 시트 아닌 앱에서")
+- [ ] 136 notices-backend — 23_NOTICES 시트·notices 액션·업그레이드 메뉴 통합(대장 #4)
+- [ ] 137 help-view — 도움말 뷰 뼈대(공지 섹션·미배포 폴백·새 공지 부팅 토스트)
+- [ ] 138 help-guide-content — 사용법 가이드 ko/en 집필·아코디언·e2e
+
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
