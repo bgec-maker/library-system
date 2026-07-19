@@ -131,7 +131,7 @@
 
 ## 난민학교 학생 관리 (2026-07-19, 사용자 지시 "확장 가능한 관리 설계 + ui/ux")
 - [x] 124 refugee-school-core — GAS: 반 코드북 이중 모드·birth_year·검증 완화 + 재배포 대장
-- [ ] 125 member-web-api — GAS: memberList/Register/Update/classCodes 웹 액션
+- [x] 125 member-web-api — GAS: memberList/Register/Update/classCodes 웹 액션
 - [ ] 126 members-view — 웹앱 학생 관리 뷰 뼈대(목록·검색·반 필터·미배포 폴백)
 - [ ] 127 member-forms-bulk — 등록·수정 폼 + 붙여넣기 일괄 등록 + 35명 CSV(비커밋 전달)
 - [ ] 128 homeroom-class-picker — 담임 리포트 반 선택 전환(이중 모드)
