@@ -33,6 +33,21 @@ import './ScannerWindow.css';
 const MIN_W = 240;
 const MIN_H = 220;
 const MIN_VISIBLE = 80; // 드래그해도 타이틀바 일부가 항상 화면에 남도록 (Window.tsx와 같은 여유값 규모)
+const TITLEBAR_H = 36; // useWindowStore.TITLEBAR_H와 같은 실측 — 하단 클램프 기준
+
+// todo/131 — 업무 창(todo/130)과 같은 좌표 격리. 단, 이 창은 .desktop-workspace가 아니라
+// .desktop-shell 직속이라 x가 **화면 좌표**다(도크 폭을 좌측 경계에 더하는 게 여기선 맞다 —
+// 업무 창의 이중 가산 버그와 반대 상황임을 주의). 종전엔 우·하 무제한 + persist라 스캐너
+// 창도 화면 밖 영구 유실이 가능했다.
+function clampScannerRect(rect: { x: number; y: number; w: number; h: number }) {
+  const maxW = Math.max(MIN_W, window.innerWidth - DOCK_WIDTH);
+  const maxH = Math.max(MIN_H, window.innerHeight);
+  const w = Math.min(rect.w, maxW);
+  const h = Math.min(rect.h, maxH);
+  const x = Math.min(Math.max(rect.x, DOCK_WIDTH + MIN_VISIBLE - w), window.innerWidth - MIN_VISIBLE);
+  const y = Math.min(Math.max(rect.y, 0), window.innerHeight - TITLEBAR_H);
+  return { x, y, w, h };
+}
 const TITLEBAR_ICON_SIZE = 14;
 const COUNTDOWN_VISIBLE_SEC = 30; // MobileScanStage.tsx와 동일 — 유휴 자동종료 카운트다운 표시 구간.
 const TICK_MS = 250;
@@ -117,6 +132,18 @@ export function ScannerWindow() {
     return () => ro.disconnect();
   }, [winState.open, winState.minimized]);
 
+  // todo/131 — 열릴 때 저장 rect를 현재 화면 기준으로 교정(과거 버전이 화면 밖 좌표를 저장했을
+  // 수 있고, 모니터가 바뀌었을 수도 있다). 열림 상태 전이 시 1회만.
+  useEffect(() => {
+    if (!winState.open || winState.minimized) return;
+    const c = clampScannerRect(winState.rect);
+    if (c.x !== winState.rect.x || c.y !== winState.rect.y || c.w !== winState.rect.w || c.h !== winState.rect.h) {
+      setScannerWindowRect(c);
+    }
+    // rect를 deps에 넣지 않는다 — 드래그 중 재클램프 루프 방지(교정은 열림 전이 시 1회면 충분).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winState.open, winState.minimized]);
+
   // 유휴 자동종료 카운트다운 — MobileScanStage.tsx와 동일: cameraSession.idleDeadlineAt(절대
   // 시각)을 주기적으로 재평가만 한다. 창이 닫히거나 최소화되면 재평가를 멈춘다(불필요한 타이머).
   useEffect(() => {
@@ -129,17 +156,22 @@ export function ScannerWindow() {
   function onTitlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('button')) return;
     dragRef.current = { startX: e.clientX, startY: e.clientY, winX: winState.rect.x, winY: winState.rect.y };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); // todo/131 — 스턱 드래그 방지
     document.body.style.userSelect = 'none';
     window.addEventListener('pointermove', onDragMove);
     window.addEventListener('pointerup', onDragEnd);
+    window.addEventListener('pointercancel', onDragEnd);
   }
 
   function onDragMove(e: PointerEvent) {
     const d = dragRef.current;
     if (!d) return;
-    const nx = Math.max(DOCK_WIDTH - winState.rect.w + MIN_VISIBLE, d.winX + (e.clientX - d.startX));
-    const ny = Math.max(0, d.winY + (e.clientY - d.startY));
-    setScannerWindowRect({ ...winState.rect, x: nx, y: ny });
+    const next = clampScannerRect({
+      ...winState.rect,
+      x: d.winX + (e.clientX - d.startX),
+      y: d.winY + (e.clientY - d.startY)
+    });
+    setScannerWindowRect(next);
   }
 
   function onDragEnd() {
@@ -147,15 +179,18 @@ export function ScannerWindow() {
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onDragMove);
     window.removeEventListener('pointerup', onDragEnd);
+    window.removeEventListener('pointercancel', onDragEnd);
     persistScannerWindowRect();
   }
 
   function onResizePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     e.stopPropagation();
     resizeRef.current = { startX: e.clientX, startY: e.clientY, w: winState.rect.w, h: winState.rect.h };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     document.body.style.userSelect = 'none';
     window.addEventListener('pointermove', onResizeMove);
     window.addEventListener('pointerup', onResizeEnd);
+    window.addEventListener('pointercancel', onResizeEnd);
   }
 
   function onResizeMove(e: PointerEvent) {
@@ -163,7 +198,7 @@ export function ScannerWindow() {
     if (!r) return;
     const w = Math.max(MIN_W, r.w + (e.clientX - r.startX));
     const h = Math.max(MIN_H, r.h + (e.clientY - r.startY));
-    setScannerWindowRect({ ...winState.rect, w, h });
+    setScannerWindowRect(clampScannerRect({ ...winState.rect, w, h }));
   }
 
   function onResizeEnd() {
@@ -171,6 +206,7 @@ export function ScannerWindow() {
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onResizeMove);
     window.removeEventListener('pointerup', onResizeEnd);
+    window.removeEventListener('pointercancel', onResizeEnd);
     persistScannerWindowRect();
   }
 

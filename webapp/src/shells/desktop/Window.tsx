@@ -36,6 +36,7 @@ export function Window({ win }: WindowProps) {
   const moveWindow = useWindowStore((s) => s.moveWindow);
   const resizeWindow = useWindowStore((s) => s.resizeWindow);
   const snapWindow = useWindowStore((s) => s.snapWindow);
+  const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
   const persistWindowRect = useWindowStore((s) => s.persistWindowRect);
   const openWindow = useWindowStore((s) => s.openWindow);
 
@@ -49,7 +50,7 @@ export function Window({ win }: WindowProps) {
   const isCustomTitleRef = useRef(false);
   const [scanRoute, setScanRouteState] = useState(getEffectiveScanRoute());
 
-  const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number; moved: boolean } | null>(null);
   const resizeRef = useRef<{ dir: ResizeDir; startX: number; startY: number; rect: { x: number; y: number; w: number; h: number } } | null>(
     null
   );
@@ -123,24 +124,32 @@ export function Window({ win }: WindowProps) {
   function onTitlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('button')) return;
     bringToFront();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, winX: win.x, winY: win.y };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, winX: win.x, winY: win.y, moved: false };
+    // todo/131 — 캡처: 브라우저 창 밖에서 놓아도 up/cancel이 이 문서로 돌아온다(스턱 드래그 방지).
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     document.body.style.userSelect = 'none';
     window.addEventListener('pointermove', onDragMove);
     window.addEventListener('pointerup', onDragEnd);
+    window.addEventListener('pointercancel', onDragEnd);
   }
 
   function onDragMove(e: PointerEvent) {
     const d = dragRef.current;
     if (!d) return;
+    d.moved = true;
     moveWindow(win.id, d.winX + (e.clientX - d.startX), d.winY + (e.clientY - d.startY));
   }
 
   function onDragEnd() {
+    const moved = dragRef.current?.moved ?? false;
     dragRef.current = null;
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onDragMove);
     window.removeEventListener('pointerup', onDragEnd);
-    persistWindowRect(win.id);
+    window.removeEventListener('pointercancel', onDragEnd);
+    // todo/131 — 실제로 움직였을 때만 저장: 타이틀바 단순 클릭(포커스)·더블클릭(최대화)이
+    // 현재 rect(최대화 상태 포함)를 자유 배치 저장값 위에 덮어쓰지 않게 한다.
+    if (moved) persistWindowRect(win.id);
   }
 
   function onResizePointerDown(dir: ResizeDir) {
@@ -148,9 +157,11 @@ export function Window({ win }: WindowProps) {
       e.stopPropagation();
       bringToFront();
       resizeRef.current = { dir, startX: e.clientX, startY: e.clientY, rect: { x: win.x, y: win.y, w: win.w, h: win.h } };
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       document.body.style.userSelect = 'none';
       window.addEventListener('pointermove', onResizeMove);
       window.addEventListener('pointerup', onResizeEnd);
+      window.addEventListener('pointercancel', onResizeEnd);
     };
   }
 
@@ -182,6 +193,7 @@ export function Window({ win }: WindowProps) {
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onResizeMove);
     window.removeEventListener('pointerup', onResizeEnd);
+    window.removeEventListener('pointercancel', onResizeEnd);
     persistWindowRect(win.id);
   }
 
@@ -203,7 +215,15 @@ export function Window({ win }: WindowProps) {
       }}
       onMouseDownCapture={bringToFront}
     >
-      <div className="window-titlebar" onPointerDown={onTitlePointerDown}>
+      <div
+        className="window-titlebar"
+        onPointerDown={onTitlePointerDown}
+        onDoubleClick={(e) => {
+          // todo/131 — 데스크톱 창 관례: 타이틀바 더블클릭 = 최대화 토글(버튼 위 더블클릭 제외).
+          if ((e.target as HTMLElement).closest('button')) return;
+          toggleMaximize(win.id);
+        }}
+      >
         {meta?.scan === 'focus' && (
           <button
             type="button"

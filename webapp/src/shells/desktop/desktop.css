@@ -245,6 +245,8 @@
   cursor: move;
   user-select: none;
   flex-shrink: 0;
+  /* todo/131 — 터치 기기(태블릿)에서 드래그 포인터 이벤트를 스크롤 제스처가 가로채지 않게 */
+  touch-action: none;
 }
 
 .window-titlebar__title {
@@ -324,6 +326,7 @@
 
 .window-resize {
   position: absolute;
+  touch-action: none; /* todo/131 — 타이틀바와 같은 이유 */
 }
 
 .window-resize--n {

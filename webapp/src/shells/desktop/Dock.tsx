@@ -42,6 +42,7 @@ export function Dock() {
   const windows = useWindowStore((s) => s.windows);
   const openWindow = useWindowStore((s) => s.openWindow);
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
+  const focusWindow = useWindowStore((s) => s.focusWindow);
   // todo/62 — 모바일 탭 배지(53)의 데스크톱 패리티: 같은 신호(등록 실패)는 두 셸에서 같게.
   // i18n 키는 53의 것을 재사용(shell.mobile.* 네임스페이스지만 문구는 셸 무관 — 키 이동은
   // 이득 대비 게이트 리스크만 있어 보류).
@@ -75,7 +76,22 @@ export function Dock() {
                   type="button"
                   className={`dock-icon${isOpen ? ' is-open' : ''}`}
                   title={v.title}
-                  onClick={() => openWindow(v.id)}
+                  onClick={() => {
+                    // todo/131 — 도크 클릭은 "그 앱으로 가기"다: 열려 있으면 포커스, 최소화면
+                    // 복원, 없을 때만 새 창. 종전엔 비단일 뷰가 클릭마다 복제돼(아이콘은
+                    // is-open 표시까지 하면서) 6창 상한 토스트로 끝났다. 의도적 다중 창
+                    // (도서 상세 비교 등)은 뷰 내부 shell.open 경로가 종전대로 담당한다.
+                    const sameView = windows.filter((w) => w.viewId === v.id);
+                    const visible = sameView.filter((w) => !w.minimized);
+                    if (visible.length) {
+                      const top = visible.reduce((a, b) => (b.z > a.z ? b : a));
+                      focusWindow(top.id);
+                    } else if (sameView.length) {
+                      restoreWindow(sameView[0].id);
+                    } else {
+                      openWindow(v.id);
+                    }
+                  }}
                 >
                   <Icon size={DOCK_ICON_SIZE} aria-hidden />
                   {badge && (

@@ -53,10 +53,26 @@ export interface WindowState extends WindowRect {
   minimized: boolean;
   /** scanBus 핀 상태의 거울 — Window.tsx가 이 필드만 보고도 뱃지를 그릴 수 있게 동기화해 둔다. */
   pinned: boolean;
+  /** todo/131 — 최대화 이전의 자유 배치. null이면 "최대화 아님". 수동 이동·리사이즈·스냅이
+   *  일어나면 비운다(그 순간부터 사용자가 새 배치를 선언한 것 — 더블클릭은 그 배치 기준 토글). */
+  prevRect: WindowRect | null;
 }
 
 let zCounter = 1;
 let idCounter = 0;
+
+// todo/131 — z 재정규화. zCounter는 포커스 전환마다 증가하는 단조 카운터라 장기 세션(전환
+// ~500회)에서 도크 z-index(desktop.css .dock z:500)를 추월해 창이 도크를 덮는 잠복 결함이
+// 있었다. 300을 넘으면 열린 창들의 상대 순서를 유지한 채 1..n으로 압축한다(MAX 6창이라
+// 압축 후 zCounter=n≤6 — 도크 500까지 다시 ~300회 여유). 도크 z=500은 이 임계의 전제다.
+const Z_RENORM_THRESHOLD = 300;
+function renormalizedZ(windows: WindowState[]): WindowState[] | null {
+  if (zCounter <= Z_RENORM_THRESHOLD) return null;
+  const sorted = [...windows].sort((a, b) => a.z - b.z);
+  const zById = new Map(sorted.map((w, i) => [w.id, i + 1]));
+  zCounter = windows.length;
+  return windows.map((w) => ({ ...w, z: zById.get(w.id) ?? 1 }));
+}
 
 function storageKey(viewId: ViewId): string {
   return `win:${viewId}`;
@@ -103,6 +119,7 @@ interface WindowStore {
   minimizeWindow(id: string): void;
   restoreWindow(id: string): void;
   snapWindow(id: string, side: 'left' | 'right'): void;
+  toggleMaximize(id: string): void;
   persistWindowRect(id: string): void;
 }
 
@@ -139,6 +156,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       h: Math.max(minH, stored?.h ?? minH)
     });
 
+    const renormed = renormalizedZ(get().windows);
+    if (renormed) set({ windows: renormed });
     idCounter += 1;
     zCounter += 1;
     const next: WindowState = {
@@ -151,7 +170,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       h,
       z: zCounter,
       minimized: false,
-      pinned: currentPinned(viewId)
+      pinned: currentPinned(viewId),
+      prevRect: null
     };
     set((s) => ({ windows: [...s.windows, next] }));
   },
@@ -168,12 +188,12 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   focusWindow(id) {
-    set((s) => {
-      if (!s.windows.some((w) => w.id === id)) return s;
-      zCounter += 1;
-      const z = zCounter;
-      return { windows: s.windows.map((w) => (w.id === id ? { ...w, z } : w)) };
-    });
+    if (!get().windows.some((w) => w.id === id)) return;
+    const renormed = renormalizedZ(get().windows);
+    if (renormed) set({ windows: renormed });
+    zCounter += 1;
+    const z = zCounter;
+    set((s) => ({ windows: s.windows.map((w) => (w.id === id ? { ...w, z } : w)) }));
   },
 
   moveWindow(id, x, y) {
@@ -184,7 +204,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       windows: s.windows.map((w) => {
         if (w.id !== id) return w;
         const c = clampRectToWorkspace({ x, y, w: w.w, h: w.h });
-        return { ...w, x: c.x, y: c.y };
+        return { ...w, x: c.x, y: c.y, prevRect: null }; // 수동 이동 = 최대화 기억 해제(todo/131)
       })
     }));
   },
@@ -202,7 +222,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
         // todo/130 — 리사이즈 결과도 워크스페이스 계약 안으로(과대 크기·경계 탈출 방지).
         // 화면이 meta.min보다 작은 극단에선 화면이 이긴다(안 보이는 720px짜리 창보다 낫다).
         const c = clampRectToWorkspace({ x: x2, y: y2, w: w2, h: h2 });
-        return { ...w, ...c };
+        return { ...w, ...c, prevRect: null }; // 수동 리사이즈(스냅 포함) = 최대화 기억 해제(todo/131)
       })
     }));
   },
@@ -212,6 +232,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   restoreWindow(id) {
+    const renormed = renormalizedZ(get().windows);
+    if (renormed) set({ windows: renormed });
     zCounter += 1;
     const z = zCounter;
     set((s) => ({ windows: s.windows.map((w) => (w.id === id ? { ...w, minimized: false, z } : w)) }));
@@ -227,7 +249,27 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
     const x = side === 'right' ? half : 0;
     get().resizeWindow(id, { x, y: 0, w: half, h: availH });
     get().focusWindow(id);
-    get().persistWindowRect(id);
+    // todo/131 — 스냅은 세션 배치일 뿐, 저장(persist)하지 않는다. 종전엔 여기서 저장해 사용자가
+    // 정성껏 잡아 둔 자유 배치(localStorage)를 절반 창이 덮어써 다음 열기가 항상 절반이었다.
+  },
+
+  // todo/131 — 타이틀바 더블클릭 최대화 토글. 스냅과 같은 원칙: 세션 배치일 뿐 저장하지 않는다.
+  toggleMaximize(id) {
+    const win = get().windows.find((w) => w.id === id);
+    if (!win) return;
+    if (win.prevRect) {
+      const restored = clampRectToWorkspace(win.prevRect);
+      set((s) => ({ windows: s.windows.map((w) => (w.id === id ? { ...w, ...restored, prevRect: null } : w)) }));
+    } else {
+      const availW = Math.max(320, window.innerWidth - DOCK_WIDTH);
+      const availH = Math.max(240, window.innerHeight);
+      set((s) => ({
+        windows: s.windows.map((w) =>
+          w.id === id ? { ...w, prevRect: { x: w.x, y: w.y, w: w.w, h: w.h }, x: 0, y: 0, w: availW, h: availH } : w
+        )
+      }));
+    }
+    get().focusWindow(id);
   },
 
   persistWindowRect(id) {
