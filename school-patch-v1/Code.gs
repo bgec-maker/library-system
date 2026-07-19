@@ -3121,6 +3121,10 @@ function doPost(e) {
       if (action === 'settingsOverview') return apiWebSettingsOverview_(payload);
       if (action === 'runIntegrityCheck') return apiWebIntegrityCheck_(payload);
       if (action === 'schemaReport') return apiWebSchemaReport_(payload);
+      if (action === 'memberList') return apiWebMemberList_(payload);
+      if (action === 'memberRegister') return apiWebMemberRegister_(payload);
+      if (action === 'memberUpdate') return apiWebMemberUpdate_(payload);
+      if (action === 'classCodes') return apiWebClassCodes_(payload);
       fail_('UNKNOWN_ACTION', '지원하지 않는 action입니다: ' + action);
     });
   } catch (error) {
@@ -5603,4 +5607,90 @@ function runSchemaUpgradeClassBirth() {
     ui.alert('스키마 업그레이드 실패', error.message || String(error), ui.ButtonSet.OK);
     throw error;
   }
+}
+
+
+// --------------------------- 회원 웹 API (todo/125) ---------------------------
+//
+// 학생 등록·관리가 시트 사이드바(apiRegisterMember/apiUpdateMember)에만 있어 웹앱에서 반 이동
+// 하나 하려 해도 시트로 가야 했다. 도메인 함수(registerMember_/updateMember_)는 무수정 재사용
+// 하고(사이드바와 같은 executeWrite_ 래핑, 바깥 runApi_는 doPost 담당) 목록 조회만 새로 만든다.
+// 난민학교 운영의 최빈 작업(반 이동·상태 변경·신입 등록)이 전부 웹앱에서 끝나는 게 목적.
+//
+// PII 최소화: 목록 응답에 전화·이메일·학번은 싣지 않는다 — 웹앱 관리 뷰가 표시하지 않는 값은
+// 회선에도 태우지 않는다(공개 셸에서 쓰는 앱이라 응답 최소화가 곧 방어선. 필요해지는 날 명시
+// 적으로 추가). ensureOperatorNote_는 의도적으로 안 쓴다: 대출·반납과 달리 여기의 note는 회원
+// 원장에 남는 사용자 데이터라 반 이동 때마다 '웹앱 · 사서명'이 쌓이면 비고란이 오염된다 —
+// 작업 귀속은 executeWrite_의 감사 로그(15_AUDIT_LOG)가 이미 담당한다.
+
+function apiWebMemberList_(payload) {
+  var query = normalizeText_(payload.query || '');
+  var queryCode = cleanCode_(payload.query || '');
+  var classCode = cleanCode_(payload.classCode || '');
+  var statusFilter = cleanCode_(payload.status || '');
+  var membersTable = readTable_(LIBRARY_MVP.SHEETS.MEMBERS);
+  var birthYearReady = membersTable.index.birth_year !== undefined;
+  var openLoanCount = {};
+  readTable_(LIBRARY_MVP.SHEETS.LOANS).rows.forEach(function(row) {
+    if (row.status_code === 'OPEN' && !row.returned_at) openLoanCount[row.member_id] = (openLoanCount[row.member_id] || 0) + 1;
+  });
+  var classes = getCodes_('CLASS');
+  var classOrder = {};
+  var classLabelByCode = {};
+  classes.forEach(function(item, index) { classOrder[item.code] = index; classLabelByCode[item.code] = item.label; });
+  var rows = membersTable.rows.filter(function(row) {
+    // 기본은 재학중(ACTIVE)만 — 관리 뷰의 일상 화면. 'ALL'이면 전체, 그 외 코드는 그 상태만.
+    if (statusFilter === '') { if (row.status_code !== 'ACTIVE') return false; }
+    else if (statusFilter !== 'ALL' && row.status_code !== statusFilter) return false;
+    if (classCode && cleanCode_(row.class_no) !== classCode) return false;
+    if (query) {
+      var nameHit = normalizeText_(row.name).indexOf(query) !== -1;
+      var noHit = queryCode !== '' && cleanCode_(row.member_no).indexOf(queryCode) !== -1;
+      if (!nameHit && !noHit) return false;
+    }
+    return true;
+  }).map(function(row) {
+    var rowClassCode = cleanCode_(row.class_no);
+    return {
+      memberId: row.member_id,
+      memberNo: row.member_no,
+      name: row.name,
+      classNo: row.class_no,
+      classCode: rowClassCode,
+      classLabel: classLabelByCode[rowClassCode] || cleanText_(row.class_no),
+      grade: row.grade,
+      birthYear: birthYearReady ? row.birth_year : '',
+      memberTypeCode: row.member_type_code,
+      statusCode: row.status_code,
+      note: row.note,
+      openLoans: openLoanCount[row.member_id] || 0
+    };
+  }).sort(function(a, b) {
+    var ca = classOrder[a.classCode] === undefined ? 999 : classOrder[a.classCode];
+    var cb = classOrder[b.classCode] === undefined ? 999 : classOrder[b.classCode];
+    return (ca - cb) || String(a.name).localeCompare(String(b.name));
+  });
+  return {
+    members: rows.slice(0, 500), // 전교 수십 명 규모 — 상한은 폭주 방어일 뿐(totalCount로 절단 감지)
+    totalCount: rows.length,
+    classes: classes,
+    memberStatuses: getCodes_('MEMBER_STATUS'),
+    birthYearReady: birthYearReady
+  };
+}
+
+function apiWebMemberRegister_(payload) {
+  return executeWrite_('REGISTER_MEMBER', payload || {}, function(actor, requestId, transaction) {
+    return registerMember_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebMemberUpdate_(payload) {
+  return executeWrite_('UPDATE_MEMBER', payload || {}, function(actor, requestId, transaction) {
+    return updateMember_(payload || {}, actor, requestId, transaction);
+  });
+}
+
+function apiWebClassCodes_(payload) {
+  return { classes: getCodes_('CLASS') }; // 128(담임 리포트 반 선택)의 가벼운 옵션 소스
 }
