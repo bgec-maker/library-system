@@ -15,12 +15,13 @@ import {
   subscribeScanRoute,
   unpinScanRoute
 } from '../../services/scanBus';
-import { DOCK_WIDTH, useWindowStore, type WindowState } from './useWindowStore';
+import { useWindowStore, type WindowState } from './useWindowStore';
 
 type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const RESIZE_DIRS: ResizeDir[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
-const MIN_VISIBLE = 120; // 드래그해도 타이틀바 일부는 항상 화면에 남도록
 const TITLEBAR_ICON_SIZE = 14;
+// todo/130 — 드래그·리사이즈 경계는 스토어(clampRectToWorkspace)가 단일 원천이다. 이 파일은
+// 원시 포인터 델타만 넘긴다(종전의 좌·상 2방향 부분 클램프 + DOCK_WIDTH 이중 가산 제거).
 
 interface WindowProps {
   win: WindowState;
@@ -131,9 +132,7 @@ export function Window({ win }: WindowProps) {
   function onDragMove(e: PointerEvent) {
     const d = dragRef.current;
     if (!d) return;
-    const nx = Math.max(DOCK_WIDTH - win.w + MIN_VISIBLE, d.winX + (e.clientX - d.startX));
-    const ny = Math.max(0, d.winY + (e.clientY - d.startY));
-    moveWindow(win.id, nx, ny);
+    moveWindow(win.id, d.winX + (e.clientX - d.startX), d.winY + (e.clientY - d.startY));
   }
 
   function onDragEnd() {
@@ -160,16 +159,20 @@ export function Window({ win }: WindowProps) {
     if (!r) return;
     const dx = e.clientX - r.startX;
     const dy = e.clientY - r.startY;
+    const [minW, minH] = meta?.desktop.min ?? [280, 200];
     let { x, y, w, h } = r.rect;
     if (r.dir.includes('e')) w = r.rect.w + dx;
     if (r.dir.includes('s')) h = r.rect.h + dy;
+    // todo/130 — 서/북 앵커 교정: 최소 크기를 여기서 먼저 확정하고 반대 변(우/하)을 고정한다.
+    // 종전엔 x·y가 포인터를 그대로 따라가고 스토어가 w·h만 최소로 되돌려, 최소 크기에 닿는
+    // 순간 창이 통째로 미끄러졌다(변은 그대로여야 한다는 리사이즈의 기본 계약 위반).
     if (r.dir.includes('w')) {
-      w = r.rect.w - dx;
-      x = r.rect.x + dx;
+      w = Math.max(minW, r.rect.w - dx);
+      x = r.rect.x + r.rect.w - w;
     }
     if (r.dir.includes('n')) {
-      h = r.rect.h - dy;
-      y = r.rect.y + dy;
+      h = Math.max(minH, r.rect.h - dy);
+      y = r.rect.y + r.rect.h - h;
     }
     resizeWindow(win.id, { x, y, w, h });
   }
