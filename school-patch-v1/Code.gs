@@ -58,7 +58,10 @@ var LIBRARY_MVP = Object.freeze({
     '06_CATEGORIES': ['category_id', 'parent_category_id', 'category_code', 'name_ko', 'name_en', 'sort_order', 'status_code', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
     '07_TITLE_CATEGORIES': ['title_category_id', 'title_id', 'category_id', 'is_primary', 'created_at', 'created_by'],
     '08_COPIES': ['copy_id', 'barcode', 'title_id', 'location_code', 'shelf_code', 'acquired_at', 'acquisition_source', 'price', 'condition_code', 'status_code', 'last_inventory_at', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
-    '09_MEMBERS': ['member_id', 'member_no', 'name', 'school_no', 'grade', 'class_no', 'student_no', 'member_type_code', 'phone', 'email', 'joined_at', 'graduated_at', 'expires_at', 'status_code', 'loan_limit_override', 'suspended_until', 'suspend_reason', 'privacy_consent_at', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
+    // todo/124: birth_year는 의미상 grade 옆이지만 물리적으로 말미 — 기존 열을 한 칸도 옮기지
+    // 않는 append 마이그레이션(upgradeSchemaClassBirth_)이 되기 위해서다. readTable_은 헤더
+    // 이름으로 색인하므로 위치는 무관하다.
+'09_MEMBERS': ['member_id', 'member_no', 'name', 'school_no', 'grade', 'class_no', 'student_no', 'member_type_code', 'phone', 'email', 'joined_at', 'graduated_at', 'expires_at', 'status_code', 'loan_limit_override', 'suspended_until', 'suspend_reason', 'privacy_consent_at', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version', 'birth_year'],
     '10_LOANS': ['loan_id', 'copy_id', 'member_id', 'checked_out_at', 'due_at', 'returned_at', 'status_code', 'renew_count', 'policy_id', 'checkout_staff_id', 'return_staff_id', 'request_id', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
     '11_RESERVATIONS': ['reservation_id', 'title_id', 'member_id', 'requested_at', 'queue_seq', 'status_code', 'assigned_copy_id', 'ready_at', 'pickup_expires_at', 'fulfilled_loan_id', 'fulfilled_at', 'cancelled_at', 'request_id', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
     '12_FINES': ['fine_id', 'member_id', 'loan_id', 'fine_type_code', 'amount', 'assessed_at', 'status_code', 'paid_amount', 'paid_at', 'waived_reason', 'note', 'created_at', 'created_by', 'updated_at', 'updated_by', 'row_version'],
@@ -106,6 +109,7 @@ function buildLibraryMenu_() {
     .addItem('일일 관리 트리거 설치', 'installLibraryTriggers')
     .addItem('서지 일괄 보강', 'runBibliographicEnrichment')
     .addItem('수기입력 흡수', 'runAbsorbManualEntries')
+    .addItem('스키마 업그레이드(반·생년)', 'runSchemaUpgradeClassBirth')
     .addSubMenu(annualResetMenu);
 
   ui.createMenu('📚 도서관 관리')
@@ -208,8 +212,10 @@ function getDataValidationRules_() {
     [LIBRARY_MVP.SHEETS.TITLE_AUTHORS, 'role_code', 10000, ['AUTHOR', 'TRANSLATOR', 'EDITOR']],
     [LIBRARY_MVP.SHEETS.COPIES, 'condition_code', 10000, ['GOOD', 'FAIR', 'DAMAGED']],
     [LIBRARY_MVP.SHEETS.COPIES, 'status_code', 10000, ['AVAILABLE', 'ON_LOAN', 'HOLD_READY', 'REPAIR', 'LOST', 'WITHDRAWN']],
-    [LIBRARY_MVP.SHEETS.MEMBERS, 'member_type_code', 10000, ['GENERAL', 'CHILD', 'STAFF']],
-    [LIBRARY_MVP.SHEETS.MEMBERS, 'status_code', 10000, ['ACTIVE', 'SUSPENDED', 'WITHDRAWN']],
+// todo/124: 종전 리스트가 실데이터와 불일치 — 코드 전역이 쓰는 STUDENT, 졸업 처리가 쓰는
+    // GRADUATED가 없어 setAllowInvalid(false) 아래서 UI 수정이 막히고 셀마다 무효 깃발이 섰다.
+    [LIBRARY_MVP.SHEETS.MEMBERS, 'member_type_code', 10000, ['STUDENT', 'TEACHER', 'GENERAL', 'CHILD', 'STAFF']],
+    [LIBRARY_MVP.SHEETS.MEMBERS, 'status_code', 10000, ['ACTIVE', 'SUSPENDED', 'GRADUATED', 'TRANSFERRED', 'WITHDRAWN']],
     [LIBRARY_MVP.SHEETS.LOANS, 'status_code', 10000, ['OPEN', 'RETURNED', 'LOST', 'VOID']],
     [LIBRARY_MVP.SHEETS.RESERVATIONS, 'status_code', 10000, ['WAITING', 'READY', 'FULFILLED', 'CANCELLED', 'EXPIRED']],
     [LIBRARY_MVP.SHEETS.FINES, 'fine_type_code', 10000, ['OVERDUE', 'REPLACEMENT']],
@@ -739,14 +745,24 @@ function registerMember_(payload, actor, requestId, transaction) {
   var memberType = cleanCode_(payload.memberType || 'STUDENT');
   assertCode_('MEMBER_TYPE', memberType);
   var grade = positiveIntegerOrBlank_(payload.grade, '학년');
-  var classNo = positiveIntegerOrBlank_(payload.classNo, '반');
+  // todo/124(난민학교 대응) — 학생 필수 조건을 「반만」으로 완화. 이름 반 학교(Love/Hope/Faith)는
+  // 학년·학번·출석번호가 애초에 없다 — 신원은 어차피 내부 발번 member_no가 축이고, 학년은
+  // 숫자 반 학교에서만 쓰는 선택 정보로 내린다(값이 오면 종전대로 정수 검증).
+  var classNo = classValueOrBlank_(payload.classNo);
   var studentNo = positiveIntegerOrBlank_(payload.studentNo, '번호');
-  if (memberType === 'STUDENT' && (grade === '' || classNo === '')) fail_('VALIDATION_ERROR', '학생은 학년과 반이 필요합니다.');
+  if (memberType === 'STUDENT' && classNo === '') fail_('VALIDATION_ERROR', '학생은 반이 필요합니다.');
+  var birthYear = birthYearOrBlank_(payload.birthYear);
   var schoolNo = cleanText_(payload.schoolNo || '');
   var emailNormalized = normalizeEmail_(payload.email);
   if (emailNormalized) validateEmail_(emailNormalized);
 
-  var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows;
+  var membersTable = readTable_(LIBRARY_MVP.SHEETS.MEMBERS);
+  var members = membersTable.rows;
+  // todo/124 — appendRecord_는 없는 열의 값을 조용히 버린다(무음 유실). 마이그레이션 전이면
+  // 명시 실패로 승격해 사서가 조치할 수 있게 한다(관리 메뉴 → 스키마 업그레이드(반·생년)).
+  if (birthYear !== '' && membersTable.index.birth_year === undefined) {
+    fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드(반·생년)」를 먼저 실행하세요.');
+  }
   if (schoolNo) {
     var dupSchool = members.find(function(row) { return row.status_code !== 'WITHDRAWN' && cleanText_(row.school_no) === schoolNo; });
     if (dupSchool) fail_('DUPLICATE_MEMBER', '같은 학번의 회원이 있습니다: ' + dupSchool.member_no + ' (' + dupSchool.name + ')');
@@ -784,6 +800,7 @@ function registerMember_(payload, actor, requestId, transaction) {
     suspend_reason: '',
     privacy_consent_at: payload.privacyConsent ? now : '',
     note: safeText_(payload.note || ''),
+    birth_year: birthYear,
     created_at: now,
     created_by: actor.id,
     updated_at: now,
@@ -818,7 +835,14 @@ function updateMember_(payload, actor, requestId, transaction) {
   if (duplicate) fail_('DUPLICATE_MEMBER', '같은 전화번호 또는 이메일을 가진 회원이 있습니다: ' + duplicate.member_no);
   if (payload.schoolNo !== undefined && cleanText_(payload.schoolNo) !== '') patch.school_no = cleanText_(payload.schoolNo);
   if (payload.grade !== undefined && payload.grade !== '') patch.grade = positiveIntegerOrBlank_(payload.grade, '학년');
-  if (payload.classNo !== undefined && payload.classNo !== '') patch.class_no = positiveIntegerOrBlank_(payload.classNo, '반');
+  // todo/124 — 반 이동이 이 학교의 최빈 관리 작업: 이름 반 이중 모드(classValueOrBlank_).
+  if (payload.classNo !== undefined && payload.classNo !== '') patch.class_no = classValueOrBlank_(payload.classNo);
+  if (payload.birthYear !== undefined && payload.birthYear !== '') {
+    if (readTable_(LIBRARY_MVP.SHEETS.MEMBERS).index.birth_year === undefined) {
+      fail_('SCHEMA_MISMATCH', '09_MEMBERS에 birth_year 열이 없습니다 — 관리 메뉴의 「스키마 업그레이드(반·생년)」를 먼저 실행하세요.');
+    }
+    patch.birth_year = birthYearOrBlank_(payload.birthYear);
+  }
   if (payload.studentNo !== undefined && payload.studentNo !== '') patch.student_no = positiveIntegerOrBlank_(payload.studentNo, '번호');
   if (payload.clearSuspension) { patch.suspended_until = ''; patch.suspend_reason = ''; }
   if (cleanText_(payload.memberType)) {
@@ -2892,6 +2916,34 @@ function positiveIntegerOrBlank_(value, label) {
   return number;
 }
 
+// todo/124(난민학교 대응) — 반 값의 이중 모드. CODEBOOK에 CLASS 코드군이 있으면 "이름 반
+// 학교"(Love/Hope/Faith처럼 학년 개념이 없는 곳): cleanCode_ 후 코드 존재를 검증해 오타로
+// 반이 갈라지는 것을 막는다. 코드군이 비어 있으면 종전 그대로 양의 정수(숫자 반 학교) —
+// 기존 학교의 데이터·검사(dupSeat 등)는 이 경로에서 한 글자도 달라지지 않는다.
+function classValueOrBlank_(value) {
+  if (isBlankValue_(value)) return '';
+  var classCodes = getCodes_('CLASS');
+  if (classCodes.length) {
+    var code = cleanCode_(value);
+    if (!classCodes.some(function(item) { return item.code === code; })) {
+      fail_('INVALID_CODE', '정의되지 않은 반입니다: ' + value + ' — 16_CODEBOOK의 CLASS 코드군에 먼저 추가하세요.');
+    }
+    return code;
+  }
+  return positiveIntegerOrBlank_(value, '반');
+}
+
+// todo/124 — 출생연도. 학년이 없는 학교에서 유일한 나이 축(명렬표가 이름+출생연도만 기록).
+function birthYearOrBlank_(value) {
+  if (isBlankValue_(value)) return '';
+  var year = Number(value);
+  var thisYear = new Date().getFullYear();
+  if (!isFinite(year) || Math.floor(year) !== year || year < 1900 || year > thisYear) {
+    fail_('VALIDATION_ERROR', '출생연도는 비워 두거나 1900~' + thisYear + ' 사이 연도여야 합니다.');
+  }
+  return year;
+}
+
 function policyInteger_(value, fallback, label) {
   return nonNegativeInteger_(isBlankValue_(value) ? fallback : value, label || '정책값');
 }
@@ -3484,17 +3536,27 @@ function reportNoLoanFinder_(payload) {
 // R1-2 담임 리포트(월간·반별) — FEATURES.md "대출 현황, 미대출 명단, 연체, 우리 반 인기책...
 // 인쇄 전제 A4 1장". LOANS -> MEMBERS(반 필터) -> COPIES -> TITLES 조인.
 function reportHomeroomClass_(payload) {
+  // todo/124(난민학교 대응) — classCode 모드 추가: 이름 반 학교는 학년 축이 없어 grade·classNo
+  // (숫자) 계약으로는 이 리포트를 아예 못 연다. classCode가 오면 반 코드 하나로 필터하고,
+  // 없으면 종전 grade+classNo 경로 그대로 탄다(기존 학교 회귀 0).
+  var classCode = cleanCode_(payload.classCode || '');
   var grade = Number(payload.grade);
   var classNo = Number(payload.classNo);
   var month = cleanText_(payload.month); // 'yyyy-MM'
-  if (!grade || !classNo) fail_('VALIDATION_ERROR', 'grade·classNo가 필요합니다.');
+  if (!classCode && (!grade || !classNo)) fail_('VALIDATION_ERROR', 'classCode 또는 grade·classNo가 필요합니다.');
   if (!/^\d{4}-\d{2}$/.test(month)) fail_('VALIDATION_ERROR', 'month는 yyyy-MM 형식이어야 합니다: ' + month);
 
   var now = new Date();
   var members = readTable_(LIBRARY_MVP.SHEETS.MEMBERS).rows.filter(function(row) {
-    return row.member_type_code === 'STUDENT' && row.status_code === 'ACTIVE' &&
-      Number(row.grade) === grade && Number(row.class_no) === classNo;
+    if (row.member_type_code !== 'STUDENT' || row.status_code !== 'ACTIVE') return false;
+    if (classCode) return cleanCode_(row.class_no) === classCode;
+    return Number(row.grade) === grade && Number(row.class_no) === classNo;
   });
+  var classLabel = '';
+  if (classCode) {
+    var classEntry = getCodes_('CLASS').filter(function(item) { return item.code === classCode; })[0];
+    classLabel = classEntry ? classEntry.label : classCode;
+  }
   var memberIds = toSet_(members, 'member_id');
   var memberById = indexBy_(members, 'member_id');
 
@@ -3511,7 +3573,7 @@ function reportHomeroomClass_(payload) {
   monthLoans.forEach(function(loan) { countByMember[loan.member_id] = (countByMember[loan.member_id] || 0) + 1; });
   var loanStatus = members.map(function(m) {
     return { memberNo: m.member_no || m.member_id, name: m.name || '', studentNo: Number(m.student_no) || 0, loanCount: countByMember[m.member_id] || 0 };
-  }).sort(function(a, b) { return a.studentNo - b.studentNo; });
+  }).sort(function(a, b) { return (a.studentNo - b.studentNo) || String(a.name).localeCompare(String(b.name)); }); // todo/124 — 출석번호 전무(전원 0) 학교에서 이름순 안정 정렬
 
   var noLoanList = loanStatus.filter(function(item) { return item.loanCount === 0; });
 
@@ -3546,8 +3608,10 @@ function reportHomeroomClass_(payload) {
   return {
     libraryName: getConfig_('LIBRARY_NAME', 'MVP 도서관'),
     generatedAt: formatDateTime_(now),
-    grade: grade,
-    classNo: classNo,
+    grade: classCode ? '' : grade,
+    classNo: classCode ? '' : classNo,
+    classCode: classCode,
+    classLabel: classLabel,
     month: month,
     studentCount: members.length,
     loanStatus: loanStatus,
@@ -5482,6 +5546,61 @@ function runAnnualArchiveLoans() {
     return result;
   } catch (error) {
     ui.alert('⑤ 아카이브 실패', error.message || String(error), ui.ButtonSet.OK);
+    throw error;
+  }
+}
+
+
+// --------------------------- 스키마 업그레이드 (todo/124, 난민학교 대응) ---------------------------
+//
+// 반이 이름(Love/Hope/Faith)이고 학년·학번이 없는 학교를 스키마 대수술 없이 흡수하기 위한
+// 멱등 마이그레이션. ensureSchema_는 setupLibraryMvp(수동 메뉴)에서만 불리므로 새 코드 배포만
+// 으로는 아무것도 깨지지 않고, 이 메뉴를 실행해야 비로소 birth_year 열·CLASS 코드군이 생긴다.
+// 실행 전 birthYear 저장 시도는 registerMember_/updateMember_가 이 메뉴를 안내하며 명시 실패
+// 한다(appendRecord_의 무음 유실 방지). 반 신설·개명·폐반은 이후 16_CODEBOOK 행 편집이 전부다
+// (라벨 label_ko/label_en, 순서 sort_order, 폐반 status_code=INACTIVE) — "반 추가 = 시트 한 줄".
+
+function upgradeSchemaClassBirth_() {
+  requireRole_(getActor_(), ['ADMIN', 'LIBRARIAN']);
+  var summary = [];
+  var membersTable = readTable_(LIBRARY_MVP.SHEETS.MEMBERS);
+  if (membersTable.index.birth_year === undefined) {
+    var sheet = membersTable.sheet;
+    var column = sheet.getLastColumn() + 1;
+    sheet.getRange(1, column).setValue('birth_year')
+      .setBackground('#17324D').setFontColor('#FFFFFF').setFontWeight('bold')
+      .setHorizontalAlignment('center').setWrap(true); // formatNewDbSheet_와 동일한 헤더 서식
+    invalidateTableCache_(LIBRARY_MVP.SHEETS.MEMBERS);
+    summary.push('09_MEMBERS에 birth_year 열 추가(' + column + '번째 열)');
+  } else {
+    summary.push('birth_year 열은 이미 있음(변경 없음)');
+  }
+  var hasClassCodes = readTable_(LIBRARY_MVP.SHEETS.CODEBOOK).rows.some(function(row) { return row.code_group === 'CLASS'; });
+  if (!hasClassCodes) {
+    var seeds = [['LOVE', 'Love', 1], ['HOPE', 'Hope', 2], ['FAITH', 'Faith', 3]]; // 2026-07 명렬표 기준 시드
+    seeds.forEach(function(seed) {
+      appendRecord_(LIBRARY_MVP.SHEETS.CODEBOOK, {
+        code_group: 'CLASS', code: seed[0], label_ko: seed[1], label_en: seed[1],
+        sort_order: seed[2], status_code: 'ACTIVE', description: 'todo/124 시드 — 반 코드(이름 반 학교 모드)'
+      });
+    });
+    summary.push('CLASS 코드군 시드 3반(LOVE/HOPE/FAITH)');
+  } else {
+    summary.push('CLASS 코드군은 이미 있음(변경 없음)');
+  }
+  applyDataValidations_(); // todo/124 검증 리스트 교정(STUDENT·TEACHER·GRADUATED) 반영
+  summary.push('데이터 검증 리스트 재적용');
+  return summary;
+}
+
+function runSchemaUpgradeClassBirth() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var summary = upgradeSchemaClassBirth_();
+    ui.alert('스키마 업그레이드 완료', summary.join('\n'), ui.ButtonSet.OK);
+    return summary;
+  } catch (error) {
+    ui.alert('스키마 업그레이드 실패', error.message || String(error), ui.ButtonSet.OK);
     throw error;
   }
 }
