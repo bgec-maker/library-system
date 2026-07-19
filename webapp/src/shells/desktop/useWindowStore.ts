@@ -56,6 +56,9 @@ export interface WindowState extends WindowRect {
   /** todo/131 — 최대화 이전의 자유 배치. null이면 "최대화 아님". 수동 이동·리사이즈·스냅이
    *  일어나면 비운다(그 순간부터 사용자가 새 배치를 선언한 것 — 더블클릭은 그 배치 기준 토글). */
   prevRect: WindowRect | null;
+  /** todo/132 — 창 현재 제목의 거울(커스텀 제목 포함). 도크 최소화 목록이 "도서 상세" 대신
+   *  실제 책 제목을 툴팁으로 보여줄 수 있게 Window.tsx의 setTitle이 여기도 기록한다. */
+  title: string;
 }
 
 let zCounter = 1;
@@ -120,6 +123,7 @@ interface WindowStore {
   restoreWindow(id: string): void;
   snapWindow(id: string, side: 'left' | 'right'): void;
   toggleMaximize(id: string): void;
+  setWindowTitle(id: string, title: string): void;
   persistWindowRect(id: string): void;
 }
 
@@ -171,7 +175,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       z: zCounter,
       minimized: false,
       pinned: currentPinned(viewId),
-      prevRect: null
+      prevRect: null,
+      title: meta.title
     };
     set((s) => ({ windows: [...s.windows, next] }));
   },
@@ -270,6 +275,10 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       }));
     }
     get().focusWindow(id);
+  },
+
+  setWindowTitle(id, title) {
+    set((s) => ({ windows: s.windows.map((w) => (w.id === id ? { ...w, title } : w)) }));
   },
 
   persistWindowRect(id) {

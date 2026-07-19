@@ -228,6 +228,26 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-window);
   overflow: hidden;
+  /* todo/132 — 등장 표준(DESIGN.md 등장 사전): 마운트 1회 스케일·페이드. 스냅·드래그·최대화는
+     재마운트가 아니라서 영향 없음. transform·opacity만 사용(성능 예산). */
+  animation: window-enter 120ms ease-out;
+}
+
+@keyframes window-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window {
+    animation: none;
+  }
 }
 
 .window.is-focused {
@@ -329,60 +349,64 @@
   touch-action: none; /* todo/131 — 타이틀바와 같은 이유 */
 }
 
+/* todo/132 — 종전엔 핸들이 창 밖으로 3~4px 돌출했는데 .window가 overflow:hidden이라 바깥
+   절반이 클립돼 유효 표적이 가장자리 3px·모서리 10px뿐이었다. 전부 안쪽 배치(가장자리 5px,
+   모서리 12px)로 바꿔 선언 폭 전체가 유효 표적이 되게 한다. 우측 5px가 window-body 스크롤바
+   바깥 띠와 겹치지만 스크롤 조작은 관례상 그 안쪽을 잡는다(트레이드오프 — 리사이즈 우선). */
 .window-resize--n {
-  top: -3px;
-  left: 10px;
-  right: 10px;
-  height: 6px;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 5px;
   cursor: ns-resize;
 }
 .window-resize--s {
-  bottom: -3px;
-  left: 10px;
-  right: 10px;
-  height: 6px;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 5px;
   cursor: ns-resize;
 }
 .window-resize--e {
-  top: 10px;
-  right: -3px;
-  bottom: 10px;
-  width: 6px;
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  width: 5px;
   cursor: ew-resize;
 }
 .window-resize--w {
-  top: 10px;
-  left: -3px;
-  bottom: 10px;
-  width: 6px;
+  top: 12px;
+  left: 0;
+  bottom: 12px;
+  width: 5px;
   cursor: ew-resize;
 }
 .window-resize--ne {
-  top: -4px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
   cursor: nesw-resize;
 }
 .window-resize--nw {
-  top: -4px;
-  left: -4px;
-  width: 14px;
-  height: 14px;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
   cursor: nwse-resize;
 }
 .window-resize--se {
-  bottom: -4px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
   cursor: nwse-resize;
 }
 .window-resize--sw {
-  bottom: -4px;
-  left: -4px;
-  width: 14px;
-  height: 14px;
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
   cursor: nesw-resize;
 }
 

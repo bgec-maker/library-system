@@ -121,7 +121,7 @@ export function Dock() {
                 key={w.id}
                 type="button"
                 className="dock-icon dock-icon--min"
-                title={`${meta?.title ?? w.viewId}${t('shell.desktop.minimizedSuffix')}`}
+                title={`${w.title || (meta?.title ?? w.viewId)}${t('shell.desktop.minimizedSuffix')}`}
                 onClick={() => restoreWindow(w.id)}
               >
                 <Icon size={DOCK_ICON_SIZE} aria-hidden />

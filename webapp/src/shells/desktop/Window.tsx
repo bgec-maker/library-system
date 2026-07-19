@@ -37,10 +37,11 @@ export function Window({ win }: WindowProps) {
   const resizeWindow = useWindowStore((s) => s.resizeWindow);
   const snapWindow = useWindowStore((s) => s.snapWindow);
   const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
+  const setWindowTitle = useWindowStore((s) => s.setWindowTitle);
   const persistWindowRect = useWindowStore((s) => s.persistWindowRect);
   const openWindow = useWindowStore((s) => s.openWindow);
 
-  const [title, setTitleState] = useState(meta?.title ?? win.viewId);
+  const [title, setTitleState] = useState(win.title || (meta?.title ?? win.viewId));
   // todo/10 — 로케일 토글 시 이미 열린 창의 타이틀바도 즉시 갱신하기 위한 판별 플래그.
   // 거의 모든 뷰가 마운트 시 `shell.setTitle(getViewMeta(id)?.title ?? t(...))`로 레지스트리
   // 기본값을 "그대로" 재확인만 하므로(커스텀 제목을 쓰는 뷰가 아직 없음, book-detail은 todo/11
@@ -81,9 +82,11 @@ export function Window({ win }: WindowProps) {
     () =>
       subscribeLocale(() => {
         if (isCustomTitleRef.current) return;
-        setTitleState(getViewMeta(win.viewId)?.title ?? win.viewId);
+        const next = getViewMeta(win.viewId)?.title ?? win.viewId;
+        setTitleState(next);
+        setWindowTitle(win.id, next); // todo/132 — 도크 최소화 툴팁도 새 언어를 따라간다
       }),
-    [win.viewId]
+    [win.viewId, win.id, setWindowTitle]
   );
 
   const shell: ShellContext = useMemo<ShellContext>(
@@ -93,6 +96,7 @@ export function Window({ win }: WindowProps) {
         // 표시해 둔다 — 아래 로케일 구독 effect가 커스텀 제목을 덮어쓰지 않도록.
         isCustomTitleRef.current = next !== (getViewMeta(win.viewId)?.title ?? win.viewId);
         setTitleState(next);
+        setWindowTitle(win.id, next); // todo/132 — 거울 필드(도크 최소화 툴팁의 원천)
       },
       requestClose: () => closeWindow(win.id),
       open: (viewId: ViewId, params?: Record<string, unknown>) => openWindow(viewId, params),
@@ -114,7 +118,7 @@ export function Window({ win }: WindowProps) {
         window.print();
       }
     }),
-    [win.id, win.viewId, closeWindow, openWindow]
+    [win.id, win.viewId, closeWindow, openWindow, setWindowTitle]
   );
 
   function bringToFront() {
@@ -201,9 +205,13 @@ export function Window({ win }: WindowProps) {
   const isPinned = isScanRoutePinned() && showsScanBadge;
   const ViewComponent = VIEW_COMPONENTS[win.viewId];
 
+  // todo/132 — 보조기술에 "창" 구조 전달: 비모달 dialog + 현재 제목. aria-modal은 쓰지 않는다
+  // (다른 창·도크와 병행 조작이 정상인 멀티윈도우 — 모달 의미론이 아니다).
   return (
     <div
       ref={rootRef}
+      role="dialog"
+      aria-label={title}
       className={`window${isFocused ? ' is-focused' : ''}`}
       style={{
         left: win.x,
