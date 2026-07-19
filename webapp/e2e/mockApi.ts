@@ -133,7 +133,9 @@ function extractAction(route: Route): { action: string; payload: Record<string, 
  *  최소 상태를 하나 들고 있는다(실제 시트 대신 이 함수 호출 사이 클로저가 "진실"이다). */
 export async function installApiMock(page: Page): Promise<void> {
   let loaned = false;
-  const mockMembers = makeMockMembers(); // todo/126 — 호출 간 클로저가 진실(등록/수정은 127에서 이 배열을 변이)
+  const mockMembers = makeMockMembers(); // todo/126 — 호출 간 클로저가 진실(등록/수정이 이 배열을 변이)
+  // todo/127 — memberRegister 멱등: 같은 requestId 재호출은 같은 응답(executeWrite_ 계약).
+  const memberRegisterByRequest = new Map<string, { memberId: string; memberNo: string; name: string }>();
 
   await page.route(`${MOCK_API_URL}**`, async (route) => {
     const { action, payload } = extractAction(route);
@@ -257,6 +259,77 @@ export async function installApiMock(page: Page): Promise<void> {
             })
           )
         );
+        return;
+      }
+      case 'memberRegister': {
+        const requestId = String(payload.requestId ?? '');
+        const seen = memberRegisterByRequest.get(requestId);
+        if (seen) {
+          await route.fulfill(jsonResponse(ok({ ...seen, idempotent: true })));
+          return;
+        }
+        const name = String(payload.name ?? '').trim();
+        const classCode = String(payload.classNo ?? '').toUpperCase();
+        if (!name) {
+          await route.fulfill(jsonResponse(fail('VALIDATION_ERROR', '이름은(는) 필수입니다.')));
+          return;
+        }
+        const cls = MEMBER_CLASSES.find((c) => c.code === classCode);
+        if (!cls) {
+          await route.fulfill(jsonResponse(fail('INVALID_CODE', `정의되지 않은 반입니다: ${classCode}`)));
+          return;
+        }
+        const seq = mockMembers.length + 1;
+        const created: MockMember = {
+          memberId: `mem-new-${seq}`,
+          memberNo: String(seq).padStart(7, '0'),
+          name,
+          classNo: cls.code,
+          classCode: cls.code,
+          classLabel: cls.label,
+          grade: '',
+          birthYear: payload.birthYear ? Number(payload.birthYear) : '',
+          memberTypeCode: 'STUDENT',
+          statusCode: 'ACTIVE',
+          note: String(payload.note ?? ''),
+          openLoans: 0
+        };
+        mockMembers.push(created);
+        const result = { memberId: created.memberId, memberNo: created.memberNo, name: created.name };
+        memberRegisterByRequest.set(requestId, result);
+        await route.fulfill(jsonResponse(ok(result)));
+        return;
+      }
+      case 'memberUpdate': {
+        const key = String(payload.memberKey ?? '');
+        const target = mockMembers.find((m) => m.memberNo === key || m.memberId === key);
+        if (!target) {
+          await route.fulfill(jsonResponse(fail('NOT_FOUND', `회원을 찾을 수 없습니다: ${key}`)));
+          return;
+        }
+        if (payload.name) target.name = String(payload.name);
+        if (payload.classNo) {
+          const nextCode = String(payload.classNo).toUpperCase();
+          const cls = MEMBER_CLASSES.find((c) => c.code === nextCode);
+          if (!cls) {
+            await route.fulfill(jsonResponse(fail('INVALID_CODE', `정의되지 않은 반입니다: ${nextCode}`)));
+            return;
+          }
+          target.classNo = cls.code;
+          target.classCode = cls.code;
+          target.classLabel = cls.label;
+        }
+        if (payload.birthYear) target.birthYear = Number(payload.birthYear);
+        if (payload.status) target.statusCode = String(payload.status);
+        // 서버 updateMember_의 appendNote_ 계약과 동일 — note는 덮어쓰기가 아니라 덧붙이기
+        if (payload.note) target.note = target.note ? `${target.note} · ${String(payload.note)}` : String(payload.note);
+        await route.fulfill(
+          jsonResponse(ok({ memberId: target.memberId, memberNo: target.memberNo, name: target.name, status: target.statusCode }))
+        );
+        return;
+      }
+      case 'classCodes': {
+        await route.fulfill(jsonResponse(ok({ classes: MEMBER_CLASSES })));
         return;
       }
       default: {
