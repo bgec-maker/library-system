@@ -145,7 +145,7 @@
 ## 박스 이탈 전수 점검 (2026-07-19, 사용자 실기기 제보 — 최근 처리 카드 이탈)
 - [x] 133 overflow-detector-cards — 이탈 검출기 + 카드 메타 그리드 min-content 블로우아웃 수정
 - [x] 134 overflow-sweep — 전 뷰 스트레스 스윕(모바일 390·데스크톱 최소 폭·ko/en) 개별 수정
-- [ ] 135 overflow-regression — 상주 e2e + DESIGN 「박스 이탈 규칙」 절
+- [x] 135 overflow-regression — 상주 e2e + DESIGN 「박스 이탈 규칙」 절
 
 ## waiting/ (사용자만 승격)
 field-verify-stub(🅿) · repo-rename(도메인) · student-surface(🟡로그인 — 20이 비로그인 절반 선취) · viz-v2v3 · locales(🟡)
